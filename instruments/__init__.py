@@ -1,2 +1,2 @@
-from pyriva.instruments.specifications import *
-from pyriva.instruments.cds_specification import CDSSpecification
+from crumble.instruments.specifications import *
+from crumble.instruments.cds_specification import CDSSpecification

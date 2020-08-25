@@ -1,5 +1,5 @@
 import pyvacon.version as version
-import crumble.enums as enums
+from crumble import enums
 from pyvacon.analytics import setLogLevel as set_log_level
 
 

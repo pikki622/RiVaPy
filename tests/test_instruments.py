@@ -1,4 +1,3 @@
-from crumble import instruments
 import unittest
 import math
 from dateutil import relativedelta
@@ -6,7 +5,7 @@ from datetime import datetime, timedelta
 
 import crumble
 
-class CDS_Test(unittest.TestCase):
+class CDSTest(unittest.TestCase):
     def pricing_test(self):
         """Test simple CDS pricing using ISDA model.
         """
@@ -35,5 +34,5 @@ class CDS_Test(unittest.TestCase):
         self.assertAlmostEqual(pr.pv_protection, 0.0, 3)
 
 if __name__ == '__main__':
-        unittest.main()
+    unittest.main()
 

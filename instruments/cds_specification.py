@@ -24,7 +24,7 @@ class CDSSpecification:
         self.protection_start = protection_start
         self.notional = notional
         if expiry is None:
-            self.maturity = premium_pay_dates[-1]
+            self.expiry = premium_pay_dates[-1]
         self.recovery = recovery
         self.issuer = issuer
         self.validate()

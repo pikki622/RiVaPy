@@ -181,7 +181,7 @@ class Schedule:
         return self.__calendar
 
     @staticmethod
-    def _roll_out(from_: Union[date, datetime], to_: Union[date, datetime], term: Period, forwards: bool,
+    def _roll_out(from_: Union[date, datetime], to_: Union[date, datetime], term: Period, backwards: bool,
                   allow_stub: bool) -> List[date]:
         """
         Rolls out dates from from_ to to_ in the specified direction applying the given term under consideration of the
@@ -191,7 +191,7 @@ class Schedule:
             from_ (Union[date, datetime]): Beginning of the roll out mechanism.
             to_ (Union[date, datetime]): End of the roll out mechanism.
             term (Period): Difference between rolled out dates.
-            forwards (bool): Direction of roll out mechanism: forwards if True, backwards if False.
+            backwards (bool): Direction of roll out mechanism: backwards if True, forwards if False.
             allow_stub (bool): Defines if periods shorter than term are allowed.
 
         Returns:
@@ -202,18 +202,18 @@ class Schedule:
         to_ = datetime_to_date(to_)
 
         # check input consistency:
-        if forwards & (from_ < to_):
+        if (~backwards) & (from_ < to_):
             direction = +1
-        elif (~forwards) & (from_ > to_):
+        elif backwards & (from_ > to_):
             direction = -1
         else:
             raise Exception("From-date '" + str(from_) + "' and to-date '" + str(to_) +
-                            "' are not consistent with roll direction (forwards = '" + str(forwards) + "')!")
+                            "' are not consistent with roll direction (backwards = '" + str(backwards) + "')!")
 
         # generates a list of dates ...
         dates = []
         # ... for forward rolling case  or  backward rolling case ...
-        while (forwards & (from_ <= to_)) | ((~forwards) & (to_ <= from_)):
+        while ((~backwards) & (from_ <= to_)) | (backwards & (to_ <= from_)):
             dates.append(from_)
             from_ += direction * relativedelta(years=term.years, months=term.months, days=term.days)
             # ... and compete list for fractional periods ...
@@ -226,32 +226,39 @@ class Schedule:
                 dates[-1] = to_
         return dates
 
-    def generate_dates(self) -> List[date]:
+    def generate_dates(self, ends_only: bool) -> List[date]:
         """
         Generate list of schedule days according to the schedule specification, in particular with regards to business
         day convention and calendar given.
 
+        Args:
+            ends_only (bool): Flag to indicate if period beginnings shall be included, e.g. for defining accrual
+                              periods: True, if only period ends shall be included, e.g. for defining payment dates.
+
         Returns:
-            List of schedule dates (including start and end date) adjusted to rolling convention.
+            List[date]: List of schedule dates (including start and end date) adjusted to rolling convention.
         """
         # roll out dates ignoring any business day issues
         if self.__backwards:
             schedule_dates = Schedule._roll_out(self.__end_day, self.__start_day, self.__time_period,
-                                                False, self.__stub)
+                                                True, self.__stub)
             schedule_dates.reverse()
         else:
             schedule_dates = Schedule._roll_out(self.__start_day, self.__end_day, self.__time_period,
-                                                True, self.__stub)
+                                                False, self.__stub)
 
         # adjust according to business day convention
-        schedule_dates = [roll_day(schedule_dates[0], self.__calendar, self.__business_day_convention,
-                                   schedule_dates[0])] + \
-                         [roll_day(schedule_dates[i], self.__calendar, self.__business_day_convention,
-                                   schedule_dates[i - 1]) for i in range(1, len(schedule_dates))]
+        rolled_schedule_dates = [roll_day(schedule_dates[0], self.__calendar, self.__business_day_convention,
+                                          schedule_dates[0])]
+        [rolled_schedule_dates.append(roll_day(schedule_dates[i], self.__calendar, self.__business_day_convention,
+                                               rolled_schedule_dates[i - 1])) for i in range(1, len(schedule_dates))]
+
+        if ends_only:
+            rolled_schedule_dates.pop(0)
 
         logger.debug("Schedule dates successfully calculated from '"
                      + str(self.__start_day) + "' to '" + str(self.__end_day) + "'.")
-        return schedule_dates
+        return rolled_schedule_dates
 
 
 def datetime_to_date(date_time: Union[datetime, date]) -> date:

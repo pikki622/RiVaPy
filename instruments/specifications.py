@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import pyvacon.analytics as _analytics
-from typing import Union
+from typing import List, Union
 from datetime import datetime, date
 from holidays import HolidayBase, ECB
 from RiVaPy.tools._converter import _add_converter
@@ -8,14 +8,13 @@ from RiVaPy.tools.datetools import \
     Period, \
     Schedule, \
     check_start_before_end, \
+    is_ascending_date_list, \
     tenor_to_period
 from RiVaPy.tools.enums import \
-    Day_Counter, \
     Roll_Convention
 from RiVaPy.tools.validators import \
     check_positivity, \
     currency_to_string, \
-    day_count_convention_to_string, \
     roll_convention_to_string, \
     string_to_calendar
 
@@ -70,8 +69,11 @@ class IssuedInstrument:
 
 
 class Bond:
-    def __init__(self, obj_id: str, currency: Union[str, int], issue_date: Union[date, datetime],
-                 maturity_date: Union[date, datetime], notional: float = 100.0):
+    def __init__(self, obj_id: str,
+                 currency: Union[str, int],
+                 issue_date: Union[date, datetime],
+                 maturity_date: Union[date, datetime],
+                 notional: float = 100.0):
         """
         Abstract bond specification.
 
@@ -110,8 +112,11 @@ class Bond:
 
 
 class ZeroCouponBond(Bond):
-    def __init__(self, obj_id: str, currency: str, issue_date: Union[date, datetime],
-                 maturity_date: Union[date, datetime], notional):
+    def __init__(self, obj_id: str,
+                 currency: Union[str, int],
+                 issue_date: Union[date, datetime],
+                 maturity_date: Union[date, datetime],
+                 notional):
         """
         Zero coupon bond specification.
         """
@@ -119,65 +124,44 @@ class ZeroCouponBond(Bond):
 
 
 class FixedRateBond(Bond):
-    def __init__(self, obj_id: str, currency: str, issue_date: Union[date, datetime],
-                 maturity_date: Union[date, datetime], notional, coupon: float, tenor: Union[Period, str],
-                 spot_lag: int = 2, backwards: bool = True, stub: bool = False,
-                 business_day_convention: Union[Roll_Convention, str] = Roll_Convention.FOLLOWING,
-                 calendar: Union[HolidayBase, str] = None,
-                 day_count_convention: Union[Day_Counter, str] = Day_Counter.ThirtyU360):
+    def __init__(self, obj_id: str,
+                 currency: Union[str, int],
+                 issue_date: Union[date, datetime],
+                 maturity_date: Union[date, datetime],
+                 notional: float,
+                 coupon_payment_dates: List[date],
+                 coupons: List[float]):
         super().__init__(obj_id, currency, issue_date, maturity_date, notional)
-        self.__coupon = check_positivity(coupon)
-        self.__tenor = tenor_to_period(tenor)
-        self.__spot_lag = check_positivity(spot_lag)
-        self.__backwards = backwards
-        self.__stub = stub
-        self.__business_day_convention = roll_convention_to_string(business_day_convention)
-        if calendar is None:
-            self.__calendar = ECB(years=range(issue_date.year, maturity_date.year + 1))
+        self.__coupon_payment_dates = is_ascending_date_list(issue_date, coupon_payment_dates, maturity_date)
+        if len(coupon_payment_dates) == len(coupon_payment_dates):
+            self.__coupons = coupons
         else:
-            self.__calendar = string_to_calendar(calendar)
-        self.__day_count_convention = day_count_convention_to_string(day_count_convention)
-        # automatically generate coupon payment schedule:
-        self.__schedule = Schedule(self.issue_date, self.maturity_date, self.__tenor, self.__backwards, self.__stub,
-                                   self.__business_day_convention, self.__calendar)
-        self.__coupon_payment_dates = self.__schedule.generate_dates()
-        self.__coupons = [self.__coupon] * len(self.__coupon_payment_dates)
+            raise Exception('Number of coupons ' + str(coupons) +
+                            ' is not equal to number of coupon payment dates ' + str(coupon_payment_dates))
 
-    @property
-    def coupon(self):
-        return self.__coupon
-
-    @property
-    def tenor(self):
-        return self.__tenor
-
-    @property
-    def spot_lag(self):
-        return self.__spot_lag
-
-    @property
-    def backwards(self):
-        return self.__backwards
-
-    @property
-    def stub(self):
-        return self.__stub
-
-    @property
-    def business_day_convention(self):
-        return self.__business_day_convention
-
-    @property
-    def calendar(self):
-        return self.__calendar
-
-    @property
-    def day_count_convention(self):
-        return self.__day_count_convention
-
-    @property
-    def schedule(self):
-        return self.__schedule
+    @classmethod
+    def from_master_data(cls, obj_id: str,
+                         currency: Union[str, int],
+                         issue_date: Union[date, datetime],
+                         maturity_date: Union[date, datetime],
+                         notional: float,
+                         coupon: float,
+                         tenor: Union[Period, str],
+                         backwards: bool = True,
+                         stub: bool = False,
+                         business_day_convention: Union[Roll_Convention, str] = Roll_Convention.FOLLOWING,
+                         calendar: Union[HolidayBase, str] = None):
+        coupon = check_positivity(coupon)
+        tenor = tenor_to_period(tenor)
+        business_day_convention = roll_convention_to_string(business_day_convention)
+        if calendar is None:
+            calendar = ECB(years=range(issue_date.year, maturity_date.year + 1))
+        else:
+            calendar = string_to_calendar(calendar)
+        schedule = Schedule(issue_date, maturity_date, tenor, backwards, stub, business_day_convention, calendar)
+        coupon_payment_dates = schedule.generate_dates(True)
+        coupons = [coupon] * len(coupon_payment_dates)
+        return FixedRateBond(obj_id, currency, issue_date, maturity_date, notional, coupon_payment_dates, coupons)
 
     @property
     def coupon_payment_dates(self):
@@ -186,6 +170,54 @@ class FixedRateBond(Bond):
     @property
     def coupons(self):
         return self.__coupons
+
+
+class FloatingRateNote(Bond):
+    def __init__(self, obj_id: str,
+                 currency: Union[str, int],
+                 issue_date: Union[date, datetime],
+                 maturity_date: Union[date, datetime],
+                 notional: float,
+                 coupon_period_dates: List[date],
+                 spreads: List[float]):
+        super().__init__(obj_id, currency, issue_date, maturity_date, notional)
+        self.__coupon_period_dates = is_ascending_date_list(issue_date, coupon_period_dates, maturity_date)
+        if len(coupon_period_dates) == len(coupon_period_dates):
+            self.__spreads = spreads
+        else:
+            raise Exception('Number of spreads ' + str(spreads) +
+                            ' does not fir to number of coupon periods ' + str(coupon_period_dates))
+
+    @classmethod
+    def from_master_data(cls, obj_id: str,
+                         currency: Union[str, int],
+                         issue_date: Union[date, datetime],
+                         maturity_date: Union[date, datetime],
+                         notional: float,
+                         spread: float,
+                         tenor: Union[Period, str],
+                         backwards: bool = True,
+                         stub: bool = False,
+                         business_day_convention: Union[Roll_Convention, str] = Roll_Convention.FOLLOWING,
+                         calendar: Union[HolidayBase, str] = None):
+        tenor = tenor_to_period(tenor)
+        business_day_convention = roll_convention_to_string(business_day_convention)
+        if calendar is None:
+            calendar = ECB(years=range(issue_date.year, maturity_date.year + 1))
+        else:
+            calendar = string_to_calendar(calendar)
+        schedule = Schedule(issue_date, maturity_date, tenor, backwards, stub, business_day_convention, calendar)
+        coupon_period_dates = schedule.generate_dates(False)
+        spreads = [spread] * (len(coupon_period_dates) - 1)
+        return FloatingRateNote(obj_id, currency, issue_date, maturity_date, notional, coupon_period_dates, spreads)
+
+    @property
+    def coupon_period_dates(self):
+        return self.__coupon_period_dates
+
+    @property
+    def spreads(self):
+        return self.__spreads
 
 
 # Bonds/Credit

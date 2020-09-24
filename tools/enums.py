@@ -96,6 +96,8 @@ class SecuritizationLevel(MyEnum):
     SUBORDINATED = 'SUBORDINATED'
     MEZZANINE = 'MEZZANINE'
     EQUITY = 'EQUITY'
+    PREFERRED_SENIOR = 'PREFERRED_SENIOR'
+    NON_PREFERRED_SENIOR = 'NON_PREFERRED_SENIOR'
 
 
 @unique
@@ -134,7 +136,7 @@ class Period(MyEnum):
 
 
 @unique
-class Roll_Convention(MyEnum):
+class RollConvention(MyEnum):
     FOLLOWING = 'Following'
     MODIFIED_FOLLOWING = 'ModifiedFollowing'
     MODIFIED_FOLLOWING_EOM = 'ModifiedFollowingEOM'
@@ -146,7 +148,7 @@ class Roll_Convention(MyEnum):
 
 
 @unique
-class Day_Counter(MyEnum):
+class DayCounter(MyEnum):
     ACT_ACT = 'ActAct'
     ACT365_FIXED = 'ACT365FIXED'
     ACT360 = 'Act360'
@@ -164,7 +166,7 @@ class VolatilityStickyness(MyEnum):
 
 
 @unique
-class Inflation_Interpolation(MyEnum):
+class InflationInterpolation(MyEnum):
     UNDEFINED = 'UNDEFINED'
     GERMAN = 'GERMAN'
     JAPAN = 'JAPAN'

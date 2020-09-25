@@ -3,20 +3,26 @@
 
 from datetime import datetime, date
 from pandas import DataFrame, Series
-from typing import Union
-from RiVaPy.tools.datetools import calc_end_day, calc_start_day, term_to_period, datetime_to_date, Schedule
+from typing import Union as _Union
+from RiVaPy.tools.datetools import \
+    Period, \
+    Schedule, \
+    calc_end_day, \
+    calc_start_day, \
+    term_to_period, \
+    datetime_to_date
 from RiVaPy.tools.enums import SecuritizationLevel
 from RiVaPy.tools._converter import \
     converter as _converter, \
     create_ptime as _create_ptime
-from RiVaPy.instruments.specifications import \
+from pyvacon.instruments.analytics_classes import \
     DepositSpecification, \
     InterestRateBasisSwapSpecification, \
     InterestRateFutureSpecification, \
     InterestRateSwapSpecification, \
     IrFloatLegSpecification, \
     IrFixedLegSpecification
-from pyvacon.analytics import Period, \
+from pyvacon.analytics import \
     ScheduleSpecification, \
     vectorBaseSpecification, \
     vectorDouble, \
@@ -24,7 +30,7 @@ from pyvacon.analytics import Period, \
 
 
 class Par_IR_Data:
-    def __init__(self, data_file: DataFrame, ref_date: Union[date, datetime] = None):
+    def __init__(self, data_file: DataFrame, ref_date: _Union[date, datetime] = None):
         """
         Definition of input instruments for IR bootstrapping
         """

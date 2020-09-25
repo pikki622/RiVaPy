@@ -2,11 +2,17 @@
 
 
 from sys import version_info as _version_info
-from inspect import getmembers as _getmembers, isfunction as _isfunction, ismethod as _ismethod
-from typing import Union as _Union, List as _List
+from inspect import \
+    getmembers as _getmembers, \
+    isfunction as _isfunction, \
+    ismethod as _ismethod
+from typing import \
+    List as _List, \
+    Union as _Union
 from datetime import datetime as _datetime, date as _date
 from numpy import empty as _empty, array as _array, ndarray as _ndarray
-from pyvacon.analytics import ptime as _ptime,\
+from pyvacon.analytics import \
+    ptime as _ptime,\
     CouponDescription as _CouponDescription, \
     vectorCouponDescription as _vectorCouponDescription, \
     BaseObject as _BaseObject, \
@@ -44,7 +50,7 @@ def _convert(x: _Union[_Union[_date, _datetime, _ptime], _List[_Union[_date, _da
         x: Variable to be converted.
 
     Returns:
-        _Union[_ptime, _List[_ptime], _vectorCouponDescription]: Converted variable.
+        __Union[_ptime, _List[_ptime], _vectorCouponDescription]: Converted variable.
     """
     if isinstance(x, (_date, _datetime, _ptime)):
         return create_ptime(x)

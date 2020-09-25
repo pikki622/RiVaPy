@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 
-from enum import Enum, unique
+from enum import \
+    Enum as _Enum, \
+    unique as _unique
 """
 The following Enum sub-classes replace to corresponding former classes one-on-one. The main reason for this replacement
 is the more comfortable iterations over the enumeration class members. Moreover, the Enum class provides potentially
@@ -9,13 +11,13 @@ useful functionalities like comparisons, pickling, ... Finally, the decorator @u
 """
 
 
-class MyEnum(Enum):
+class _MyEnum(_Enum):
     @classmethod
     def has_value(cls, value):
         return value in cls._value2member_map_
 
 
-class DBUdl(MyEnum):
+class DBUdl(_MyEnum):
     DAX = '13021'
     STOXX50E = '3343'
     DOWJOWNS = '27930'
@@ -69,8 +71,8 @@ class DBUdl(MyEnum):
                 'VW': VW, 'VONOVIA': VONOVIA, 'WIRECARD': WIRECARD}
 
 
-@unique
-class InterpolationType(MyEnum):
+@_unique
+class InterpolationType(_MyEnum):
     CONSTANT = 'CONSTANT'
     LINEAR = 'LINEAR'
     LINEAR_LOG = 'LINEARLOG'
@@ -79,16 +81,16 @@ class InterpolationType(MyEnum):
     HAGAN_DF = 'HAGAN_DF'
 
 
-@unique
-class ExtrapolationType(MyEnum):
+@_unique
+class ExtrapolationType(_MyEnum):
     NONE = 'NONE'
     CONSTANT = 'CONSTANT'
     LINEAR = 'LINEAR'
     LINEAR_LOG = 'LINEARLOG'
 
 
-@unique
-class SecuritizationLevel(MyEnum):
+@_unique
+class SecuritizationLevel(_MyEnum):
     NONE = 'NONE'
     COLLATERALIZED = 'COLLATERALIZED'
     SENIOR_SECURED = 'SENIOR_SECURED'
@@ -100,22 +102,22 @@ class SecuritizationLevel(MyEnum):
     NON_PREFERRED_SENIOR = 'NON_PREFERRED_SENIOR'
 
 
-@unique
-class ProductType(MyEnum):
+@_unique
+class ProductType(_MyEnum):
     BOND = 'BOND'
     CALLABLE_BOND = 'CALLABLE_BOND'
 
 
-@unique
-class PricerType(MyEnum):
+@_unique
+class PricerType(_MyEnum):
     ANALYTIC = 'ANALYTIC'
     PDE = 'PDE'
     MONTE_CARLO = 'MONTE_CARLO'
     COMBO = 'COMBO'
 
 
-@unique
-class Model(MyEnum):
+@_unique
+class Model(_MyEnum):
     BLACK76 = 'BLACK76'
     CIR = 'CIR'
     HULL_WHITE = 'HULL_WHITE'
@@ -126,8 +128,8 @@ class Model(MyEnum):
     VASICEK = 'VASICEK'
 
 
-@unique
-class Period(MyEnum):
+@_unique
+class Period(_MyEnum):
     A = 'A'
     SA = 'SA'
     Q = 'Q'
@@ -135,8 +137,8 @@ class Period(MyEnum):
     D = 'D'
 
 
-@unique
-class RollConvention(MyEnum):
+@_unique
+class RollConvention(_MyEnum):
     FOLLOWING = 'Following'
     MODIFIED_FOLLOWING = 'ModifiedFollowing'
     MODIFIED_FOLLOWING_EOM = 'ModifiedFollowingEOM'
@@ -147,8 +149,8 @@ class RollConvention(MyEnum):
     UNADJUSTED = 'Unadjusted'
 
 
-@unique
-class DayCounter(MyEnum):
+@_unique
+class DayCounter(_MyEnum):
     ACT_ACT = 'ActAct'
     ACT365_FIXED = 'ACT365FIXED'
     ACT360 = 'Act360'
@@ -157,16 +159,16 @@ class DayCounter(MyEnum):
     ACT252 = 'Act252'
 
 
-@unique
-class VolatilityStickyness(MyEnum):
+@_unique
+class VolatilityStickyness(_MyEnum):
     NONE = 'NONE'
     Sticky_Strike = 'StickyStrike'
     Sticky_X_Strike = 'StickyXStrike'
     Sticky_Fwd_Moneyness = 'StickyFwdMoneyness'
 
 
-@unique
-class InflationInterpolation(MyEnum):
+@_unique
+class InflationInterpolation(_MyEnum):
     UNDEFINED = 'UNDEFINED'
     GERMAN = 'GERMAN'
     JAPAN = 'JAPAN'

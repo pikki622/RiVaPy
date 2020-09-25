@@ -1,13 +1,20 @@
 # -*- coding: utf-8 -*-
 
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from calendar import monthrange
-from typing import List, Union, Tuple
-from holidays import HolidayBase, ECB
+from typing import \
+    List as _List, \
+    Union as _Union, \
+    Tuple as _Tuple
+from holidays import \
+    HolidayBase as _HolidayBase, \
+    ECB as _ECB
 from RiVaPy.tools.enums import RollConvention
-from RiVaPy.tools.validators import roll_convention_to_string, string_to_calendar
+from RiVaPy.tools._validators import \
+    roll_convention_to_string, \
+    string_to_calendar
 import logging
 
 
@@ -62,10 +69,10 @@ class Period:
 
 
 class Schedule:
-    def __init__(self, start_day: Union[date, datetime], end_day: Union[date, datetime],
-                 time_period: Union[Period, str], backwards: bool = True, stub: bool = False,
-                 business_day_convention: Union[RollConvention, str] = RollConvention.MODIFIED_FOLLOWING,
-                 calendar: Union[HolidayBase, str] = None):
+    def __init__(self, start_day: _Union[date, datetime], end_day: _Union[date, datetime],
+                 time_period: _Union[Period, str], backwards: bool = True, stub: bool = False,
+                 business_day_convention: _Union[RollConvention, str] = RollConvention.MODIFIED_FOLLOWING,
+                 calendar: _Union[_HolidayBase, str] = None):
         """
         A schedule is a list of dates, e.g. of coupon payments, fixings, etc., which is defined by its fist (= start
         day) and last (= end day) day, by its distance between two consecutive dates (= time period) and by the
@@ -74,20 +81,20 @@ class Schedule:
         respect to a specified holiday calendar.
 
         Args:
-            start_day (Union[date, datetime]): Schedule's first day - beginning of the schedule.
-            end_day (Union[date, datetime]): Schedule's last day - end of the schedule.
-            time_period (Union[Period, str]): Time distance between two consecutive dates.
+            start_day (_Union[date, datetime]): Schedule's first day - beginning of the schedule.
+            end_day (_Union[date, datetime]): Schedule's last day - end of the schedule.
+            time_period (_Union[Period, str]): Time distance between two consecutive dates.
             backwards (bool, optional): Defines direction for rolling out the schedule. True means the schedule will be
                                         rolled out (backwards) from end day to start day. Defaults to True.
             stub (bool, optional): Defines if the first/last period is accepted (True), even though it is shorter than
                                    the others, or if it remaining days are added to the neighbouring period (False).
                                    Defaults to True.
-            business_day_convention (Union[RollConvention, str], optional): Set of rules defining the adjustment of
+            business_day_convention (_Union[RollConvention, str], optional): Set of rules defining the adjustment of
                                                                              days to ensure each date being a business
                                                                              day with respect to a given holiday
                                                                              calendar. Defaults to
                                                                              RollConvention.MODIFIED_FOLLOWING
-            calendar (Union[HolidayBase, str], optional): Holiday calendar defining the bank holidays of a country or
+            calendar (_Union[_HolidayBase, str], optional): Holiday calendar defining the bank holidays of a country or
                                                           province (but not all non-business days as for example
                                                           Saturdays and Sundays).
                                                           Defaults (through constructor) to holidays.ECB
@@ -103,7 +110,7 @@ class Schedule:
         # define business day convention w.r.t. calendar
         self.__business_day_convention = roll_convention_to_string(business_day_convention)
         if calendar is None:
-            self.__calendar = ECB(years=range(start_day.year, end_day.year + 1))
+            self.__calendar = _ECB(years=range(start_day.year, end_day.year + 1))
         else:
             self.__calendar = string_to_calendar(calendar)
 
@@ -180,15 +187,15 @@ class Schedule:
         return self.__calendar
 
     @staticmethod
-    def _roll_out(from_: Union[date, datetime], to_: Union[date, datetime], term: Period, backwards: bool,
-                  allow_stub: bool) -> List[date]:
+    def _roll_out(from_: _Union[date, datetime], to_: _Union[date, datetime], term: Period, backwards: bool,
+                  allow_stub: bool) -> _List[date]:
         """
         Rolls out dates from from_ to to_ in the specified direction applying the given term under consideration of the
         specification for allowing shorter periods.
 
         Args:
-            from_ (Union[date, datetime]): Beginning of the roll out mechanism.
-            to_ (Union[date, datetime]): End of the roll out mechanism.
+            from_ (_Union[date, datetime]): Beginning of the roll out mechanism.
+            to_ (_Union[date, datetime]): End of the roll out mechanism.
             term (Period): Difference between rolled out dates.
             backwards (bool): Direction of roll out mechanism: backwards if True, forwards if False.
             allow_stub (bool): Defines if periods shorter than term are allowed.
@@ -225,7 +232,7 @@ class Schedule:
                 dates[-1] = to_
         return dates
 
-    def generate_dates(self, ends_only: bool) -> List[date]:
+    def generate_dates(self, ends_only: bool) -> _List[date]:
         """
         Generate list of schedule days according to the schedule specification, in particular with regards to business
         day convention and calendar given.
@@ -261,12 +268,12 @@ class Schedule:
 
 
 # TODO: Switch to date_to_datetime ...
-def datetime_to_date(date_time: Union[datetime, date]) -> date:
+def datetime_to_date(date_time: _Union[datetime, date]) -> date:
     """
     Converts type of date from datetime to date or leaves it unchanged if it is already of type date.
 
     Args:
-        date_time (Union[datetime, date]): Date(time) to be converted.
+        date_time (_Union[datetime, date]): Date(time) to be converted.
 
     Returns:
         date: (Potentially) Converted date(time).
@@ -279,12 +286,12 @@ def datetime_to_date(date_time: Union[datetime, date]) -> date:
         raise TypeError("'" + str(date_time) + "' must be of type datetime or date!")
 
 
-def datetime_to_date_list(date_times: Union[List[datetime], List[date]]) -> List[date]:
+def datetime_to_date_list(date_times: _Union[_List[datetime], _List[date]]) -> _List[date]:
     """
     Converts types of date  list from datetime to date or leaves it unchanged if they are already of type date.
 
     Args:
-        date_times (Union[List[datetime], List[date]]): List of date(time)s to be converted.
+        date_times (_Union[List[datetime], List[date]]): List of date(time)s to be converted.
 
     Returns:
         List[date]: List of (potentially) converted date(time)s.
@@ -295,14 +302,14 @@ def datetime_to_date_list(date_times: Union[List[datetime], List[date]]) -> List
         raise TypeError("'" + str(date_times) + "' must be a list of type datetime or date!")
 
 
-def check_start_before_end(start: Union[date, datetime], end: Union[date, datetime]) -> Tuple[date, date]:
+def check_start_before_end(start: _Union[date, datetime], end: _Union[date, datetime]) -> _Tuple[date, date]:
     """
     Converts the two input dates from datetime to date format it necessary and checks if the first date is earlier
     than the second one.
 
     Args:
-        start (Union[date, datetime]): Start date
-        end (Union[date, datetime]): End date
+        start (_Union[date, datetime]): Start date
+        end (_Union[date, datetime]): End date
 
     Returns:
         Tuple[date, date]: start date, end date
@@ -315,7 +322,7 @@ def check_start_before_end(start: Union[date, datetime], end: Union[date, dateti
         raise Exception("'" + str(start) + "' must be earlier than '" + str(end) + "'!")
 
 
-def is_ascending_date_list(start_date: date, dates: List[date], end_date: date,
+def is_ascending_date_list(start_date: date, dates: _List[date], end_date: date,
                            exclude_start: bool = True, exclude_end: bool = False) -> bool:
     """
     Checks if all specified dates, e.g. coupon payment dates, fall between start date and end date. Start and end date
@@ -376,12 +383,12 @@ def term_to_period(term: str) -> Period:
     return period
 
 
-def tenor_to_period(tenor: Union[Period, str]) -> Period:
+def tenor_to_period(tenor: _Union[Period, str]) -> Period:
     """
     Converts a tenor provided as period or string into period format if necessary.
 
     Args:
-        tenor (Union[Period, str]): Tenor to be converted if provided as string.
+        tenor (_Union[Period, str]): Tenor to be converted if provided as string.
 
     Returns:
         Period: Tenor (potentially converted) in(to) period format.
@@ -394,19 +401,19 @@ def tenor_to_period(tenor: Union[Period, str]) -> Period:
         raise TypeError("The tenor '" + str(tenor) + "' must be provided as Period or string!")
 
 
-def calc_end_day(start_day: Union[date, datetime], term: str,
-                 business_day_convention: Union[RollConvention, str] = None,
-                 calendar: Union[HolidayBase, str] = None) -> date:
+def calc_end_day(start_day: _Union[date, datetime], term: str,
+                 business_day_convention: _Union[RollConvention, str] = None,
+                 calendar: _Union[_HolidayBase, str] = None) -> date:
     """
     Derives the end date of a time period based on the start day the the term given as string, e.g. 1D, 3M, or 5Y.
     If business day convention and corresponding calendar are provided the end date is additionally rolled accordingly.
 
     Args:
-        start_day (Union[date, datetime): Beginning of the time period with length term.
+        start_day (_Union[date, datetime): Beginning of the time period with length term.
         term (str): Term defining the period from start to end date.
-        business_day_convention (Union[RollConvention, str], optional): Set of rules defining how to adjust
+        business_day_convention (_Union[RollConvention, str], optional): Set of rules defining how to adjust
                                                                          non-business days. Defaults to None.
-        calendar (Union[HolidayBase, str], optional): Holiday calender defining non-business days
+        calendar (_Union[_HolidayBase, str], optional): Holiday calender defining non-business days
                                                       (but not Saturdays and Sundays).
                                                       Defaults to None.
 
@@ -423,20 +430,20 @@ def calc_end_day(start_day: Union[date, datetime], term: str,
     return end_date
 
 
-def calc_start_day(end_day: Union[date, datetime], term: str, 
-                   business_day_convention: Union[RollConvention, str] = None,
-                   calendar: Union[HolidayBase, str] = None) -> date:
+def calc_start_day(end_day: _Union[date, datetime], term: str, 
+                   business_day_convention: _Union[RollConvention, str] = None,
+                   calendar: _Union[_HolidayBase, str] = None) -> date:
     """
     Derives the start date of a time period based on the end day the the term given as string, e.g. 1D, 3M, or 5Y.
     If business day convention and corresponding calendar are provided the start date is additionally rolled
     accordingly.
 
     Args:
-        end_day (Union[date, datetime): End of the time period with length term.
+        end_day (_Union[date, datetime): End of the time period with length term.
         term (str): Term defining the period from start to end date.
-        business_day_convention (Union[RollConvention, str], optional): Set of rules defining how to adjust
+        business_day_convention (_Union[RollConvention, str], optional): Set of rules defining how to adjust
                                                                          non-business days. Defaults to None.
-        calendar (Union[HolidayBase, str], optional): Holiday calender defining non-business days
+        calendar (_Union[_HolidayBase, str], optional): Holiday calender defining non-business days
                                                       (but not Saturdays and Sundays).
                                                       Defaults to None.
     Returns:
@@ -452,12 +459,12 @@ def calc_start_day(end_day: Union[date, datetime], term: str,
     return start_date
 
 
-def last_day_of_month(day: Union[date, datetime]) -> date:
+def last_day_of_month(day: _Union[date, datetime]) -> date:
     """
     Derives last day of the month corresponding to the given day.
 
     Args:
-        day (Union[date, datetime]): Day defining month and year for derivation of month's last day.
+        day (_Union[date, datetime]): Day defining month and year for derivation of month's last day.
 
     Returns:
         date: Date of last day of the corresponding month.
@@ -465,12 +472,12 @@ def last_day_of_month(day: Union[date, datetime]) -> date:
     return date(day.year, day.month, monthrange(day.year, day.month)[1])
 
 
-def is_last_day_of_month(day: Union[date, datetime]) -> bool:
+def is_last_day_of_month(day: _Union[date, datetime]) -> bool:
     """
     Checks if a given day is the last day of the corresponding month.
 
     Args:
-        day (Union[date, datetime]): Day to be checked.
+        day (_Union[date, datetime]): Day to be checked.
 
     Returns:
         bool: True, if day is last day of the month, False otherwise.
@@ -478,13 +485,13 @@ def is_last_day_of_month(day: Union[date, datetime]) -> bool:
     return datetime_to_date(day) == last_day_of_month(day)
 
 
-def is_business_day(day: Union[date, datetime], calendar: Union[HolidayBase, str]) -> bool:
+def is_business_day(day: _Union[date, datetime], calendar: _Union[_HolidayBase, str]) -> bool:
     """
     Checks if a given day is a business day in a given calendar.
 
     Args:
-        day (Union[date, datetime]): Day to be checked.
-        calendar (Union[HolidayBase, str]): List of holidays defined by the given calendar.
+        day (_Union[date, datetime]): Day to be checked.
+        calendar (_Union[_HolidayBase, str]): List of holidays defined by the given calendar.
 
     Returns:
         bool: True, if day is a business day, False otherwise.
@@ -493,30 +500,30 @@ def is_business_day(day: Union[date, datetime], calendar: Union[HolidayBase, str
     return (day.isoweekday() < 6) & (day not in string_to_calendar(calendar))
 
 
-def last_business_day_of_month(day: Union[date, datetime], calendar: Union[HolidayBase, str]) -> date:
+def last_business_day_of_month(day: _Union[date, datetime], calendar: _Union[_HolidayBase, str]) -> date:
     """
     Derives the last business day of a month corresponding to a given day based on the holidays set in the calendar.
 
     Args:
-        day (Union[date, datetime]): Day defining month and year for deriving the month's last business day.
-        calendar (Union[HolidayBase, str]): List of holidays defined by the given calendar.
+        day (_Union[date, datetime]): Day defining month and year for deriving the month's last business day.
+        calendar (_Union[_HolidayBase, str]): List of holidays defined by the given calendar.
 
     Returns:
         date: Date of last business day of the corresponding month.
     """
     check_day = date(day.year, day.month, monthrange(day.year, day.month)[1])
     while not (is_business_day(check_day, calendar)):
-        check_day -= timedelta(days=1)
+        check_day -= relativedelta(days=1)
     return check_day
 
 
-def is_last_business_day_of_month(day: Union[date, datetime], calendar: Union[HolidayBase, str]) -> bool:
+def is_last_business_day_of_month(day: _Union[date, datetime], calendar: _Union[_HolidayBase, str]) -> bool:
     """
     Checks it the given day is the last business day of the corresponding month.
 
     Args:
-        day (Union[date, datetime]): day to be checked
-        calendar (Union[HolidayBase, str]): list of holidays defined by the given calendar
+        day (_Union[date, datetime]): day to be checked
+        calendar (_Union[_HolidayBase, str]): list of holidays defined by the given calendar
 
     Returns:
         bool: True if day is last business day of the corresponding month, False otherwise.
@@ -524,15 +531,15 @@ def is_last_business_day_of_month(day: Union[date, datetime], calendar: Union[Ho
     return datetime_to_date(day) == last_business_day_of_month(day, calendar)
 
 
-def nearest_business_day(day: Union[date, datetime], calendar: Union[HolidayBase, str], following_first: bool = True) \
-        -> date:
+def nearest_business_day(day: _Union[date, datetime], calendar: _Union[_HolidayBase, str],
+                         following_first: bool = True) -> date:
     """
     Derives nearest business day from given day for a given calendar. If there are equally near days preceding and
     following the flag following_first determines if the following day is preferred to the preceding one.
 
     Args:
-        day (Union[date, datetime]): Day for which the nearest business day is to be found. 
-        calendar (Union[HolidayBase, str]): List of holidays given by calendar.
+        day (_Union[date, datetime]): Day for which the nearest business day is to be found. 
+        calendar (_Union[_HolidayBase, str]): List of holidays given by calendar.
         following_first (bool): Flag for deciding if following days are preferred to an equally near preceding day.
                                 Default value is True.
 
@@ -549,19 +556,19 @@ def nearest_business_day(day: Union[date, datetime], calendar: Union[HolidayBase
     while not is_business_day(day, calendar):
         distance += 1
         direction *= -1
-        day += direction * timedelta(days=distance)
+        day += direction * relativedelta(days=distance)
     return day
 
 
-def nearest_last_business_day_of_month(day: Union[date, datetime], calendar: Union[HolidayBase, str],
+def nearest_last_business_day_of_month(day: _Union[date, datetime], calendar: _Union[_HolidayBase, str],
                                        following_first: bool = True) -> date:
     """
     Derives nearest last business day of a month from given day for a given calendar. If there are equally near days
     preceding and following the flag following_first determines if the following day is preferred to the preceding one.
 
     Args:
-        day (Union[date, datetime]): Day for which the nearest last business day of the month is to be found.
-        calendar (Union[HolidayBase, str]): List of holidays given by calendar.
+        day (_Union[date, datetime]): Day for which the nearest last business day of the month is to be found.
+        calendar (_Union[_HolidayBase, str]): List of holidays given by calendar.
         following_first (bool, optional): Flag for deciding if following days are preferred to an equally near preceding
                                           day. Defaults to True.
 
@@ -578,19 +585,19 @@ def nearest_last_business_day_of_month(day: Union[date, datetime], calendar: Uni
     while not is_last_business_day_of_month(day, calendar):
         distance += 1
         direction *= -1
-        day += direction * timedelta(days=distance)
+        day += direction * relativedelta(days=distance)
     return day
 
 
-def next_or_previous_business_day(day: Union[date, datetime], calendar: Union[HolidayBase, str],
+def next_or_previous_business_day(day: _Union[date, datetime], calendar: _Union[_HolidayBase, str],
                                   following_first: bool) -> date:
     """
     Derives the preceding or following business day to a given day according to a given calendar depending on the flag
     following_first. If the day is already a business day the function directly returns the day.
 
     Args:
-        day (Union[date, datetime]): Day for which the preceding or following business day is to be found.
-        calendar (HolidayBase): List of holidays defined by the calendar.
+        day (_Union[date, datetime]): Day for which the preceding or following business day is to be found.
+        calendar (_HolidayBase): List of holidays defined by the calendar.
         following_first (bool): Flag to determine in the following (True) or preceding (False) business day is to be
         found.
 
@@ -604,19 +611,19 @@ def next_or_previous_business_day(day: Union[date, datetime], calendar: Union[Ho
 
     datetime_to_date(day)
     while not is_business_day(day, calendar):
-        day += direction * timedelta(days=1)
+        day += direction * relativedelta(days=1)
 
     return day
 
 
-def following(day: Union[date, datetime], calendar: Union[HolidayBase, str]) -> date:
+def following(day: _Union[date, datetime], calendar: _Union[_HolidayBase, str]) -> date:
     """
     Derives the (potentially) adjusted business day according to the business day convention 'Following' for a specified
     day with respect to a specific calendar: The adjusted date is the following good business day.
 
     Args:
-        day (Union[date, datetime]): Day to be adjusted according to the roll convention if not already a business day.
-        calendar (Union[HolidayBase, str]): Calendar defining holidays additional to weekends.
+        day (_Union[date, datetime]): Day to be adjusted according to the roll convention if not already a business day.
+        calendar (_Union[_HolidayBase, str]): Calendar defining holidays additional to weekends.
 
     Returns:
         date: Adjusted business day according to the roll convention 'Following' with respect to calendar if the day is
@@ -625,14 +632,14 @@ def following(day: Union[date, datetime], calendar: Union[HolidayBase, str]) -> 
     return next_or_previous_business_day(day, calendar, True)
 
 
-def preceding(day: Union[date, datetime], calendar: Union[HolidayBase, str]) -> date:
+def preceding(day: _Union[date, datetime], calendar: _Union[_HolidayBase, str]) -> date:
     """
     Derives the (potentially) adjusted business day according to the business day convention 'Preceding' for a specified
     day with respect to a specific calendar: The adjusted date is the preceding good business day.
 
     Args:
-        day (Union[date, datetime]): Day to be adjusted according to the roll convention if not already a business day.
-        calendar (Union[HolidayBase, str]): Calendar defining holidays additional to weekends.
+        day (_Union[date, datetime]): Day to be adjusted according to the roll convention if not already a business day.
+        calendar (_Union[_HolidayBase, str]): Calendar defining holidays additional to weekends.
 
     Returns:
         date: Adjusted business day according to the roll convention 'Preceding' with respect to calendar if the day is
@@ -641,15 +648,15 @@ def preceding(day: Union[date, datetime], calendar: Union[HolidayBase, str]) -> 
     return next_or_previous_business_day(day, calendar, False)
 
 
-def modified_following(day: Union[date, datetime], calendar: Union[HolidayBase, str]) -> date:
+def modified_following(day: _Union[date, datetime], calendar: _Union[_HolidayBase, str]) -> date:
     """
     Derives the (potentially) adjusted business day according to the business day convention 'Modified Following' for a
     specified day with respect to a specific calendar: The adjusted date is the following good business day unless the
     day is in the next calendar month, in which case the adjusted date is the preceding good business day.
 
     Args:
-        day (Union[date, datetime]): Day to be adjusted according to the roll convention if not already a business day.
-        calendar (Union[HolidayBase, str]): Calendar defining holidays additional to weekends.
+        day (_Union[date, datetime]): Day to be adjusted according to the roll convention if not already a business day.
+        calendar (_Union[_HolidayBase, str]): Calendar defining holidays additional to weekends.
 
     Returns:
         date: Adjusted business day according to the roll convention 'Modified Following' with respect to calendar if
@@ -662,8 +669,8 @@ def modified_following(day: Union[date, datetime], calendar: Union[HolidayBase, 
         return next_day
 
 
-def modified_following_eom(day: Union[date, datetime], calendar: Union[HolidayBase, str],
-                           start_day: Union[date, datetime]) -> date:
+def modified_following_eom(day: _Union[date, datetime], calendar: _Union[_HolidayBase, str],
+                           start_day: _Union[date, datetime]) -> date:
     """
     Derives the (potentially) adjusted business day according to the business day convention 'End of Month' for a
     specified day with respect to a specific calendar: Where the start date of a period is on the final business day of
@@ -671,9 +678,9 @@ def modified_following_eom(day: Union[date, datetime], calendar: Union[HolidayBa
     corresponding date in the end month).
 
     Args:
-        day (Union[date, datetime]): Day to be adjusted according to the roll convention if not already a business day.
-        calendar (Union[HolidayBase, str]): Calendar defining holidays additional to weekends.
-        start_day (Union[date, datetime]): Day at which the period under consideration begins.
+        day (_Union[date, datetime]): Day to be adjusted according to the roll convention if not already a business day.
+        calendar (_Union[_HolidayBase, str]): Calendar defining holidays additional to weekends.
+        start_day (_Union[date, datetime]): Day at which the period under consideration begins.
 
     Returns:
         date: Adjusted business day according to the roll convention 'End of Month' with respect to calendar.
@@ -688,7 +695,7 @@ def modified_following_eom(day: Union[date, datetime], calendar: Union[HolidayBa
                         + ' cannot be evaluated without a start_day')
 
 
-def modified_following_bimonthly(day: Union[date, datetime], calendar: Union[HolidayBase, str]) -> date:
+def modified_following_bimonthly(day: _Union[date, datetime], calendar: _Union[_HolidayBase, str]) -> date:
     """
     Derives the (potentially) adjusted business day according to the business day convention 'Modified Following
     Bimonthly' for a specified day with respect to a specific calendar: The adjusted date is the following good business
@@ -696,8 +703,8 @@ def modified_following_bimonthly(day: Union[date, datetime], calendar: Union[Hol
     good business day.
 
     Args:
-        day (Union[date, datetime]): Day to be adjusted according to the roll convention if not already a business day.
-        calendar (Union[HolidayBase, str]): Calendar defining holidays additional to weekends.
+        day (_Union[date, datetime]): Day to be adjusted according to the roll convention if not already a business day.
+        calendar (_Union[_HolidayBase, str]): Calendar defining holidays additional to weekends.
 
     Returns:
         date: Adjusted business day according to the roll convention 'Modified Following Bimonthly' with respect to
@@ -710,15 +717,15 @@ def modified_following_bimonthly(day: Union[date, datetime], calendar: Union[Hol
         return next_day
 
 
-def modified_preceding(day: Union[date, datetime], calendar: Union[HolidayBase, str]) -> date:
+def modified_preceding(day: _Union[date, datetime], calendar: _Union[_HolidayBase, str]) -> date:
     """
     Derives the (potentially) adjusted business day according to the business day convention 'Modified Preceding' for a
     specified day with respect to a specific calendar: The adjusted date is the preceding good business day unless the
     day is in the previous calendar month, in which case the adjusted date is the following good business day.
 
     Args:
-        day (Union[date, datetime]): Day to be adjusted according to the roll convention if not already a business day.
-        calendar (Union[HolidayBase, str]): Calendar defining holidays additional to weekends.
+        day (_Union[date, datetime]): Day to be adjusted according to the roll convention if not already a business day.
+        calendar (_Union[_HolidayBase, str]): Calendar defining holidays additional to weekends.
 
     Returns:
         date: Adjusted business day according to the roll convention 'Modified Preceding' with respect to calendar if
@@ -732,12 +739,12 @@ def modified_preceding(day: Union[date, datetime], calendar: Union[HolidayBase, 
 
 
 # to be used in the switcher (identical argument list)
-def unadjusted(day: Union[date, datetime], _) -> date:
+def unadjusted(day: _Union[date, datetime], _) -> date:
     """
     Leaves the day unchanged independent from the fact if it is already a business day.
 
     Args:
-        day (Union[date, datetime]): Day to be adjusted according to the roll convention.
+        day (_Union[date, datetime]): Day to be adjusted according to the roll convention.
         _: Placeholder for calendar argument.
 
     Returns:
@@ -746,19 +753,19 @@ def unadjusted(day: Union[date, datetime], _) -> date:
     return datetime_to_date(day)
 
 
-def roll_day(day: Union[date, datetime], calendar: Union[HolidayBase, str],
-             business_day_convention: Union[RollConvention, str], start_day: Union[date, datetime] = None) -> date:
+def roll_day(day: _Union[date, datetime], calendar: _Union[_HolidayBase, str],
+             business_day_convention: _Union[RollConvention, str], start_day: _Union[date, datetime] = None) -> date:
     """
     Adjusts a given day according to the specified business day convention with respect to a given calendar or if the
     given day falls on a Saturday or Sunday. For some roll conventions not only the (end) day to be adjusted but also
     the start day of a period is relevant for the adjustment of the given (end) day.
 
     Args:
-        day (Union[date, datetime]): Day to be adjusted if it is a non-business day.
-        calendar (Union[HolidayBase, str]): Holiday calendar defining non-business days (but not Saturdays and Sundays).
-        business_day_convention (Union[RollConvention, str]): Set of rules defining how to adjust non-business days.
-        start_day (Union[date, datetime], optional): Period's start day that may influence the rolling of the (end) day.
-                                                     Defaults to None.
+        day (_Union[date, datetime]): Day to be adjusted if it is a non-business day.
+        calendar (_Union[_HolidayBase, str]): Holiday calendar defining non-business days (but not weekends).
+        business_day_convention (_Union[RollConvention, str]): Set of rules defining how to adjust non-business days.
+        start_day (_Union[date, datetime], optional): Period's start day that may influence the rolling of the end day.
+                                                      Defaults to None.
 
     Returns:
         date: Adjusted day.

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
 
 
-from pyvacon.marketdata.analytics_classes import *
-__all__ = ['bootstrapping']
+from pyvacon.marketdata import analytics_classes
+__all__ = ['analytics_classes', 'bootstrapping']

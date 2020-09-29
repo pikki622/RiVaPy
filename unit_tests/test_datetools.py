@@ -2,13 +2,13 @@ from unittest import main, TestCase
 from RiVaPy.tools.datetools import roll_day, Period, Schedule
 from RiVaPy.tools.enums import RollConvention
 from datetime import date
-import holidays
+from holidays import DE
 
 
 class Unit_Tests(TestCase):
 
     def test_roll_day(self):
-        holidays_de = holidays.DE()
+        holidays_de = DE()
 
         # business days are unchanged for all roll conventions
         roll_conventions = [roll_convention.value for roll_convention in RollConvention]
@@ -95,7 +95,7 @@ class Unit_Tests(TestCase):
                          date(1997, 12, 31))
 
     def test_schedule_generation(self):
-        holidays_de = holidays.DE()
+        holidays_de = DE()
         self.assertEqual(Schedule(date(2020, 8, 21), date(2021, 8, 21), Period(0, 3, 0), True, False,
                                   RollConvention.UNADJUSTED, holidays_de).generate_dates(False),
                          [date(2020, 8, 21), date(2020, 11, 21), date(2021, 2, 21), date(2021, 5, 21),

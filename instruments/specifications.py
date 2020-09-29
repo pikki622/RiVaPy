@@ -73,7 +73,8 @@ class Bond(IssuedInstrument):
                                                    Defaults to 'EUR'.
             notional (float, optional): Bond's notional/face value. Must be positive. Defaults to 100.0.
         """
-        super().__init__(issuer, securitisation_level)
+        # super().__init__(issuer, securitisation_level)
+        IssuedInstrument.__init__(self, issuer, securitisation_level)
         self.__obj_id = obj_id
         self.__issue_date, self.__maturity_date = _check_start_before_end(issue_date, maturity_date)
         self.__currency = currency_to_string(currency)
@@ -111,7 +112,8 @@ class ZeroCouponBond(Bond):
         """
         Zero coupon bond specification.
         """
-        super().__init__(obj_id, issue_date, maturity_date, currency, notional, issuer, securitisation_level)
+        # super().__init__(obj_id, issue_date, maturity_date, currency, notional, issuer, securitisation_level)
+        Bond.__init__(self, obj_id, issue_date, maturity_date, currency, notional, issuer, securitisation_level)
 
 
 class FixedRateBond(Bond):
@@ -131,7 +133,8 @@ class FixedRateBond(Bond):
             coupon_payment_dates (_List[_Union[date, datetime]]): List of annualised coupon payment dates.
             coupons (_List[float]): List of annualised coupon amounts as fraction of notional.
         """
-        super().__init__(obj_id, issue_date, maturity_date, currency, notional, issuer, securitisation_level)
+        # super().__init__(obj_id, issue_date, maturity_date, currency, notional, issuer, securitisation_level)
+        Bond.__init__(self, obj_id, issue_date, maturity_date, currency, notional, issuer, securitisation_level)
         self.__coupon_payment_dates = _datetime_to_date_list(coupon_payment_dates)
         # validation of dates' consistency
         if not _is_ascending_date_list(issue_date, coupon_payment_dates, maturity_date):
@@ -248,8 +251,8 @@ class FloatingRateNote(Bond):
                                              rate coupon amounts. Defaults to 'dummy_curve'.
                                              Note: A reference curve could also be provided later at the pricing stage.
         """
-
-        super().__init__(obj_id, issue_date, maturity_date, currency, notional, issuer, securitisation_level)
+        # super().__init__(obj_id, issue_date, maturity_date, currency, notional, issuer, securitisation_level)
+        Bond.__init__(self, obj_id, issue_date, maturity_date, currency, notional, issuer, securitisation_level)
         self.__coupon_period_dates = _datetime_to_date_list(coupon_period_dates)
         # validation of dates' consistency
         if not _is_ascending_date_list(issue_date, coupon_period_dates, maturity_date, False):
@@ -377,10 +380,12 @@ class FixedToFloatingRateNote(FixedRateBond, FloatingRateNote):
         Fixed-to-floating rate note specification by providing fixed rate coupons and fixed rate coupon payment dates
         as well as floating rate coupon periods directly.
         """
-        FixedRateBond.__init__(self, obj_id, issue_date, maturity_date, coupon_payment_dates, coupons, currency,
-                               notional, issuer, securitisation_level)
-        FloatingRateNote.__init__(self, obj_id, issue_date, maturity_date, coupon_period_dates, day_count_convention,
-                                  spreads, reference_curve, currency, notional, issuer, securitisation_level)
+        FixedRateBond.__init__(self, obj_id, issue_date, maturity_date, coupon_payment_dates, coupons,
+                               currency, notional, issuer, securitisation_level)
+
+        FloatingRateNote.__init__(self, obj_id, issue_date, maturity_date, coupon_period_dates,
+                                  day_count_convention, spreads, reference_curve, currency, notional, issuer,
+                                  securitisation_level)
 
     @classmethod
     def from_master_data(cls, obj_id: str,

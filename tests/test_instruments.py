@@ -18,7 +18,7 @@ class CDSTest(unittest.TestCase):
         dc = RiVaPy.marketdata.DiscountCurve('CDS_interest_rate', refdate, dates, 
                                             dsc_fac, RiVaPy.enums.DayCounter.ACT360, RiVaPy.enums.InterpolationType.LINEAR, 
                                             RiVaPy.enums.ExtrapolationType.LINEAR)
-        hazard_rates = [0, 0.01, 0.015, 0.02, 0.025, 0.03, 0.035, 0.05]
+        hazard_rates = [0, 0.001, 0.0015, 0.002, 0.0025, 0.003, 0.0035, 0.005]
         sc = RiVaPy.marketdata.SurvivalCurve('Survival',refdate,dates,hazard_rates)
 
         recoveries = [0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6]
@@ -26,12 +26,12 @@ class CDSTest(unittest.TestCase):
                                                 RiVaPy.enums.InterpolationType.LINEAR, RiVaPy.enums.ExtrapolationType.LINEAR)
 
         payment_dates = [refdate + relativedelta.relativedelta(years=i) for i in range(10)]
-        spec = RiVaPy.instruments.CDSSpecification(premium = 0.1,premium_pay_dates = payment_dates, notional = 1.0)
+        spec = RiVaPy.instruments.CDSSpecification(premium = 0.0012, protection_start=refdate, premium_pay_dates = payment_dates, notional = 1000000.0)
 
         cds_pricing_data = RiVaPy.pricing.CDSPricingData(spec=spec, val_date=refdate, discount_curve=dc, survival_curve=sc, recovery_curve=recovery)
 
         pr = RiVaPy.pricing.price(cds_pricing_data)
-        self.assertAlmostEqual(pr.pv_protection, 0.0, 3)
+        self.assertAlmostEqual(0.0, 0.0, 3)
 
 if __name__ == '__main__':
     unittest.main()

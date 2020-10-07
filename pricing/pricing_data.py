@@ -1,11 +1,16 @@
 
 from typing import Tuple
 import pyvacon
-from pyvacon.analytics import PricingResults
 from RiVaPy.instruments import CDSSpecification
 from datetime import datetime 
 from dateutil.relativedelta import relativedelta
 
+class PricingResults:
+    def set_price(self, price: float):
+        self._price = price
+
+    def getPrice(self):
+        return self._price
 
 class CDSPricingData:
     def __init__(self, spec: CDSSpecification, val_date, discount_curve, survival_curve, 
@@ -49,7 +54,7 @@ class CDSPricingData:
         dc = pyvacon.analytics.DayCounter('ACT365FIXED')
         for premium_payment in self.spec.premium_pay_dates:
             if premium_payment >= valuation_date:
-                period_length = self.discount_curve.yf(premium_period_start, premium_payment)
+                period_length = dc.yf(premium_period_start, premium_payment)
                 survival_prob = self.survival_curve.value(valuation_date, premium_payment)
                 df = self.discount_curve.value(valuation_date, premium_payment)
                 risk_adj_factor_premium += self.spec.premium*period_length*survival_prob*df
@@ -65,5 +70,5 @@ class CDSPricingData:
         premium_leg, accrued = self._pv_premium_leg(self.val_date)
         pr_results.premium_leg = self.spec.notional*premium_leg
         pr_results.accrued = self.spec.notional*accrued
-        pr_results.setPrice(pr_results.pv_protection-pr_results.premium_leg-pr_results.accrued)
+        pr_results.set_price(pr_results.pv_protection-pr_results.premium_leg-pr_results.accrued)
         return pr_results

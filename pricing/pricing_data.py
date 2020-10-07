@@ -1,4 +1,6 @@
 
+from typing import Tuple
+import pyvacon
 from pyvacon.analytics import PricingResults
 from crumble.instruments import CDSSpecification
 from datetime import datetime 
@@ -16,8 +18,7 @@ class CDSPricingData:
         self._pricer_type = 'ISDA'
         self.integration_step = integration_step
         
-    def _pv_protection_leg(self, valuation_date: datetime, integration_stepsize: relativedelta):
-
+    def _pv_protection_leg(self, valuation_date: datetime, integration_stepsize: relativedelta)->float:
         prev_date = max(self.val_date, self.spec.protection_start)
         current_date = min(prev_date + self.integration_step, self.spec.expiry)
         pv_protection = 0.0
@@ -39,9 +40,30 @@ class CDSPricingData:
             pv_protection += self.discount_curve.value(valuation_date, self.spec.expiry) * (1.0-recovery) * default_prob
             
         return pv_protection
-        
+
+    def _pv_premium_leg(self, valuation_date: datetime)->Tuple[float, float]:
+        premium_period_start = self.spec.protection_start
+        risk_adj_factor_premium=0  
+        accrued = 0      
+        #TODO include daycounter into CDSSpecification
+        dc = pyvacon.analytics.DayCounter('ACT365FIXED')
+        for premium_payment in self.spec.premium_pay_dates:
+            if premium_payment >= valuation_date:
+                period_length = self.discount_curve.yf(premium_period_start, premium_payment)
+                survival_prob = self.survival_curve.value(valuation_date, premium_payment)
+                df = self.discount_curve.value(valuation_date, premium_payment)
+                risk_adj_factor_premium += self.spec.premium*period_length*survival_prob*df
+                default_prob = self.survival_curve.value(valuation_date, premium_period_start)-self.survival_curve.value(valuation_date, premium_payment)
+                accrued = 0.5*self.spec.premium*period_length*default_prob*df
+                premium_period_start = premium_payment
+        return risk_adj_factor_premium, accrued
+
     def price(self):
         pv_protection = self._pv_protection_leg(self.val_date, self.integration_step)
         pr_results = PricingResults()
-        pr_results.pv_protection = pv_protection
+        pr_results.pv_protection = self.spec.notional*pv_protection
+        premium_leg, accrued = self._pv_premium_leg(self.val_date)
+        pr_results.premium_leg = self.spec.notional*premium_leg
+        pr_results.accrued = self.spec.notional*accrued
+        pr_results.setPrice(pr_results.pv_protection-pr_results.premium_leg-pr_results.accrued)
         return pr_results

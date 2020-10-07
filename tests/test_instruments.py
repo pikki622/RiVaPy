@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import RiVaPy
 
 class CDSTest(unittest.TestCase):
-    def pricing_test(self):
+    def test_pricing(self):
         """Test simple CDS pricing using ISDA model.
         """
         refdate = datetime(2020,1,1)

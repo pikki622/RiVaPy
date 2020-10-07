@@ -2,7 +2,7 @@
 from typing import Tuple
 import pyvacon
 from pyvacon.analytics import PricingResults
-from crumble.instruments import CDSSpecification
+from RiVaPy.instruments import CDSSpecification
 from datetime import datetime 
 from dateutil.relativedelta import relativedelta
 

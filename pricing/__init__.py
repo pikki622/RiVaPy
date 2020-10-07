@@ -1,4 +1,4 @@
 from pyvacon.pricing import *
 del price
-from crumble.pricing.pricing_data import CDSPricingData
-from crumble.pricing.pricer import price
+from RiVaPy.pricing.pricing_data import CDSPricingData
+from RiVaPy.pricing.pricer import price

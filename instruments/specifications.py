@@ -2,7 +2,7 @@
 #import numpy as np
 import pyvacon.analytics as _analytics
 from datetime import datetime as _datetime
-from crumble._converter import _add_converter
+from RiVaPy._converter import _add_converter
 
 InflationIndexForwardCurve = _add_converter(_analytics.InflationIndexForwardCurve)
 

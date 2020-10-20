@@ -12,6 +12,7 @@ dependencies:
   - numpy
   - pandas
   - scipy
+  - dateutil
   #- pip:
     #- pyvacon==0.1.0
     #- jupyter-contrib-nbextensions==0.5.1

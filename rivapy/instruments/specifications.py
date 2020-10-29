@@ -49,10 +49,9 @@ if _pyvacon_available:
     vectorRainbowBarrierSpec = _analytics.vectorRainbowBarrierSpec
     vectorRainbowUdlSpec = _analytics.vectorRainbowUdlSpec
 
-
-#Bonds/Credit
-CouponDescription = _add_converter(_analytics.CouponDescription)
-BondSpecification = _add_converter(_analytics.BondSpecification)
+    #Bonds/Credit
+    CouponDescription = _add_converter(_analytics.CouponDescription)
+    BondSpecification = _add_converter(_analytics.BondSpecification)
 
 def ZeroBondSpecification(obj_id: str, curr: str,  issue_date: _datetime, expiry: _datetime, notional: float = 100.0, 
                         issuer: str = 'dummy_issuer', sec_level: str='NONE')->BondSpecification:

@@ -9,6 +9,9 @@ class CDSTest(unittest.TestCase):
     def test_pricing(self):
         """Test simple CDS pricing using ISDA model.
         """
+        if not rivapy._pyvacon_available:
+            self.assertAlmostEquals(0,1,'Test cannot be run due to missing pvacon.')
+            
         refdate = datetime(2020,1,1)
         #yield curve
         days_to_maturity = [1, 180, 360, 720, 3*360, 4*360, 5*360, 10*360]

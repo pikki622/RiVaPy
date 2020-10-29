@@ -1,9 +1,14 @@
 
 from typing import Tuple
-import pyvacon
-from rivapy.instruments import CDSSpecification
 from datetime import datetime 
 from dateutil.relativedelta import relativedelta
+from rivapy import _pyvacon_available
+if _pyvacon_available:
+    import pyvacon
+else:
+    import warnings
+    warnings.warn('Very limited functionality due to missing pyvacon.')
+from rivapy.instruments import CDSSpecification
 
 class PricingResults:
     def set_price(self, price: float):

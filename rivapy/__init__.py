@@ -1,15 +1,19 @@
-import pyvacon.version as version
+import warnings
+    
+try:
+    import pyvacon.version as version
+    from pyvacon.analytics import setLogLevel as set_log_level
+    from pyvacon.analytics import registerSerialization as _register_serialization
+    import pyvacon.marketdata as marketdata
+    _register_serialization('depp')
+    _pyvacon_available = True
+    if version.is_beta:
+        warnings.warn('Imported pyvacon is just beta version.')
+except:
+    _pyvacon_available = False
+    warnings.warn('No pyvacon available, only limited functionality supported.')
+
 from rivapy import enums
-from pyvacon.analytics import setLogLevel as set_log_level
-
-
-from pyvacon.analytics import registerSerialization as _register_serialization
-_register_serialization('depp')
-
 import rivapy.instruments as instruments
 import rivapy.pricing as pricing
-import pyvacon.marketdata as marketdata
 
-if version.is_beta:
-    import warnings
-    warnings.warn('Imported pyvacon is just beta version.')

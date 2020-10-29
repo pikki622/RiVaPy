@@ -3,7 +3,7 @@ import math
 from dateutil import relativedelta
 from datetime import datetime, timedelta
 
-import RiVaPy
+import rivapy
 
 class CDSTest(unittest.TestCase):
     def test_pricing(self):
@@ -15,22 +15,22 @@ class CDSTest(unittest.TestCase):
         rates = [-0.0065, 0.0003, 0.0059, 0.0086, 0.0101, 0.012, 0.016, 0.02]
         dates = [refdate + timedelta(days=d) for d in days_to_maturity]
         dsc_fac = [math.exp(-rates[i]*days_to_maturity[i]/360) for i in range(len(days_to_maturity))]
-        dc = RiVaPy.marketdata.DiscountCurve('CDS_interest_rate', refdate, dates, 
-                                            dsc_fac, RiVaPy.enums.DayCounter.ACT360, RiVaPy.enums.InterpolationType.LINEAR, 
-                                            RiVaPy.enums.ExtrapolationType.LINEAR)
+        dc = rivapy.marketdata.DiscountCurve('CDS_interest_rate', refdate, dates, 
+                                            dsc_fac, rivapy.enums.DayCounter.ACT360, rivapy.enums.InterpolationType.LINEAR, 
+                                            rivapy.enums.ExtrapolationType.LINEAR)
         hazard_rates = [0, 0.001, 0.0015, 0.002, 0.0025, 0.003, 0.0035, 0.005]
-        sc = RiVaPy.marketdata.SurvivalCurve('Survival',refdate,dates,hazard_rates)
+        sc = rivapy.marketdata.SurvivalCurve('Survival',refdate,dates,hazard_rates)
 
         recoveries = [0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6]
-        recovery = RiVaPy.marketdata.DatedCurve('Recovery',refdate,dates,recoveries, RiVaPy.enums.DayCounter.ACT360, 
-                                                RiVaPy.enums.InterpolationType.LINEAR, RiVaPy.enums.ExtrapolationType.LINEAR)
+        recovery = rivapy.marketdata.DatedCurve('Recovery',refdate,dates,recoveries, rivapy.enums.DayCounter.ACT360, 
+                                                rivapy.enums.InterpolationType.LINEAR, rivapy.enums.ExtrapolationType.LINEAR)
 
         payment_dates = [refdate + relativedelta.relativedelta(years=i) for i in range(10)]
-        spec = RiVaPy.instruments.CDSSpecification(premium = 0.0012, protection_start=refdate, premium_pay_dates = payment_dates, notional = 1000000.0)
+        spec = rivapy.instruments.CDSSpecification(premium = 0.0012, protection_start=refdate, premium_pay_dates = payment_dates, notional = 1000000.0)
 
-        cds_pricing_data = RiVaPy.pricing.CDSPricingData(spec=spec, val_date=refdate, discount_curve=dc, survival_curve=sc, recovery_curve=recovery)
+        cds_pricing_data = rivapy.pricing.CDSPricingData(spec=spec, val_date=refdate, discount_curve=dc, survival_curve=sc, recovery_curve=recovery)
 
-        pr = RiVaPy.pricing.price(cds_pricing_data)
+        pr = rivapy.pricing.price(cds_pricing_data)
         self.assertAlmostEqual(0.0, 0.0, 3)
 
 if __name__ == '__main__':

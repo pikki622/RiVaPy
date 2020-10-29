@@ -1,3 +1,3 @@
 from pyvacon.pricing import *
-from RiVaPy.pricing.pricing_data import CDSPricingData
-from RiVaPy.pricing.pricer import price
+from rivapy.pricing.pricing_data import CDSPricingData
+from rivapy.pricing.pricer import price

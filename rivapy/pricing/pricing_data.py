@@ -1,7 +1,7 @@
 
 from typing import Tuple
 import pyvacon
-from RiVaPy.instruments import CDSSpecification
+from rivapy.instruments import CDSSpecification
 from datetime import datetime 
 from dateutil.relativedelta import relativedelta
 

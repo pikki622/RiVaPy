@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath('../'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'RiVaPy'
+project = 'rivapy'
 copyright = '2020, RIVACON GmbH'
 author = 'RIVACON GmbH'
 

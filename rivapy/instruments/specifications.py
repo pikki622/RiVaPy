@@ -52,6 +52,10 @@ if _pyvacon_available:
     #Bonds/Credit
     CouponDescription = _add_converter(_analytics.CouponDescription)
     BondSpecification = _add_converter(_analytics.BondSpecification)
+else:
+    #empty placeholder...
+    class BondSpecification:
+        pass
 
 def ZeroBondSpecification(obj_id: str, curr: str,  issue_date: _datetime, expiry: _datetime, notional: float = 100.0, 
                         issuer: str = 'dummy_issuer', sec_level: str='NONE')->BondSpecification:

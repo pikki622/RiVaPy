@@ -26,6 +26,5 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         $CONDA/bin/flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with unittest
-      run: |
-        $CONDA/bin/conda activate base
-        python -m unittest discover tests
+      run: $CONDA/bin/python -m unittest discover tests
+      shell: bash

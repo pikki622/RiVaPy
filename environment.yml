@@ -15,5 +15,5 @@ dependencies:
   - scipy
   - pip:
     - python-dateutil
-    #- pyvacon
+    - pyvacon
     #- jupyter-contrib-nbextensions==0.5.1

@@ -13,22 +13,6 @@ from datetime import date
 class Unit_Tests(TestCase):
 
     def test_bond_specification(self):
-        # issued instrument
-        issued_instrument = IssuedInstrument('dummy_issuer', SecuritizationLevel.NONE)
-        self.assertEqual(issued_instrument.issuer, 'dummy_issuer')
-        self.assertEqual(issued_instrument.securitisation_level, 'NONE')
-
-        # 'abstract' bond
-        bond = Bond('US500769CH58', date(2007, 6, 29), date(2037, 6, 29), 'USD', 1000, 'KfW',
-                    SecuritizationLevel.SENIOR_UNSECURED)
-        self.assertEqual(bond.obj_id, 'US500769CH58')
-        self.assertEqual(bond.issue_date, date(2007, 6, 29))
-        self.assertEqual(bond.maturity_date, date(2037, 6, 29))
-        self.assertEqual(bond.currency, 'USD')
-        self.assertEqual(bond.notional, 1000)
-        self.assertEqual(bond.issuer, 'KfW')
-        self.assertEqual(bond.securitisation_level, 'SENIOR_UNSECURED')
-
         # zero coupon bond
         zero_coupon_bond = ZeroCouponBond('US500769CH58', date(2007, 6, 29), date(2037, 6, 29), 'USD', 1000, 'KfW',
                                           SecuritizationLevel.SENIOR_UNSECURED)
@@ -39,7 +23,6 @@ class Unit_Tests(TestCase):
         self.assertEqual(zero_coupon_bond.notional, 1000)
         self.assertEqual(zero_coupon_bond.issuer, 'KfW')
         self.assertEqual(zero_coupon_bond.securitisation_level, 'SENIOR_UNSECURED')
-
         # fixed rate bond
         fixed_rate_bond = FixedRateBond.from_master_data('DE000CZ40NT7', date(2019, 3, 11), date(2024, 9, 11), 0.0125,
                                                          '1Y', True, True, RollConvention.FOLLOWING, 'TAR', 'EUR',

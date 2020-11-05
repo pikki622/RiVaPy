@@ -1,11 +1,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![RIVACON](https://img.shields.io/badge/powered%20by-RIVACON-lightgrey.svg)](https://www.rivacon.com/en/)
 [![frontmark](https://img.shields.io/badge/powered%20by-frontmark-lightgrey.svg)](https://www.frontmark.de/)
+![Python Package using Conda](https://github.com/RIVACON/rivapy/workflows/Python%20Package%20using%20Conda/badge.svg)
 
-# RiVaPy
+# rivapy
 
 This is a set of Python routines to make use of the package pyvacon providing a wide range of instrument pricing and market risk evaluation functionality.
-Moreover RiVaPy includes a collection of jupyter notebooks to illustrate the basic concepts of mathematical finance:
+Moreover rivapy includes a collection of jupyter notebooks to illustrate the basic concepts of mathematical finance:
 
 ## Market Data
 ### Roll Conventions, Day Counters and Schedule Generation

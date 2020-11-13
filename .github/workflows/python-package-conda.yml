@@ -10,6 +10,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Install boost
+      run: sudo apt-get install boost
     - name: Set up Python 3.8
       uses: actions/setup-python@v2
       with:
@@ -18,8 +20,6 @@ jobs:
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         $CONDA/bin/conda env update --file environment.yml --name base
-    - name: Install boost
-      run: apt install boost
     - name: Lint with flake8
       run: |
         $CONDA/bin/conda install flake8

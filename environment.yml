@@ -15,5 +15,5 @@ dependencies:
   - scipy
   - pip:
     - python-dateutil
-    #- pyvacon
+    - --index-url https://test.pypi.org/simple/ pyvacon
     #- jupyter-contrib-nbextensions==0.5.1

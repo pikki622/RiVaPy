@@ -1,5 +1,4 @@
-name: Python Package using Conda
-
+name: build
 on: [push, workflow_dispatch]
 
 jobs:

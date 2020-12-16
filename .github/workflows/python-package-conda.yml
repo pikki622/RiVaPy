@@ -32,6 +32,8 @@ jobs:
       run: $CONDA/bin/python -m unittest discover tests
       shell: bash
       
+    - name: Install rtd theme for sphinx doc from pypi
+      run: $CONDA/bin/python -m pip install rtd_theme 
     - name: Build docs with sphinx
       uses: ammaraskar/sphinx-action@master
       with:

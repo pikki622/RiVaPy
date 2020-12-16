@@ -31,3 +31,8 @@ jobs:
     - name: Test with unittest
       run: $CONDA/bin/python -m unittest discover tests
       shell: bash
+      
+    - name: Build docs with sphinx
+      uses: ammaraskar/sphinx-action@master
+      with:
+        docs-folder: "docs/"

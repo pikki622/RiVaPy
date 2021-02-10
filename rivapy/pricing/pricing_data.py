@@ -56,7 +56,7 @@ class CDSPricingData:
         risk_adj_factor_premium=0  
         accrued = 0      
         #TODO include daycounter into CDSSpecification
-        dc = pyvacon.analytics.DayCounter('ACT365FIXED')
+        dc = pyvacon.finance.definition.DayCounter('ACT365FIXED')
         for premium_payment in self.spec.premium_pay_dates:
             if premium_payment >= valuation_date:
                 period_length = dc.yf(premium_period_start, premium_payment)

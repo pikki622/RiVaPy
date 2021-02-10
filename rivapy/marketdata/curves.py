@@ -3,9 +3,7 @@ from enum import Enum
 from datetime import datetime, date, timedelta
 import matplotlib.pyplot as plt
 
-import pyvacon.analytics as _analytics
-from rivapy._converter import _add_converter
-_DiscountCurve = _add_converter(_analytics.DiscountCurve)
+from pyvacon.finance.marketdata import DiscountCurve as _DiscountCurve
 
 
 class DiscountCurve:

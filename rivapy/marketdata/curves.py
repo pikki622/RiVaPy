@@ -4,7 +4,7 @@ from datetime import datetime, date, timedelta
 import matplotlib.pyplot as plt
 
 from pyvacon.finance.marketdata import DiscountCurve as _DiscountCurve
-
+import pyvacon as _pyvacon
 
 class DiscountCurve:
 
@@ -30,7 +30,10 @@ class DiscountCurve:
             self.refdate = refdate
         else:
             self.refdate = datetime(refdate,0,0,0)
-        self.interpolation = interpolation
+        if isinstance(interpolation, DiscountCurve.InterpolationMethod):
+            self.interpolation = interpolation.name
+        else:
+            self.interpolation = interpolation
         self.id = id
         #check if dates are monotonically increasing and if first date is greather then refdate
         if self.values[0][0] < refdate:
@@ -79,8 +82,10 @@ class DiscountCurve:
 
         if self._pyvacon_obj is None:
             self._pyvacon_obj = _DiscountCurve(self.id, self.refdate, 
-                                            [x for x in self.get_dates()], self.get_df(), 
-                                            'ACT365FIXED', self.interpolation.name, 'NONE')
+                                            [x for x in self.get_dates()], [x for x in self.get_df()], 
+                                            _pyvacon.finance.definition.DayCounter.Type.Act365Fixed, 
+                                            _pyvacon.numerics.interpolation.InterpolationType.LINEAR,
+                                            _pyvacon.numerics.extrapolation.ExtrapolationType.NONE)
         return self._pyvacon_obj.value(refdate, d)
 
     def plot(self):

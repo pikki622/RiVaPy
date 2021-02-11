@@ -4,7 +4,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from rivapy import _pyvacon_available
 if _pyvacon_available:
-    import pyvacon
+    import pyvacon as _pyvacon
 else:
     import warnings
     warnings.warn('Very limited functionality due to missing pyvacon.')
@@ -56,7 +56,7 @@ class CDSPricingData:
         risk_adj_factor_premium=0  
         accrued = 0      
         #TODO include daycounter into CDSSpecification
-        dc = pyvacon.finance.definition.DayCounter('ACT365FIXED')
+        dc = _pyvacon.finance.definition.DayCounter(_pyvacon.finance.definition.DayCounter.Type.Act365Fixed)
         for premium_payment in self.spec.premium_pay_dates:
             if premium_payment >= valuation_date:
                 period_length = dc.yf(premium_period_start, premium_payment)

@@ -1,7 +1,7 @@
-marketdata
+Marketdata
 ===========================
 
-curves
+Curves
 ------------------------------------
 .. automodule:: rivapy.marketdata.curves
    :members:

@@ -4,6 +4,8 @@ from datetime import datetime, date, timedelta
 import matplotlib.pyplot as plt
 import math
 
+from pyvacon.finance.marketdata import EquityForwardCurve as _EquityForwardCurve
+
 from rivapy.enums import DayCounterType, InterpolationType, ExtrapolationType
 
 from pyvacon.finance.marketdata import DiscountCurve as _DiscountCurve
@@ -109,14 +111,16 @@ class DiscountCurve:
             d = datetime(d,0,0,0)
         if refdate < self.refdate:
             raise Exception('The given reference date is before the curves reference date.')
+        return self._get_pyvacon_obj.value(refdate, d)
 
+    def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
             self._pyvacon_obj = _DiscountCurve(self.id, self.refdate, 
                                             [x for x in self.get_dates()], [x for x in self.get_df()], 
                                             self.daycounter, 
                                             self.interpolation,
                                             self.extrapolation)
-        return self._pyvacon_obj.value(refdate, d)
+        return self._pyvacon_obj
 
     def plot(self, days:int = 10, discount_factors: bool = False, **kwargs):
         """Plots the discount curve using matplotlibs plot function.
@@ -142,3 +146,67 @@ class DiscountCurve:
         values[0] = values[1]
         plt.plot(dates_new, values, label=self.id, **kwargs)
             
+
+class EquityForwardCurve:
+    def __init__(self, 
+                    spot: float, 
+                    funding_curve: DiscountCurve, 
+                    borrow_curve: DiscountCurve, 
+                    div_table):
+        """Equity Forward Curve
+
+        Args:
+            
+            spot (float): Current spot
+            discount_curve (DiscountCurve): [description]
+            funding_curve (DiscountCurve): [description]
+            borrow_curve (DiscountCurve): [description]
+            div_table ([type]): [description]
+        """
+        self.spot = spot
+        
+        self.bc = borrow_curve
+        self.fc = funding_curve
+        self.div = div_table
+        self._pyvacon_obj = None
+        self.refdate = self.fc.refdate
+        if self.bc is not None:
+            if self.refdate < self.bc.refdate:
+                self.refdate = self.bc.refdate
+
+        if self.div is not None:
+            if hasattr(self.div, 'refdate'):
+                if self.refdate < self.div.refdate:
+                    self.refdate = self.div.refdate
+
+    def _get_pyvacon_obj(self):
+        if self._pyvacon_obj is None:
+            args = {}
+            if hasattr(self.fc, '_get_pyvacon_obj'):
+                fc = self.fc._get_pyvacon_obj()
+            else:
+                fc = self.fc
+            
+            if hasattr(self.bc, '_get_pyvacon_obj'):
+                bc = self.bc._get_pyvacon_obj()
+            else:
+                bc = self.bc
+            self._pyvacon_obj = _EquityForwardCurve(self.refdate, self.spot, fc, bc, self.div) 
+        return self._pyvacon_obj
+           
+    def value(self, refdate, expiry):
+        return self._get_pyvacon_obj().value(refdate, expiry)
+
+    def plot(self, days:int = 10, days_end: int = 10*365, **kwargs):
+        """Plots the forward curve using matplotlibs plot function.
+        
+        Args:
+            days (int, optional): The number of days between two plotted rates/discount factors. Defaults to 10.
+            days_end (int. optional): Number of days when plotting will end. Defaults to 10*365 (10yr)
+            **kwargs: optional arguments that will be directly passed to the matplotlib plto function
+        """
+        dates = [self.refdate + timedelta(days=i) for i in range(0, days_end, days)]
+        values = [self.value(self.refdate, d) for d in dates]
+        plt.plot(dates, values, **kwargs)
+        plt.xlabel('expiry')
+        plt.ylabel('forward value')

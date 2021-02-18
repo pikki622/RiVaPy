@@ -13,13 +13,6 @@ import pyvacon as _pyvacon
 
 class DiscountCurve:
 
-    class InterpolationMethod(Enum):
-        """Enum of different interpolation methods that can be used in the discount curve
-        """
-        HAGAN_DF = 1
-        LINEAR = 2
-
-
     def __init__(self, 
                 id: str,
                 refdate: Union[datetime, date], 
@@ -111,7 +104,7 @@ class DiscountCurve:
             d = datetime(d,0,0,0)
         if refdate < self.refdate:
             raise Exception('The given reference date is before the curves reference date.')
-        return self._get_pyvacon_obj.value(refdate, d)
+        return self._get_pyvacon_obj().value(refdate, d)
 
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
@@ -161,7 +154,7 @@ class EquityForwardCurve:
             discount_curve (DiscountCurve): [description]
             funding_curve (DiscountCurve): [description]
             borrow_curve (DiscountCurve): [description]
-            div_table ([type]): [description]
+            div_table (:class:`rivapy.marketdata.DividendTable`): [description]
         """
         self.spot = spot
         
@@ -181,7 +174,6 @@ class EquityForwardCurve:
 
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
-            args = {}
             if hasattr(self.fc, '_get_pyvacon_obj'):
                 fc = self.fc._get_pyvacon_obj()
             else:
@@ -191,7 +183,13 @@ class EquityForwardCurve:
                 bc = self.bc._get_pyvacon_obj()
             else:
                 bc = self.bc
-            self._pyvacon_obj = _EquityForwardCurve(self.refdate, self.spot, fc, bc, self.div) 
+
+            if hasattr(self.div, '_get_pyvacon_obj'):
+                div = self.div._get_pyvacon_obj()
+            else:
+                div = self.div
+            self._pyvacon_obj = _EquityForwardCurve(self.refdate, self.spot, fc, bc, div)
+
         return self._pyvacon_obj
            
     def value(self, refdate, expiry):

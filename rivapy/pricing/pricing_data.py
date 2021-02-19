@@ -17,6 +17,27 @@ class PricingResults:
     def getPrice(self):
         return self._price
 
+class Black76PricingData:
+    def __init__(self, val_date, spec, discount_curve, vol_surface):
+        self.spec = spec
+        self.val_date = val_date
+        self.discount_curve = discount_curve
+        self.vol_surface = vol_surface
+        self._pyvacon_obj = None
+
+    def _get_pyvacon_obj(self):
+        if self._pyvacon_obj is None:
+            self._pyvacon_obj = _pyvacon.finance.pricing.Black76PricingData()
+            self._pyvacon_obj.valDate = self.val_date
+            self._pyvacon_obj.spec = self.spec
+            self._pyvacon_obj.dsc = self.discount_curve
+            self._pyvacon_obj.param = _pyvacon.finance.pricing.PricingParameter()
+            self._pyvacon_obj.vol = self.vol_surf._get_pyvacon_obj()
+            self._pyvacon_obj.pricingRequest = _pyvacon.finance.pricing.PricingRequest()
+        return self._pyvacon_obj
+
+    def price(self):
+        pass
 class CDSPricingData:
     def __init__(self, spec: CDSSpecification, val_date, discount_curve, survival_curve, 
                 recovery_curve=None, integration_step = relativedelta(days=30)):

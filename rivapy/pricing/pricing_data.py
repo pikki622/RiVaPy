@@ -1,14 +1,19 @@
 
-from typing import Tuple
+from typing import Tuple, Iterable
 from datetime import datetime 
 from dateutil.relativedelta import relativedelta
-from rivapy import _pyvacon_available
-if _pyvacon_available:
-    import pyvacon as _pyvacon
-else:
-    import warnings
-    warnings.warn('Very limited functionality due to missing pyvacon.')
+from enum import Enum
+import pyvacon as _pyvacon
 from rivapy.instruments import CDSSpecification
+
+class ResultType(Enum):
+    PRICE = 'PRICE'
+    DELTA = 'DELTA'
+    GAMMA = 'GAMMA'
+    THETA = 'THETA'
+    RHO = 'RHO'
+    VEGA = 'VEGA'
+    VANNA = 'VANNA'
 
 class PricingResults:
     def set_price(self, price: float):
@@ -17,12 +22,28 @@ class PricingResults:
     def getPrice(self):
         return self._price
 
+def _create_pricing_request(pr_dict : Iterable[ResultType]):
+    result = _pyvacon.finance.pricing.PricingRequest()
+    for d in pr_dict:
+        if d == ResultType.DELTA or d == ResultType.GAMMA:
+            result.setDeltaGamma(True)
+        elif d == ResultType.THETA:
+            result.setTheta(True)
+        elif d == ResultType.RHO:
+            result.setRho(True)
+        elif d == ResultType.VEGA:
+            result.setVega(True)
+        elif d == ResultType.VANNA:
+            result.setVanna(True)
+    return result
+
 class Black76PricingData:
-    def __init__(self, val_date, spec, discount_curve, vol_surface):
+    def __init__(self, val_date, spec, discount_curve, vol_surface, pricing_request : Iterable[ResultType]):
         self.spec = spec
         self.val_date = val_date
         self.discount_curve = discount_curve
         self.vol_surface = vol_surface
+        self.pricing_request = pricing_request
         self._pyvacon_obj = None
 
     def _get_pyvacon_obj(self):
@@ -33,8 +54,7 @@ class Black76PricingData:
             self._pyvacon_obj.dsc = self.discount_curve._get_pyvacon_obj()
             self._pyvacon_obj.param = _pyvacon.finance.pricing.PricingParameter()
             self._pyvacon_obj.vol = self.vol_surface._get_pyvacon_obj()
-            self._pyvacon_obj.pricingRequest = _pyvacon.finance.pricing.PricingRequest()
-            self._pyvacon_obj.pricingRequest.setDeltaGamma(True)
+            self._pyvacon_obj.pricingRequest = _create_pricing_request(self.pricing_request)
         return self._pyvacon_obj
 
     def price(self):

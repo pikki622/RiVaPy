@@ -20,6 +20,7 @@ class PricingResults:
         self._price = price
 
     def getPrice(self):
+        print('x')
         return self._price
 
 def _create_pricing_request(pr_dict : Iterable[ResultType]):
@@ -35,6 +36,7 @@ def _create_pricing_request(pr_dict : Iterable[ResultType]):
             result.setVega(True)
         elif d == ResultType.VANNA:
             result.setVanna(True)
+    print('X')
     return result
 
 class Black76PricingData:
@@ -50,7 +52,7 @@ class Black76PricingData:
         if self._pyvacon_obj is None:
             self._pyvacon_obj = _pyvacon.finance.pricing.Black76PricingData()
             self._pyvacon_obj.valDate = self.val_date
-            self._pyvacon_obj.spec = self.spec
+            self._pyvacon_obj.spec = self.spec._get_pyvacon_obj()
             self._pyvacon_obj.dsc = self.discount_curve._get_pyvacon_obj()
             self._pyvacon_obj.param = _pyvacon.finance.pricing.PricingParameter()
             self._pyvacon_obj.vol = self.vol_surface._get_pyvacon_obj()

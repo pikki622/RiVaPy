@@ -80,9 +80,9 @@ class EuropeanVanillaSpecification:
             sec_lvl (str, optional): Securitization level. Can be selected from rivapy.enums.SecuritizationLevel. Defaults to SecuritizationLevel.COLLATERALIZED.
             curr (str, optional): Currency (ISO-4217 Code). Must not be set if pricing data is manually defined. Can be selected from rivapy.enums.Currency. Defaults to Currency.EUR.
             udl_id (str, optional): Underlying Id. Only used if pricing data is manually defined. Defaults to ''.
-            share_ratio (float, optional): [description]. Defaults to 1.0.
-            ex_settle (int, optional): . Defaults to 0.
-            trade_settle (int, optional): [description]. Defaults to 0.
+            share_ratio (float, optional): Ratio of covered shares of the underlying by a single option contract. Defaults to 1.0.
+            ex_settle (int, optional): Days between expiry date and settlement (to delivery of cash or shares). Defaults to 0.
+            trade_settle (int, optional): Days between trade date and settlement date. Defaults to 0.
         """
         
         self.id = id

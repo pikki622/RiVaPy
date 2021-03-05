@@ -66,8 +66,9 @@ class EuropeanVanillaSpecification:
                  udl_id: str = '',
                  share_ratio: float = 1.0,
                 #  holidays: str = '',
-                 ex_settle: int = 0,
-                 trade_settle: int = 0):
+                #  ex_settle: int = 0, not implemented
+                #  trade_settle: int = 0 not implemented
+                 ):
         
         """Constructor for european vanilla option
 
@@ -81,8 +82,8 @@ class EuropeanVanillaSpecification:
             curr (str, optional): Currency (ISO-4217 Code). Must not be set if pricing data is manually defined. Can be selected from rivapy.enums.Currency. Defaults to Currency.EUR.
             udl_id (str, optional): Underlying Id. Only used if pricing data is manually defined. Defaults to ''.
             share_ratio (float, optional): Ratio of covered shares of the underlying by a single option contract. Defaults to 1.0.
-            ex_settle (int, optional): Days between expiry date and settlement (to delivery of cash or shares). Defaults to 0.
-            trade_settle (int, optional): Days between trade date and settlement date. Defaults to 0.
+            # ex_settle (int, optional): Days between expiry date and settlement (to delivery of cash or shares). Defaults to 0.
+            # trade_settle (int, optional): Days between trade date and settlement date. Defaults to 0.
         """
         
         self.id = id
@@ -95,8 +96,8 @@ class EuropeanVanillaSpecification:
         self.strike = strike
         self.share_ratio = share_ratio
         # self.holidays = holidays
-        self.ex_settle = ex_settle
-        self.trade_settle = trade_settle
+        # self.ex_settle = ex_settle
+        # self.trade_settle = trade_settle
         
         self._pyvacon_obj = None
         
@@ -112,8 +113,8 @@ class EuropeanVanillaSpecification:
                                             self.strike,
                                             self.share_ratio,
                                             '',
-                                            self.ex_settle,
-                                            self.trade_settle)
+                                            0,
+                                            0)
                                             
         return self._pyvacon_obj
 

@@ -20,7 +20,6 @@ class PricingResults:
         self._price = price
 
     def getPrice(self):
-        print('x')
         return self._price
 
 def _create_pricing_request(pr_dict : Iterable[ResultType]):
@@ -36,7 +35,6 @@ def _create_pricing_request(pr_dict : Iterable[ResultType]):
             result.setVega(True)
         elif d == ResultType.VANNA:
             result.setVanna(True)
-    print('X')
     return result
 
 class Black76PricingData:

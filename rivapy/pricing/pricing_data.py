@@ -104,9 +104,9 @@ class CDSPricingData:
                 period_length = dc.yf(premium_period_start, premium_payment)
                 survival_prob = self.survival_curve.value(valuation_date, premium_payment)
                 df = self.discount_curve.value(valuation_date, premium_payment)
-                risk_adj_factor_premium += self.spec.premium*period_length*survival_prob*df
+                risk_adj_factor_premium += period_length*survival_prob*df
                 default_prob = self.survival_curve.value(valuation_date, premium_period_start)-self.survival_curve.value(valuation_date, premium_payment)
-                accrued = 0.5*self.spec.premium*period_length*default_prob*df
+                accrued = period_length*default_prob*df
                 premium_period_start = premium_payment
         return risk_adj_factor_premium, accrued
 
@@ -115,7 +115,7 @@ class CDSPricingData:
         pr_results = PricingResults()
         pr_results.pv_protection = self.spec.notional*pv_protection
         premium_leg, accrued = self._pv_premium_leg(self.val_date)
-        pr_results.premium_leg = self.spec.notional*premium_leg
-        pr_results.accrued = self.spec.notional*accrued
+        pr_results.premium_leg = self.spec.premium*self.spec.notional*premium_leg
+        pr_results.accrued = 0.5*self.spec.premium*self.spec.notional*accrued
         pr_results.set_price(pr_results.pv_protection-pr_results.premium_leg-pr_results.accrued)
         return pr_results

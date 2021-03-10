@@ -106,7 +106,7 @@ class CDSPricingData:
                 df = self.discount_curve.value(valuation_date, premium_payment)
                 risk_adj_factor_premium += period_length*survival_prob*df
                 default_prob = self.survival_curve.value(valuation_date, premium_period_start)-self.survival_curve.value(valuation_date, premium_payment)
-                accrued = period_length*default_prob*df
+                accrued += period_length*default_prob*df
                 premium_period_start = premium_payment
         return risk_adj_factor_premium, accrued
 

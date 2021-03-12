@@ -2,18 +2,18 @@
 from typing import Tuple, Iterable
 from datetime import datetime 
 from dateutil.relativedelta import relativedelta
-from enum import Enum
+from enum import IntEnum as _IntEnum
 import pyvacon as _pyvacon
 from rivapy.instruments import CDSSpecification
 
-class ResultType(Enum):
-    PRICE = 'PRICE'
-    DELTA = 'DELTA'
-    GAMMA = 'GAMMA'
-    THETA = 'THETA'
-    RHO = 'RHO'
-    VEGA = 'VEGA'
-    VANNA = 'VANNA'
+class ResultType(_IntEnum):
+    PRICE = 0
+    DELTA = 1
+    GAMMA = 2
+    THETA = 3
+    RHO = 4
+    VEGA = 5
+    VANNA = 6
 
 class PricingResults:
     def set_price(self, price: float):
@@ -25,15 +25,15 @@ class PricingResults:
 def _create_pricing_request(pr_dict : Iterable[ResultType]):
     result = _pyvacon.finance.pricing.PricingRequest()
     for d in pr_dict:
-        if d == ResultType.DELTA or d == ResultType.GAMMA:
+        if d is ResultType.DELTA or d is ResultType.GAMMA:
             result.setDeltaGamma(True)
-        elif d == ResultType.THETA:
+        elif d is ResultType.THETA:
             result.setTheta(True)
-        elif d == ResultType.RHO:
+        elif d is ResultType.RHO:
             result.setRho(True)
-        elif d == ResultType.VEGA:
+        elif d is ResultType.VEGA:
             result.setVega(True)
-        elif d == ResultType.VANNA:
+        elif d is ResultType.VANNA:
             result.setVanna(True)
     return result
 

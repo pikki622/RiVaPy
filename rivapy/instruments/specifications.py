@@ -15,7 +15,7 @@ if _pyvacon_available:
     BarrierPayoff = _spec.BarrierPayoff
     BarrierSpecification = _spec.BarrierSpecification
     # EuropeanVanillaSpecification = _spec.EuropeanVanillaSpecification
-    AmericanVanillaSpecification = _spec.AmericanVanillaSpecification
+    # AmericanVanillaSpecification = _spec.AmericanVanillaSpecification
     #RainbowUnderlyingSpec = _spec.RainbowUnderlyingSpec
     #RainbowBarrierSpec = _spec.RainbowBarrierSpec
     LocalVolMonteCarloSpecification = _spec.LocalVolMonteCarloSpecification
@@ -77,10 +77,10 @@ class EuropeanVanillaSpecification:
             type (str): Type of the european vanilla option ('PUT','CALL').
             expiry (datetime): Expiration date.
             strike (float): Strike price.
-            issuer (str, optional): Issuer Id. Only used if pricing data is manually defined. Defaults to ''.
+            issuer (str, optional): Issuer Id. Must not be set if pricing data is manually defined. Defaults to ''.
             sec_lvl (str, optional): Securitization level. Can be selected from rivapy.enums.SecuritizationLevel. Defaults to SecuritizationLevel.COLLATERALIZED.
             curr (str, optional): Currency (ISO-4217 Code). Must not be set if pricing data is manually defined. Can be selected from rivapy.enums.Currency. Defaults to Currency.EUR.
-            udl_id (str, optional): Underlying Id. Only used if pricing data is manually defined. Defaults to ''.
+            udl_id (str, optional): Underlying Id. Must not be set if pricing data is manually defined. Defaults to ''.
             share_ratio (float, optional): Ratio of covered shares of the underlying by a single option contract. Defaults to 1.0.
         """
         
@@ -127,7 +127,7 @@ class AmericanVanillaSpecification:
                  ,curr: str = Currency.EUR
                  ,udl_id: str = ''
                  ,share_ratio: float = 1.0
-                 ,exercise_before_ex_date: bool = True
+                 ,exercise_before_ex_date: bool = False
                 #  ,holidays: str
                 #  ,ex_settle: str
                 #  ,trade_settle: str
@@ -135,16 +135,16 @@ class AmericanVanillaSpecification:
         """Constructor for american vanilla option
 
         Args:
-            id (str): Identifier (name) of the european vanilla specification.
-            type (str): Type of the european vanilla option ('PUT','CALL').
+            id (str): Identifier (name) of the american vanilla specification.
+            type (str): Type of the american vanilla option ('PUT','CALL').
             expiry (datetime): Expiration date.
             strike (float): Strike price.
-            issuer (str, optional): Issuer Id. Only used if pricing data is manually defined. Defaults to ''.
+            issuer (str, optional): Issuer Id. Must not be set if pricing data is manually defined. Defaults to ''.
             sec_lvl (str, optional): Securitization level. Can be selected from rivapy.enums.SecuritizationLevel. Defaults to SecuritizationLevel.COLLATERALIZED.
             curr (str, optional): Currency (ISO-4217 Code). Must not be set if pricing data is manually defined. Can be selected from rivapy.enums.Currency. Defaults to Currency.EUR.
-            udl_id (str, optional): Underlying Id. Only used if pricing data is manually defined. Defaults to ''.
+            udl_id (str, optional): Underlying Id. Must not be set if pricing data is manually defined. Defaults to ''.
             share_ratio (float, optional): Ratio of covered shares of the underlying by a single option contract. Defaults to 1.0.
-            exercise_before_ex_date (bool, optional): [description]. Defaults to True.
+            exercise_before_ex_date (bool, optional): Indicates if option can be exercised within two days before dividend ex-date. Defaults to False.
         """
      
         self.id = id

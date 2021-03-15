@@ -43,7 +43,7 @@ class Black76PricingData:
         """Constructor for Black76PricingDate
 
         Args:
-            val_date ([datetime]): Valudation date.
+            val_date ([datetime]): Valuation date.
             spec ([type]): Specification.
             discount_curve ([type]): Discount curve.
             vol_surface ([type]): Volatility surface.

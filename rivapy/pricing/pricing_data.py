@@ -117,5 +117,6 @@ class CDSPricingData:
         premium_leg, accrued = self._pv_premium_leg(self.val_date)
         pr_results.premium_leg = self.spec.premium*self.spec.notional*premium_leg
         pr_results.accrued = 0.5*self.spec.premium*self.spec.notional*accrued
+        pr_results.par_spread=(pr_results.pv_protection_protection)/(pr_results.premium_leg+pr_results.accrued)
         pr_results.set_price(pr_results.pv_protection-pr_results.premium_leg-pr_results.accrued)
         return pr_results

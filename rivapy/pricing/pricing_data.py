@@ -2,19 +2,19 @@
 from typing import Tuple, Iterable
 from datetime import datetime 
 from dateutil.relativedelta import relativedelta
-from enum import Enum
+from enum import IntEnum as _IntEnum
 import pyvacon as _pyvacon
 import rivapy
 from rivapy.instruments import CDSSpecification
 
-class ResultType(Enum):
-    PRICE = 'PRICE'
-    DELTA = 'DELTA'
-    GAMMA = 'GAMMA'
-    THETA = 'THETA'
-    RHO = 'RHO'
-    VEGA = 'VEGA'
-    VANNA = 'VANNA'
+class ResultType(_IntEnum):
+    PRICE = 0
+    DELTA = 1
+    GAMMA = 2
+    THETA = 3
+    RHO = 4
+    VEGA = 5
+    VANNA = 6
 
 class PricingResults:
     def set_price(self, price: float):
@@ -26,15 +26,15 @@ class PricingResults:
 def _create_pricing_request(pr_dict : Iterable[ResultType]):
     result = _pyvacon.finance.pricing.PricingRequest()
     for d in pr_dict:
-        if d == ResultType.DELTA or d == ResultType.GAMMA:
+        if d is ResultType.DELTA or d is ResultType.GAMMA:
             result.setDeltaGamma(True)
-        elif d == ResultType.THETA:
+        elif d is ResultType.THETA:
             result.setTheta(True)
-        elif d == ResultType.RHO:
+        elif d is ResultType.RHO:
             result.setRho(True)
-        elif d == ResultType.VEGA:
+        elif d is ResultType.VEGA:
             result.setVega(True)
-        elif d == ResultType.VANNA:
+        elif d is ResultType.VANNA:
             result.setVanna(True)
     return result
 
@@ -157,9 +157,9 @@ class CDSPricingData:
                 period_length = dc.yf(premium_period_start, premium_payment)
                 survival_prob = self.survival_curve.value(valuation_date, premium_payment)
                 df = self.discount_curve.value(valuation_date, premium_payment)
-                risk_adj_factor_premium += self.spec.premium*period_length*survival_prob*df
+                risk_adj_factor_premium += period_length*survival_prob*df
                 default_prob = self.survival_curve.value(valuation_date, premium_period_start)-self.survival_curve.value(valuation_date, premium_payment)
-                accrued = 0.5*self.spec.premium*period_length*default_prob*df
+                accrued += period_length*default_prob*df
                 premium_period_start = premium_payment
         return risk_adj_factor_premium, accrued
 
@@ -168,7 +168,7 @@ class CDSPricingData:
         pr_results = PricingResults()
         pr_results.pv_protection = self.spec.notional*pv_protection
         premium_leg, accrued = self._pv_premium_leg(self.val_date)
-        pr_results.premium_leg = self.spec.notional*premium_leg
-        pr_results.accrued = self.spec.notional*accrued
+        pr_results.premium_leg = self.spec.premium*self.spec.notional*premium_leg
+        pr_results.accrued = 0.5*self.spec.premium*self.spec.notional*accrued
         pr_results.set_price(pr_results.pv_protection-pr_results.premium_leg-pr_results.accrued)
         return pr_results

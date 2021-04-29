@@ -59,3 +59,24 @@ class VolatilitySurfaceFlat:
             p = _mkt_data.VolatilityParametrizationFlat(self.vol)
             self._pyvacon_obj = _mkt_data.VolatilitySurface(self.id, self.refdate, self.fwd_curve._get_pyvacon_obj(), self.daycounter.name, p)
         return self._pyvacon_obj
+    
+class VolatilitySurface:
+    def __init__(self, id: str, refdate: datetime, forward_curve, daycounter, vol_param):
+        self.id = id
+        self.refdate = refdate
+        self.forward_curve = forward_curve
+        self.daycounter = daycounter
+        self.vol_param = vol_param
+        self._pyvacon_obj = None
+        
+           
+    def _get_pyvacon_obj(self):
+        if self._pyvacon_obj is None:
+            self._pyvacon_obj = _mkt_data.VolatilitySurface(self.id, self.refdate, self.forward_curve._get_pyvacon_obj(),self.daycounter.name, self.vol_param)
+        return self._pyvacon_obj
+    
+    def calcImpliedVol(self, refdate: datetime, expiry: datetime, x_strike: float)->float:
+        return _mkt_data.VolatilitySurface.calcImpliedVol(self,refdate, expiry, x_strike)
+        
+
+        

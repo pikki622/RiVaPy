@@ -3,6 +3,7 @@ from typing import List, Union, Tuple
 from rivapy.marketdata.curves import *
 
 import pyvacon.finance.marketdata as _mkt_data
+import pyvacon.finance.utils as _utils
 
 InflationIndexForwardCurve = _mkt_data.InflationIndexForwardCurve
 SurvivalCurve = _mkt_data.SurvivalCurve
@@ -75,8 +76,12 @@ class VolatilitySurface:
             self._pyvacon_obj = _mkt_data.VolatilitySurface(self.id, self.refdate, self.forward_curve._get_pyvacon_obj(),self.daycounter.name, self.vol_param)
         return self._pyvacon_obj
     
-    def calcImpliedVol(self, refdate: datetime, expiry: datetime, x_strike: float)->float:
-        return _mkt_data.VolatilitySurface.calcImpliedVol(self,refdate, expiry, x_strike)
-        
+    def calcImpliedVol(self, refdate: datetime, expiry: datetime, strike: float)->float:
+        # convert strike into x_strike  
+        x_strike = _utils.computeXStrike(strike, self.forward_curve._get_pyvacon_obj().value(refdate, expiry), self.forward_curve._get_pyvacon_obj().discountedFutureCashDivs(refdate, expiry))
+        print('fwd value', self.forward_curve._get_pyvacon_obj().value(refdate, expiry))
+        print('disc f cash div', self.forward_curve._get_pyvacon_obj().discountedFutureCashDivs(refdate, expiry))
+        vol = self._get_pyvacon_obj()
+        return vol.calcImpliedVol(refdate, expiry, x_strike)
 
         

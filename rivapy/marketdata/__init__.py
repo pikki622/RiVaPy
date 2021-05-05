@@ -8,7 +8,7 @@ import pyvacon.finance.utils as _utils
 InflationIndexForwardCurve = _mkt_data.InflationIndexForwardCurve
 SurvivalCurve = _mkt_data.SurvivalCurve
 DatedCurve = _mkt_data.DatedCurve
-DividendTable = _mkt_data.DividendTable
+# DividendTable = _mkt_data.DividendTable
 
 class DividendTable:
     def __init__(self, id: str,
@@ -73,15 +73,21 @@ class VolatilitySurface:
            
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
-            self._pyvacon_obj = _mkt_data.VolatilitySurface(self.id, self.refdate, self.forward_curve._get_pyvacon_obj(),self.daycounter.name, self.vol_param)
+            self._pyvacon_obj = _mkt_data.VolatilitySurface(self.id, self.refdate, \
+                self.forward_curve._get_pyvacon_obj(),self.daycounter.name, self.vol_param)
         return self._pyvacon_obj
     
     def calcImpliedVol(self, refdate: datetime, expiry: datetime, strike: float)->float:
-        # convert strike into x_strike  
-        x_strike = _utils.computeXStrike(strike, self.forward_curve._get_pyvacon_obj().value(refdate, expiry), self.forward_curve._get_pyvacon_obj().discountedFutureCashDivs(refdate, expiry))
-        print('fwd value', self.forward_curve._get_pyvacon_obj().value(refdate, expiry))
-        print('disc f cash div', self.forward_curve._get_pyvacon_obj().discountedFutureCashDivs(refdate, expiry))
-        vol = self._get_pyvacon_obj()
-        return vol.calcImpliedVol(refdate, expiry, x_strike)
+        # # convert strike into x_strike 
+        # forward_curve_obj = self.forward_curve._get_pyvacon_obj() 
+        # x_strike = _utils.computeXStrike(strike, forward_curve_obj.value(refdate, expiry), forward_curve_obj.discountedFutureCashDivs(refdate, expiry))
+        # print(x_strike)
+        # if x_strike < 0:
+        #     raise Exception(f'The given strike value seems implausible compared to the discounted future cash dividends\
+        #         ({forward_curve_obj.discountedFutureCashDivs(refdate, expiry)}).')
+        # vol = self._get_pyvacon_obj()
+        # return vol.calcImpliedVol(refdate, expiry, x_strike)
+        return 6.0
 
         
+            

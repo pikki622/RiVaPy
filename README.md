@@ -24,7 +24,8 @@ Create and work with equity volatility surfaces here.
 
 ## Pricing
 
-A variety of different derivative products from various asset classes are introduced and their pricing is discussed.
+A variety of different
+derivative products from various asset classes are introduced and their pricing is discussed.
 
 ## Conventions
 

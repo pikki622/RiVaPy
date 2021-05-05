@@ -61,6 +61,16 @@ class VolatilitySurfaceFlat:
             self._pyvacon_obj = _mkt_data.VolatilitySurface(self.id, self.refdate, self.fwd_curve._get_pyvacon_obj(), self.daycounter.name, p)
         return self._pyvacon_obj
     
+class VolatilityParametrizationFlat:
+    def __init__(self,vol: float):
+        self.vol = vol
+        self._pyvacon_obj = None
+        
+    def _get_pyvacon_obj(self):
+        if self._get_pyvacon_obj is None:
+            self._get_pyvacon_obj = _mkt_data.VolatilityParametrizationFlat(self.vol)  
+        return self._pyvacon_obj
+    
 class VolatilitySurface:
     def __init__(self, id: str, refdate: datetime, forward_curve, daycounter, vol_param):
         self.id = id
@@ -78,16 +88,14 @@ class VolatilitySurface:
         return self._pyvacon_obj
     
     def calcImpliedVol(self, refdate: datetime, expiry: datetime, strike: float)->float:
-        # # convert strike into x_strike 
-        # forward_curve_obj = self.forward_curve._get_pyvacon_obj() 
-        # x_strike = _utils.computeXStrike(strike, forward_curve_obj.value(refdate, expiry), forward_curve_obj.discountedFutureCashDivs(refdate, expiry))
-        # print(x_strike)
-        # if x_strike < 0:
-        #     raise Exception(f'The given strike value seems implausible compared to the discounted future cash dividends\
-        #         ({forward_curve_obj.discountedFutureCashDivs(refdate, expiry)}).')
-        # vol = self._get_pyvacon_obj()
-        # return vol.calcImpliedVol(refdate, expiry, x_strike)
-        return 6.0
+        # convert strike into x_strike 
+        forward_curve_obj = self.forward_curve._get_pyvacon_obj() 
+        x_strike = _utils.computeXStrike(strike, forward_curve_obj.value(refdate, expiry), forward_curve_obj.discountedFutureCashDivs(refdate, expiry))
+        if x_strike < 0:
+            raise Exception(f'The given strike value seems implausible compared to the discounted future cash dividends\
+                ({forward_curve_obj.discountedFutureCashDivs(refdate, expiry)}).')
+        vol = self._get_pyvacon_obj()
+        return vol.calcImpliedVol(refdate, expiry, x_strike)
 
         
             

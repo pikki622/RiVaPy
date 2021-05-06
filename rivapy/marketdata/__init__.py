@@ -45,21 +45,6 @@ class DividendTable:
         if self._pyvacon_obj is None:
             self._pyvacon_obj = _mkt_data.DividendTable(self.id, self.refdate, self.ex_dates, self.div_yield, self.div_cash, self.tax_factors, self.pay_dates)
         return self._pyvacon_obj
-
-class VolatilitySurfaceFlat:
-    def __init__(self, id: str, refdate: datetime, forward_curve, vol: float, daycounter: DayCounterType=DayCounterType.Act365Fixed):
-        self.id = id
-        self.refdate = refdate
-        self.fwd_curve = forward_curve
-        self.vol = vol
-        self.daycounter = daycounter
-        self._pyvacon_obj = None
-
-    def _get_pyvacon_obj(self):
-        if self._pyvacon_obj is None:
-            p = _mkt_data.VolatilityParametrizationFlat(self.vol)
-            self._pyvacon_obj = _mkt_data.VolatilitySurface(self.id, self.refdate, self.fwd_curve._get_pyvacon_obj(), self.daycounter.name, p)
-        return self._pyvacon_obj
     
 class VolatilityParametrizationFlat:
     def __init__(self,vol: float):
@@ -67,8 +52,33 @@ class VolatilityParametrizationFlat:
         self._pyvacon_obj = None
         
     def _get_pyvacon_obj(self):
-        if self._get_pyvacon_obj is None:
-            self._get_pyvacon_obj = _mkt_data.VolatilityParametrizationFlat(self.vol)  
+        if self._pyvacon_obj is None:
+            self._pyvacon_obj = _mkt_data.VolatilityParametrizationFlat(self.vol)  
+        return self._pyvacon_obj
+    
+class VolatilityParametrizationTerm:
+    def __init__(self, expiries: List[float], fwd_atm_vols: List[float]):
+        self.expiries = expiries
+        self.fwd_atm_vols = fwd_atm_vols
+        self._pyvacon_obj = None
+        
+    def _get_pyvacon_obj(self):
+        if self._pyvacon_obj is None:
+            self._pyvacon_obj = _mkt_data.VolatilityParametrizationTerm(self.expiries, self.fwd_atm_vols)  
+        return self._pyvacon_obj
+    
+class VolatilityParametrizationSSVI:
+    def __init__(self, expiries: List[float], fwd_atm_vols: List[float], rho: float, eta: float, gamma: float):
+        self.expiries = expiries
+        self.fwd_atm_vols = fwd_atm_vols
+        self.rho = rho
+        self.eta = eta
+        self.gamma = gamma
+        self._pyvacon_obj = None
+        
+    def _get_pyvacon_obj(self):
+        if self._pyvacon_obj is None:
+            self._pyvacon_obj = _mkt_data.VolatilityParametrizationSSVI(self.expiries, self.fwd_atm_vols, self.rho, self.eta, self.gamma)  
         return self._pyvacon_obj
     
 class VolatilitySurface:
@@ -84,7 +94,7 @@ class VolatilitySurface:
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
             self._pyvacon_obj = _mkt_data.VolatilitySurface(self.id, self.refdate, \
-                self.forward_curve._get_pyvacon_obj(),self.daycounter.name, self.vol_param)
+                self.forward_curve._get_pyvacon_obj(),self.daycounter.name, self.vol_param._get_pyvacon_obj())
         return self._pyvacon_obj
     
     def calcImpliedVol(self, refdate: datetime, expiry: datetime, strike: float)->float:

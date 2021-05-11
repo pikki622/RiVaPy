@@ -50,6 +50,8 @@ class VolatilityParametrizationFlat:
     def __init__(self,vol: float):
         self.vol = vol
         self._pyvacon_obj = None
+        """[summary]
+        """
         
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
@@ -61,6 +63,8 @@ class VolatilityParametrizationTerm:
         self.expiries = expiries
         self.fwd_atm_vols = fwd_atm_vols
         self._pyvacon_obj = None
+        """[summary]
+        """
         
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
@@ -75,6 +79,8 @@ class VolatilityParametrizationSSVI:
         self.eta = eta
         self.gamma = gamma
         self._pyvacon_obj = None
+        """[summary]
+        """
         
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
@@ -88,8 +94,7 @@ class VolatilitySurface:
         self.forward_curve = forward_curve
         self.daycounter = daycounter
         self.vol_param = vol_param
-        self._pyvacon_obj = None
-        
+        self._pyvacon_obj = None        
            
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:

@@ -48,10 +48,13 @@ class DividendTable:
     
 class VolatilityParametrizationFlat:
     def __init__(self,vol: float):
+        """[summary]
+
+        Args:
+            vol (float): [description]
+        """
         self.vol = vol
         self._pyvacon_obj = None
-        """[summary]
-        """
         
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
@@ -60,11 +63,15 @@ class VolatilityParametrizationFlat:
     
 class VolatilityParametrizationTerm:
     def __init__(self, expiries: List[float], fwd_atm_vols: List[float]):
+        """[summary]
+
+        Args:
+            expiries (List[float]): [description]
+            fwd_atm_vols (List[float]): [description]
+        """
         self.expiries = expiries
         self.fwd_atm_vols = fwd_atm_vols
         self._pyvacon_obj = None
-        """[summary]
-        """
         
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
@@ -73,14 +80,22 @@ class VolatilityParametrizationTerm:
     
 class VolatilityParametrizationSSVI:
     def __init__(self, expiries: List[float], fwd_atm_vols: List[float], rho: float, eta: float, gamma: float):
+        """[summary]
+
+        Args:
+            expiries (List[float]): [description]
+            fwd_atm_vols (List[float]): [description]
+            rho (float): [description]
+            eta (float): [description]
+            gamma (float): [description]
+        """
         self.expiries = expiries
         self.fwd_atm_vols = fwd_atm_vols
         self.rho = rho
         self.eta = eta
         self.gamma = gamma
         self._pyvacon_obj = None
-        """[summary]
-        """
+
         
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
@@ -89,6 +104,15 @@ class VolatilityParametrizationSSVI:
     
 class VolatilitySurface:
     def __init__(self, id: str, refdate: datetime, forward_curve, daycounter, vol_param):
+        """[summary]
+
+        Args:
+            id (str): [description]
+            refdate (datetime): [description]
+            forward_curve ([type]): [description]
+            daycounter ([type]): [description]
+            vol_param ([type]): [description]
+        """
         self.id = id
         self.refdate = refdate
         self.forward_curve = forward_curve

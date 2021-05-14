@@ -48,10 +48,10 @@ class DividendTable:
     
 class VolatilityParametrizationFlat:
     def __init__(self,vol: float):
-        """[summary]
+        """Flat volatility parametrization
 
         Args:
-            vol (float): [description]
+            vol (float): Constant volatility.
         """
         self.vol = vol
         self._pyvacon_obj = None
@@ -63,11 +63,11 @@ class VolatilityParametrizationFlat:
     
 class VolatilityParametrizationTerm:
     def __init__(self, expiries: List[float], fwd_atm_vols: List[float]):
-        """[summary]
+        """Term volatility parametrization
 
         Args:
-            expiries (List[float]): [description]
-            fwd_atm_vols (List[float]): [description]
+            expiries (List[float]): List of expiration dates.
+            fwd_atm_vols (List[float]): List of at-the-money volatilities.
         """
         self.expiries = expiries
         self.fwd_atm_vols = fwd_atm_vols
@@ -80,11 +80,11 @@ class VolatilityParametrizationTerm:
     
 class VolatilityParametrizationSSVI:
     def __init__(self, expiries: List[float], fwd_atm_vols: List[float], rho: float, eta: float, gamma: float):
-        """[summary]
+        """SSVI volatility parametrization
 
         Args:
-            expiries (List[float]): [description]
-            fwd_atm_vols (List[float]): [description]
+            expiries (List[float]): List of expiration dates.
+            fwd_atm_vols (List[float]): List of at-the-money volatilities.
             rho (float): [description]
             eta (float): [description]
             gamma (float): [description]
@@ -104,11 +104,11 @@ class VolatilityParametrizationSSVI:
     
 class VolatilitySurface:
     def __init__(self, id: str, refdate: datetime, forward_curve, daycounter, vol_param):
-        """[summary]
+        """Volatility surface
 
         Args:
-            id (str): [description]
-            refdate (datetime): [description]
+            id (str): Identifier (name) of the volatility surface.
+            refdate (datetime): Valuation date.
             forward_curve ([type]): [description]
             daycounter ([type]): [description]
             vol_param ([type]): [description]
@@ -127,6 +127,19 @@ class VolatilitySurface:
         return self._pyvacon_obj
     
     def calcImpliedVol(self, refdate: datetime, expiry: datetime, strike: float)->float:
+        """Calculate implied volatility
+
+        Args:
+            refdate (datetime): Valuation date.
+            expiry (datetime): Expiration date.
+            strike (float): Strike price.
+
+        Raises:
+            Exception: [description]
+
+        Returns:
+            float: Implied volatility
+        """
         # convert strike into x_strike 
         forward_curve_obj = self.forward_curve._get_pyvacon_obj() 
         x_strike = _utils.computeXStrike(strike, forward_curve_obj.value(refdate, expiry), forward_curve_obj.discountedFutureCashDivs(refdate, expiry))
@@ -135,6 +148,31 @@ class VolatilitySurface:
                 ({forward_curve_obj.discountedFutureCashDivs(refdate, expiry)}).')
         vol = self._get_pyvacon_obj()
         return vol.calcImpliedVol(refdate, expiry, x_strike)
+    
+    def shiftFwdCurve(self, shifted_forward_curve):
+        """Shifted volatililty surface
+
+        Args:
+            shifted_forward_curve ([type]): Shifted equity forward curve.
+
+        Returns:
+            [type]: Shifted volatility surface.
+        """
+        return _mkt_data.VolatilitySurface.createVolatilitySurfaceShiftedFwd(self._get_pyvacon_obj(),shifted_forward_curve._get_pyvacon_obj())
+            
+    def shiftFwdSpot(self, shifted_spot):
+        """Shifted volatility surface
+
+        Args:
+            shifted_spot ([type]): Shifted spot.
+
+        Returns:
+            [type]: volatility surface.
+        """
+        shifted_forward_curve = EquityForwardCurve(shifted_spot, self.forward_curve.fc , self.forward_curve.bc, self.forward_curve.div)
+        return _mkt_data.VolatilitySurface.createVolatilitySurfaceShiftedFwd(self._get_pyvacon_obj(),shifted_forward_curve._get_pyvacon_obj())
+            
+
 
         
             

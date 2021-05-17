@@ -11,7 +11,7 @@ import scipy.optimize
 from pyvacon.finance.marketdata import EquityForwardCurve as _EquityForwardCurve
 
 from rivapy.enums import DayCounterType, InterpolationType, ExtrapolationType
-from rivapy.marketdata import DiscountCurve, DatedCurve, SurvivalCurve
+from rivapy.marketdata import DiscountCurve
 
 
 from pyvacon.finance.marketdata import DiscountCurve as _DiscountCurve

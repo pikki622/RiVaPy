@@ -1,9 +1,12 @@
 
+from pyvacon.pyvacon_swig import GlobalSettings
+from rivapy import enums
 from typing import List, Union, Tuple
 from rivapy.marketdata.curves import *
 
 import pyvacon.finance.marketdata as _mkt_data
 import pyvacon.finance.utils as _utils
+import pyvacon.finance.pricing as _pricing
 
 InflationIndexForwardCurve = _mkt_data.InflationIndexForwardCurve
 SurvivalCurve = _mkt_data.SurvivalCurve
@@ -81,13 +84,15 @@ class VolatilityParametrizationTerm:
 class VolatilityParametrizationSSVI:
     def __init__(self, expiries: List[float], fwd_atm_vols: List[float], rho: float, eta: float, gamma: float):
         """SSVI volatility parametrization
+        https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2033323
 
         Args:
             expiries (List[float]): List of expiration dates.
             fwd_atm_vols (List[float]): List of at-the-money volatilities.
-            rho (float): [description]
-            eta (float): [description]
-            gamma (float): [description]
+            rho (float): Responsible for the skewness of the volatility surface.
+            eta (float): Responsible for the curvature.
+            gamma (float): Responsible for the "rate of decay".
+
         """
         self.expiries = expiries
         self.fwd_atm_vols = fwd_atm_vols
@@ -109,9 +114,9 @@ class VolatilitySurface:
         Args:
             id (str): Identifier (name) of the volatility surface.
             refdate (datetime): Valuation date.
-            forward_curve ([type]): [description]
-            daycounter ([type]): [description]
-            vol_param ([type]): [description]
+            forward_curve ([type]): Forward curve.
+            daycounter (enums.DayCounterType): [description]
+            vol_param ([VolatilityParametrizationFlat,VolatilityParametrizationTerm,VolatilityParametrizationSSVI]): Volatility parametrization.
         """
         self.id = id
         self.refdate = refdate
@@ -126,7 +131,7 @@ class VolatilitySurface:
                 self.forward_curve._get_pyvacon_obj(),self.daycounter.name, self.vol_param._get_pyvacon_obj())
         return self._pyvacon_obj
     
-    def calcImpliedVol(self, refdate: datetime, expiry: datetime, strike: float)->float:
+    def calc_implied_vol(self, refdate: datetime, expiry: datetime, strike: float)->float:
         """Calculate implied volatility
 
         Args:
@@ -138,7 +143,7 @@ class VolatilitySurface:
             Exception: [description]
 
         Returns:
-            float: Implied volatility
+            float: Implied volatility.
         """
         # convert strike into x_strike 
         forward_curve_obj = self.forward_curve._get_pyvacon_obj() 
@@ -148,30 +153,44 @@ class VolatilitySurface:
                 ({forward_curve_obj.discountedFutureCashDivs(refdate, expiry)}).')
         vol = self._get_pyvacon_obj()
         return vol.calcImpliedVol(refdate, expiry, x_strike)
+          
     
-    def shiftFwdCurve(self, shifted_forward_curve):
+    def shift_fwd_curve(self, shifted_forward_curve):
         """Shifted volatililty surface
 
         Args:
             shifted_forward_curve ([type]): Shifted equity forward curve.
 
         Returns:
-            [type]: Shifted volatility surface.
+            marketdata.VolatilitySurface: Shifted volatility surface.
         """
         return _mkt_data.VolatilitySurface.createVolatilitySurfaceShiftedFwd(self._get_pyvacon_obj(),shifted_forward_curve._get_pyvacon_obj())
             
-    def shiftFwdSpot(self, shifted_spot):
+    def shift_fwd_spot(self, shifted_spot: float):
         """Shifted volatility surface
 
         Args:
-            shifted_spot ([type]): Shifted spot.
+            shifted_spot (float): Shifted spot.
 
         Returns:
-            [type]: volatility surface.
+            marketdata.VolatilitySurface: Volatility surface.
         """
         shifted_forward_curve = EquityForwardCurve(shifted_spot, self.forward_curve.fc , self.forward_curve.bc, self.forward_curve.div)
+        # return VolatilitySurface(self.id, self.refdate, shifted_forward_curve, self.daycounter, self.vol_param)
         return _mkt_data.VolatilitySurface.createVolatilitySurfaceShiftedFwd(self._get_pyvacon_obj(),shifted_forward_curve._get_pyvacon_obj())
-            
+    
+    @staticmethod        
+    def set_stickyness(vol_stickyness: enums.VolatilityStickyness):
+        if vol_stickyness is enums.VolatilityStickyness.StickyXStrike:
+            _pricing.GlobalSettings.setVolatilitySurfaceFwdStickyness(_pricing.VolatilitySurfaceFwdStickyness.Type.StickyXStrike)
+        elif vol_stickyness is enums.VolatilityStickyness.StickyStrike:
+            _pricing.GlobalSettings.setVolatilitySurfaceFwdStickyness(vol_stickyness)
+        elif vol_stickyness is enums.VolatilityStickyness.StickyFwdMoneyness:
+            _pricing.GlobalSettings.setVolatilitySurfaceFwdStickyness(_pricing.VolatilitySurfaceFwdStickyness.Type.StickyFwdMoneyness)
+        elif vol_stickyness is enums.VolatilityStickyness.NONE:
+            _pricing.GlobalSettings.setVolatilitySurfaceFwdStickyness(_pricing.VolatilitySurfaceFwdStickyness.Type.NONE)
+        else:
+            raise Exception ('Error')
 
 
         

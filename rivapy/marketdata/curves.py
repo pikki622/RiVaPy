@@ -3,10 +3,16 @@ from enum import Enum
 from datetime import datetime, date, timedelta
 import matplotlib.pyplot as plt
 import math
+import dateutil.relativedelta as relativedelta
+from typing import List
+import scipy.optimize
+
 
 from pyvacon.finance.marketdata import EquityForwardCurve as _EquityForwardCurve
 
 from rivapy.enums import DayCounterType, InterpolationType, ExtrapolationType
+from rivapy.marketdata import DiscountCurve, DatedCurve, SurvivalCurve
+
 
 from pyvacon.finance.marketdata import DiscountCurve as _DiscountCurve
 import pyvacon as _pyvacon
@@ -208,3 +214,94 @@ class EquityForwardCurve:
         plt.plot(dates, values, **kwargs)
         plt.xlabel('expiry')
         plt.ylabel('forward value')
+
+class BootstrapHazardCurve:
+    def __init__(self, 
+                    ref_date: datetime, 
+                    trade_date: datetime,
+                    maturity_date: datetime,
+                    dc: DiscountCurve,
+                    RR: float,
+                    payment_dates: List[datetime],
+                    market_spreads: List[float] ):
+        """Hazard rate curve
+
+        Args:
+            ref_date (datetime): [description]
+            trade_date (datetime): [description]
+            maturity_date (datetime): [description]
+            dc (DiscountCurve): [description]
+            RR (float): [description]
+            payment_cyle (float): [description]
+            market_spreads (List[float]): [description]
+        """                    
+
+        self.ref_date=ref_date
+        self.trade_date=trade_date
+        self.maturity_date=maturity_date
+        self.dc=dc
+        self.RR=RR
+        self.payment_dates_bootstrapp=payment_dates
+        self.market_spreads=market_spreads
+
+
+    def par_spread(self, dc_survival: SurvivalCurve, payment_dates: List(datetime)):
+        integration_step= relativedelta.relativedelta(days=365)
+        premium_period_start = self.ref_date
+        prev_date=self.ref_date
+        current_date=min(prev_date+integration_step, self.maturity_date)
+        dc_valuation_date=self.dc.value(self.ref_date, self.maturity_date)
+        risk_adj_factor_protection=0
+        risk_adj_factor_premium=0
+        risk_adj_factor_accrued=0
+
+        while current_date <= self.maturity_date:
+            default_prob = dc_survival.value(self.ref_date, prev_date)-dc_survival.value(self.ref_date, current_date)
+            risk_adj_factor_protection += self.dc.value(self.ref_date, current_date) * default_prob
+            prev_date = current_date
+            current_date += integration_step
+        
+        if prev_date < self.maturity_date and current_date > self.maturity_date:
+            default_prob = dc_survival.value(self.ref_date, prev_date)-dc_survival.value(self.ref_date, self.maturity_date)
+            risk_adj_factor_protection += self.dc.value(self.ref_date, self.maturity_date)  * default_prob
+
+
+        for premium_payment in payment_dates:
+            if premium_payment >= self.ref_date:
+                period_length = ((premium_payment-premium_period_start).days)/360
+                survival_prob = (dc_survival.value(self.ref_date, premium_period_start)+dc_survival.value(self.ref_date, premium_payment))/2
+                df = self.dc.value(self.ref_date, premium_payment)
+                risk_adj_factor_premium += period_length*survival_prob*df
+                default_prob = dc_survival.value(self.ref_date, premium_period_start)-dc_survival.value(self.ref_date, premium_payment)
+                risk_adj_factor_accrued += period_length*default_prob*df
+                premium_period_start = premium_payment
+
+        PV_accrued=((1/2)*risk_adj_factor_accrued)
+        PV_premium=(1)*risk_adj_factor_premium
+        PV_protection=(((1-self.RR))*risk_adj_factor_protection)
+        
+        par_spread_i=(PV_protection)/((PV_premium+PV_accrued))
+        return par_spread_i
+
+    def create_survival(self, dates: List[datetime], hazard_rates: List[float]):
+        return SurvivalCurve('survival_curve', self.refdate, dates, hazard_rates)
+    
+    def calibration_error(x, self, mkt_par_spread, ref_date, trade_date, payment_dates, dates, hazard_rates):
+        hazard_rates[-1] = x
+        maturity_date = dates[-1]
+        dc_surv = self.create_survival(ref_date, dates, hazard_rates)
+        return  mkt_par_spread - self.par_spread(ref_date, trade_date, dc_surv, payment_dates, maturity_date, self.dc, self.RR)
+
+
+    def calibrate_hazard_rate(self):
+        sc_dates=[self.ref_date]
+        hazard_rates=[0.0]
+        for i in range(len(self.payment_dates_bootstrapp)):
+            payment_dates_iter = self.payment_dates_bootstrapp[i]
+            mkt_par_spread_iter = self.mkt_par_spread[i]
+            sc_dates.append(payment_dates_iter[-1])
+            hazard_rates.append(hazard_rates[-1])
+            sol=scipy.optimize.root_scalar(self.calibration_error,args=(mkt_par_spread_iter, self.ref_date, self.trade_date, 
+                            payment_dates_iter, self.dc_new, sc_dates, hazard_rates, self.RR),method='brentq',bracket=[0,3],xtol=1e-8,rtol=1e-8)
+            hazard_rates[-1] = sol.root
+        return self.create_survival(self.ref_date, sc_dates, hazard_rates), hazard_rates

@@ -11,7 +11,7 @@ import scipy.optimize
 from pyvacon.finance.marketdata import EquityForwardCurve as _EquityForwardCurve
 
 from rivapy.enums import DayCounterType, InterpolationType, ExtrapolationType
-from rivapy.marketdata import DiscountCurve
+#from rivapy.marketdata import DiscountCurve
 
 
 from pyvacon.finance.marketdata import DiscountCurve as _DiscountCurve
@@ -219,7 +219,6 @@ class BootstrapHazardCurve:
     def __init__(self, 
                     ref_date: datetime, 
                     trade_date: datetime,
-                    maturity_date: datetime,
                     dc: DiscountCurve,
                     RR: float,
                     payment_dates: List[datetime],
@@ -238,32 +237,31 @@ class BootstrapHazardCurve:
 
         self.ref_date=ref_date
         self.trade_date=trade_date
-        self.maturity_date=maturity_date
         self.dc=dc
         self.RR=RR
         self.payment_dates_bootstrapp=payment_dates
         self.market_spreads=market_spreads
 
 
-    def par_spread(self, dc_survival: SurvivalCurve, payment_dates: List(datetime)):
+    def par_spread(self, dc_survival, maturity_date, payment_dates: List[datetime]):
         integration_step= relativedelta.relativedelta(days=365)
         premium_period_start = self.ref_date
         prev_date=self.ref_date
-        current_date=min(prev_date+integration_step, self.maturity_date)
-        dc_valuation_date=self.dc.value(self.ref_date, self.maturity_date)
+        current_date=min(prev_date+integration_step, maturity_date)
+        dc_valuation_date=self.dc.value(self.ref_date, maturity_date)
         risk_adj_factor_protection=0
         risk_adj_factor_premium=0
         risk_adj_factor_accrued=0
 
-        while current_date <= self.maturity_date:
+        while current_date <= maturity_date:
             default_prob = dc_survival.value(self.ref_date, prev_date)-dc_survival.value(self.ref_date, current_date)
             risk_adj_factor_protection += self.dc.value(self.ref_date, current_date) * default_prob
             prev_date = current_date
             current_date += integration_step
         
-        if prev_date < self.maturity_date and current_date > self.maturity_date:
-            default_prob = dc_survival.value(self.ref_date, prev_date)-dc_survival.value(self.ref_date, self.maturity_date)
-            risk_adj_factor_protection += self.dc.value(self.ref_date, self.maturity_date)  * default_prob
+        if prev_date < maturity_date and current_date > maturity_date:
+            default_prob = dc_survival.value(self.ref_date, prev_date)-dc_survival.value(self.ref_date, maturity_date)
+            risk_adj_factor_protection += self.dc.value(self.ref_date, maturity_date)  * default_prob
 
 
         for premium_payment in payment_dates:
@@ -284,7 +282,7 @@ class BootstrapHazardCurve:
         return par_spread_i
 
     def create_survival(self, dates: List[datetime], hazard_rates: List[float]):
-        return SurvivalCurve('survival_curve', self.refdate, dates, hazard_rates)
+        return self.SurvivalCurve('survival_curve', self.refdate, dates, hazard_rates)
     
     def calibration_error(x, self, mkt_par_spread, ref_date, trade_date, payment_dates, dates, hazard_rates):
         hazard_rates[-1] = x

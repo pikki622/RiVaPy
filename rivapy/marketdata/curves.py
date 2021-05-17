@@ -223,17 +223,16 @@ class BootstrapHazardCurve:
                     RR: float,
                     payment_dates: List[datetime],
                     market_spreads: List[float] ):
-        """Hazard rate curve
+        """[summary]
 
         Args:
             ref_date (datetime): [description]
             trade_date (datetime): [description]
-            maturity_date (datetime): [description]
             dc (DiscountCurve): [description]
             RR (float): [description]
-            payment_cyle (float): [description]
+            payment_dates (List[datetime]): [description]
             market_spreads (List[float]): [description]
-        """                    
+        """                      
 
         self.ref_date=ref_date
         self.trade_date=trade_date

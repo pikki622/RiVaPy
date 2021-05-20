@@ -6,12 +6,13 @@ import math
 import dateutil.relativedelta as relativedelta
 from typing import List
 import scipy.optimize
+import pandas as pd
 
 
 from pyvacon.finance.marketdata import EquityForwardCurve as _EquityForwardCurve
 
 from rivapy.enums import DayCounterType, InterpolationType, ExtrapolationType
-#from rivapy.marketdata import DiscountCurve
+from pyvacon.finance.marketdata import SurvivalCurve as _SurvivalCurve
 
 
 from pyvacon.finance.marketdata import DiscountCurve as _DiscountCurve
@@ -240,7 +241,7 @@ class BootstrapHazardCurve:
         self.RR=RR
         self.payment_dates_bootstrapp=payment_dates
         self.market_spreads=market_spreads
-
+        self._pyvacon_obj = None
 
     def par_spread(self, dc_survival, maturity_date, payment_dates: List[datetime]):
         integration_step= relativedelta.relativedelta(days=365)
@@ -262,7 +263,6 @@ class BootstrapHazardCurve:
             default_prob = dc_survival.value(self.ref_date, prev_date)-dc_survival.value(self.ref_date, maturity_date)
             risk_adj_factor_protection += self.dc.value(self.ref_date, maturity_date)  * default_prob
 
-
         for premium_payment in payment_dates:
             if premium_payment >= self.ref_date:
                 period_length = ((premium_payment-premium_period_start).days)/360
@@ -281,13 +281,13 @@ class BootstrapHazardCurve:
         return par_spread_i
 
     def create_survival(self, dates: List[datetime], hazard_rates: List[float]):
-        return self.SurvivalCurve('survival_curve', self.refdate, dates, hazard_rates)
+        return _SurvivalCurve('survival_curve', self.refdate, dates, hazard_rates)
     
-    def calibration_error(x, self, mkt_par_spread, ref_date, trade_date, payment_dates, dates, hazard_rates):
+    def calibration_error(x, self, mkt_par_spread, ref_date, payment_dates, dates, hazard_rates):
         hazard_rates[-1] = x
         maturity_date = dates[-1]
         dc_surv = self.create_survival(ref_date, dates, hazard_rates)
-        return  mkt_par_spread - self.par_spread(ref_date, trade_date, dc_surv, payment_dates, maturity_date, self.dc, self.RR)
+        return  mkt_par_spread - self.par_spread(dc_surv, maturity_date, payment_dates)
 
 
     def calibrate_hazard_rate(self):
@@ -295,10 +295,41 @@ class BootstrapHazardCurve:
         hazard_rates=[0.0]
         for i in range(len(self.payment_dates_bootstrapp)):
             payment_dates_iter = self.payment_dates_bootstrapp[i]
-            mkt_par_spread_iter = self.mkt_par_spread[i]
+            mkt_par_spread_iter = self.market_spreads[i]
             sc_dates.append(payment_dates_iter[-1])
             hazard_rates.append(hazard_rates[-1])
-            sol=scipy.optimize.root_scalar(self.calibration_error,args=(mkt_par_spread_iter, self.ref_date, self.trade_date, 
-                            payment_dates_iter, self.dc_new, sc_dates, hazard_rates, self.RR),method='brentq',bracket=[0,3],xtol=1e-8,rtol=1e-8)
+            sol=scipy.optimize.root_scalar(self.calibration_error,args=(mkt_par_spread_iter, self.ref_date, 
+                            payment_dates_iter, sc_dates, hazard_rates),method='brentq',bracket=[0,3],xtol=1e-8,rtol=1e-8)
             hazard_rates[-1] = sol.root
-        return self.create_survival(self.ref_date, sc_dates, hazard_rates), hazard_rates
+        return  hazard_rates, sc_dates #self.create_survival(self.ref_date, sc_dates, hazard_rates)#.value, hazard_rates
+
+    # def hazard_rates(self):
+    #     #hazard_rates_value=[]
+    #     hazard_rates_value=self.calibrate_hazard_rate()
+    #     return self.hazard_rates_value
+
+    # def value(self, refdate: Union[date, datetime], d: Union[date, datetime])->float:
+    #     """Return discount factor for a given date
+
+    #     Args:
+    #         refdate (Union[date, datetime]): The reference date. If the reference date is in the future (compared to the curves reference date), the forward discount factor will be returned.
+    #         d (Union[date, datetime]): The date for which the discount factor will be returned
+
+    #     Returns:
+    #         float: discount factor
+    #     """
+    #     #if not isinstance(refdate, datetime):
+    #     #    refdate = datetime(refdate,0,0,0)
+    #     #if not isinstance(d, datetime):
+    #     #    d = datetime(d,0,0,0)
+    #     #if refdate < self.refdate:
+    #     #    raise Exception('The given reference date is before the curves reference date.')
+    #     return self._get_pyvacon_obj().value(refdate, d)
+
+    # def _get_pyvacon_obj(self):
+    #     if self._pyvacon_obj is None:
+    #         self._pyvacon_obj = _SurvivalCurve('survival_curve', self.refdate, 
+    #                                         self.calibrate_hazard_rate[1], self.calibrate_hazard_rate[0])                                    
+    #     return self._pyvacon_obj
+
+        

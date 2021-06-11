@@ -125,13 +125,15 @@ class VolatilitySurface:
         self.vol_param = vol_param
         self._pyvacon_obj = None  
            
-    def _get_pyvacon_obj(self):
+    def _get_pyvacon_obj(self, fwd_curve=None):
         if self._pyvacon_obj is None:
+            if fwd_curve is None:
+                fwd_curve = self.forward_curve
             self._pyvacon_obj = _mkt_data.VolatilitySurface(self.id, self.refdate, \
-                self.forward_curve._get_pyvacon_obj(),self.daycounter.name, self.vol_param._get_pyvacon_obj())
+                fwd_curve._get_pyvacon_obj(),self.daycounter.name, self.vol_param._get_pyvacon_obj())
         return self._pyvacon_obj
     
-    def calc_implied_vol(self, refdate: datetime, expiry: datetime, strike: float)->float:
+    def calc_implied_vol(self,  expiry: datetime, strike: float, refdate: datetime = None, forward_curve=None)->float:
         """Calculate implied volatility
 
         Args:
@@ -146,43 +148,22 @@ class VolatilitySurface:
             float: Implied volatility.
         """
         # convert strike into x_strike 
-        forward_curve_obj = self.forward_curve._get_pyvacon_obj() 
+        if refdate is None:
+            refdate = self.forward_curve.refdate
+        if forward_curve is None and self.forward_curve is None:
+            raise Exception('Please specify a forward curve')
+        vol = self._get_pyvacon_obj()
+        if forward_curve is None:
+            forward_curve = self.forward_curve
+        elif self.forward_curve is not None:
+            vol = _mkt_data.VolatilitySurface.createVolatilitySurfaceShiftedFwd(vol, forward_curve._get_pyvacon_obj())
+        forward_curve_obj = forward_curve._get_pyvacon_obj() 
         x_strike = _utils.computeXStrike(strike, forward_curve_obj.value(refdate, expiry), forward_curve_obj.discountedFutureCashDivs(refdate, expiry))
         if x_strike < 0:
             raise Exception(f'The given strike value seems implausible compared to the discounted future cash dividends\
                 ({forward_curve_obj.discountedFutureCashDivs(refdate, expiry)}).')
-        vol = self._get_pyvacon_obj()
         return vol.calcImpliedVol(refdate, expiry, x_strike)
-    
-    
-    def shift_fwd_curve(self, id: str, shifted_forward_curve, stickyness_assumption=None):
-        """Creates a new volatility surface using a shifted forward curve.
-
-        Args:
-            id (str): Identifier (name) of the shifted volatility surface.
-            shifted_forward_curve ([type]): Shifted equity forward curve.
-
-
-        Returns:
-            VolatilitySurface: Shifted volatility surface.
-        """
-        return VolatilitySurfaceShifted(id, self.refdate, shifted_forward_curve, self.daycounter, self.vol_param, self.forward_curve, stickyness_assumption)
-            
-    def shift_fwd_spot(self, id: str,  shifted_spot: float):
-        """Creates a new volatility surface using a shifted spot (ceteris paribus).
-
-        Args:
-            id (str): Identifier (name) of the shifted volatility surface.
-            shifted_spot (float): Shifted spot.
-
-        Returns:
-           VolatilitySurface: Shifted volatility surface.
-        """
-        shifted_forward_curve = EquityForwardCurve(shifted_spot, self.forward_curve.fc , self.forward_curve.bc, self.forward_curve.div)
-        # old_old return VolatilitySurface(self.id, self.refdate, shifted_forward_curve, self.daycounter, self.vol_param)
-        return VolatilitySurface(id, self.refdate, shifted_forward_curve, self.daycounter, self.vol_param, _vol_shift="fwd" )
-    # old _mkt_data.VolatilitySurface.createVolatilitySurfaceShiftedFwd(self._get_pyvacon_obj(),shifted_forward_curve._get_pyvacon_obj())
-    
+      
     @staticmethod        
     def set_stickyness(vol_stickyness: enums.VolatilityStickyness):
         if vol_stickyness is enums.VolatilityStickyness.StickyXStrike:
@@ -196,38 +177,3 @@ class VolatilitySurface:
         else:
             raise Exception ('Error')
 
-class VolatilitySurfaceShifted():
-
-    def __init__(self, id: str, refdate: datetime, shifted_forward_curve, daycounter, vol_param, old_forward_curve, stickyness_assumption):
-        self.id = id
-        self.refdate = refdate
-        self.shifted_forward_curve = shifted_forward_curve
-        self.daycounter = daycounter
-        self.vol_param = vol_param
-        self.old_forward_curve = old_forward_curve
-        self.stickyness_assumption = stickyness_assumption
-        self._pyvacon_obj = None 
-        
-    def _get_pyvacon_obj(self):
-        if self._pyvacon_obj is None:
-            self._pyvacon_obj = _mkt_data.VolatilitySurface(self.id, self.refdate, \
-                self.shifted_forward_curve._get_pyvacon_obj(),self.daycounter.name, self.vol_param._get_pyvacon_obj())
-        return self._pyvacon_obj
-    
-         
-    def calc_implied_vol(self, refdate: datetime, expiry: datetime, strike: float)->float:
-        shifted_forward_curve_obj = self.shifted_forward_curve._get_pyvacon_obj()
-        old_forward_curve_obj =  self.old_forward_curve._get_pyvacon_obj()
-        
-        if self.stickyness_assumption == enums.VolatilityStickyness.StickyStrike:
-            x_strike = _utils.computeXStrike(strike, shifted_forward_curve_obj.value(refdate, expiry), shifted_forward_curve_obj.discountedFutureCashDivs(refdate, expiry))
-        elif self.stickyness_assumption == enums.VolatilityStickyness.StickyXStrike:
-            x_strike = _utils.computeXStrike(strike, old_forward_curve_obj.value(refdate, expiry), old_forward_curve_obj.discountedFutureCashDivs(refdate, expiry))
-        elif self.stickyness_assumption == enums.VolatilityStickyness.StickyFwdMoneyness:
-            moneyness = strike/old_forward_curve_obj.value(refdate, expiry)
-            calc_strike =  shifted_forward_curve_obj.value(refdate, expiry) * moneyness
-            x_strike = _utils.computeXStrike(calc_strike, shifted_forward_curve_obj.value(refdate, expiry), shifted_forward_curve_obj.discountedFutureCashDivs(refdate, expiry))
-        if x_strike < 0:
-            raise Exception('The given strike value seems implausible compared to the discounted future cash dividends')
-        vol = self._get_pyvacon_obj()
-        return vol.calcImpliedVol(refdate, expiry, x_strike)

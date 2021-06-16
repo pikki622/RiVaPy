@@ -1,4 +1,4 @@
-
+import numpy as np
 from pyvacon.pyvacon_swig import GlobalSettings
 from rivapy import enums
 from typing import List, Union, Tuple
@@ -101,13 +101,48 @@ class VolatilityParametrizationSSVI:
         self.gamma = gamma
         self._pyvacon_obj = None
 
-        
+    def calc_implied_vol(self, ttm, strike):
+        return self._get_pyvacon_obj().calcImpliedVol(ttm, strike)
+
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
             self._pyvacon_obj = _mkt_data.VolatilityParametrizationSSVI(self.expiries, self.fwd_atm_vols, self.rho, self.eta, self.gamma)  
         return self._pyvacon_obj
     
+class VolatilityGridParametrization:
+    def __init__(self, expiries: np.array, strikes: np.ndarray, vols: np.ndarray):
+        self.expiries = expiries
+        self.strikes = strikes
+        self.vols = vols
+        self._pyvacon_obj = None
+
+    def calc_implied_vol(self, ttm, strike):
+        return self._get_pyvacon_obj().calcImpliedVol(ttm, strike)
+
+    def _get_pyvacon_obj(self):
+        if self._pyvacon_obj is None:
+            vol_params = []
+            for i in self.expiries.shape[0]:
+                vol_params.append(_mkt_data.VolSliceParametrizationSpline(self.strikes[i,:], self._volas[i]))
+            self._pyvacon_obj = _mkt_data.VolatilityParametrizationTimeSlice(self.expiries, self.strikes, self.vols)  
+        return self._pyvacon_obj
+    
 class VolatilitySurface:
+    @staticmethod
+    def _create_param_pyvacon_obj(vol_param):
+        if hasattr(vol_param, '_get_pyvacon_obj'):
+            return vol_param._get_pyvacon_obj()
+        if hasattr(vol_param, 'expiries'):
+            expiries = vol_param.expiries
+        else:
+            expiries = np.linspace(0.0, 4.0, 13, endpoint=True)
+        strikes = np.linspace(0.4, 1.6, num=100)
+        vols = np.empty(expiries.shape[0], strikes.shape[0])
+        for i in range(expiries.shape[0]):
+            for j in range(expiries.shape[0]):
+                vols[i,j] = vol_param.calc_implied_vol(expiries[i], vols[j])
+        return VolatilityGridParametrization(expiries, strikes, vols)
+
     def __init__(self, id: str, refdate: datetime, forward_curve, daycounter, vol_param):
         """Volatility surface
 
@@ -129,8 +164,9 @@ class VolatilitySurface:
         if self._pyvacon_obj is None:
             if fwd_curve is None:
                 fwd_curve = self.forward_curve
-            self._pyvacon_obj = _mkt_data.VolatilitySurface(self.id, self.refdate, \
-                fwd_curve._get_pyvacon_obj(),self.daycounter.name, self.vol_param._get_pyvacon_obj())
+            self._pyvacon_obj = _mkt_data.VolatilitySurface(self.id, self.refdate,
+                fwd_curve._get_pyvacon_obj(),self.daycounter.name, 
+                VolatilitySurface._get_pyvacon_obj(self.vol_param))
         return self._pyvacon_obj
     
     def calc_implied_vol(self,  expiry: datetime, strike: float, refdate: datetime = None, forward_curve=None)->float:

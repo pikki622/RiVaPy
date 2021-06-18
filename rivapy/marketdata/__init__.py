@@ -1,5 +1,4 @@
 import numpy as np
-from pyvacon.pyvacon_swig import GlobalSettings
 from rivapy import enums
 from typing import List, Union, Tuple
 from rivapy.marketdata.curves import *
@@ -111,7 +110,20 @@ class VolatilityParametrizationSSVI:
     
 class VolatilityGridParametrization:
     def __init__(self, expiries: np.array, strikes: np.ndarray, vols: np.ndarray):
+        """Grid parametrization
+        This parametrization stores a set of strike-vol grids for a given list of expiries and computes a volatility by
+        - search for the neighboring expiries
+        - apply a splien interpolation in each expiry to get the respective volatility
+        - apply a linear interpolation (in total variance)
+
+        Args:
+            expiries (np.array): An array of the expiries.
+            strikes (np.ndarray): 
+            vols (np.ndarray): Two dimensional array of volatilities where each row i contains the values for expiry i
+        """
         self.expiries = expiries
+        if len(strikes.shape)==1:
+            strikes = [strikes]*expiries.shape[0]
         self.strikes = strikes
         self.vols = vols
         self._pyvacon_obj = None
@@ -122,8 +134,6 @@ class VolatilityGridParametrization:
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
             vol_params = []
-            for i in self.expiries.shape[0]:
-                vol_params.append(_mkt_data.VolSliceParametrizationSpline(self.strikes[i,:], self._volas[i]))
             self._pyvacon_obj = _mkt_data.VolatilityParametrizationTimeSlice(self.expiries, self.strikes, self.vols)  
         return self._pyvacon_obj
     

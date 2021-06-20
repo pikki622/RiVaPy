@@ -1,5 +1,4 @@
 import numpy as np
-from pyvacon.pyvacon_swig import GlobalSettings
 from rivapy import enums
 from typing import List, Union, Tuple
 from rivapy.marketdata.curves import *
@@ -80,7 +79,57 @@ class VolatilityParametrizationTerm:
         if self._pyvacon_obj is None:
             self._pyvacon_obj = _mkt_data.VolatilityParametrizationTerm(self.expiries, self.fwd_atm_vols)  
         return self._pyvacon_obj
-    
+
+class   VolatilityParametrizationSVI:
+    def __init__(self, expiries: List[float], svi_params: List[Tuple]):
+        """Raw SVI parametrization (definition 3.1 in  https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2033323)
+
+            ..math:
+                w(k) = a + b(\rho (k-m) + \sqrt{(k-m)^2+\sigma^2 })
+        Args:
+            expiries (List[float]): List of expiries (sorted from nearest to farest)
+            svi_params (List): List of SVI parameters (one Tuple for each expiry). Tuple in the order (a, b, rho, m, sigma)
+
+        """
+        self.expiries = np.array(expiries)
+        self._x = self._get_x(svi_params)
+
+    def get_params_at_expiry(self, expiry: int)->np.array:
+        return self._x[5*expiry:5*(expiry+1)]
+
+    def calc_implied_vol(self, ttm, strike):
+        i = np.searchsorted(self.expiries, ttm)
+        if i == 0 or i == self.expiries.shape[0]:
+            if i == self.expiries.shape[0]:
+                i -= 1
+            return np.sqrt(self._w(i,np.log(strike))/ttm)
+        w0 = self._w(i-1,np.log(strike))
+        w1 = self._w(i,np.log(strike))
+        #linear n total variance
+        delta_t = self.expiries[i]-self.expiries[i-1]
+        w = ((self.expiries[i]-ttm)*w0 + (ttm-self.expiries[i-1])*w1)/delta_t
+        return np.sqrt(w/ttm)
+
+    def _w(self, expiry: int, k: float):
+        p = self.get_params_at_expiry(expiry)
+        return p[0] + p[1]*(p[2] * (k-p[3])+np.sqrt((k-p[3])**2+p[4]**2))
+
+    def _get_x(self, svi_params)->np.array:
+        x = np.empty(len(svi_params)*5)
+        j=0
+        for i in range(len(svi_params)):
+            for k in range(5):
+                x[j] = svi_params[i][k]
+                j += 1
+        return x
+        
+    @classmethod
+    def _transform()
+    def _set_param(self, x)->np.array:
+        self._x = x
+
+   
+
 class VolatilityParametrizationSSVI:
     def __init__(self, expiries: List[float], fwd_atm_vols: List[float], rho: float, eta: float, gamma: float):
         """SSVI volatility parametrization
@@ -213,3 +262,11 @@ class VolatilitySurface:
         else:
             raise Exception ('Error')
 
+if __name__=='__main__':
+    svi = VolatilityParametrizationSVI(expiries=np.array([1.0/365.0, 1.0]), svi_params=[
+        (0.0001, 0.1, -0.5, 0.0, 0.0001),
+        (0.2, 0.1, -0.5, 0.0, 0.4),
+    ])
+    expiry = 1.0/365.0
+    x_strike = 1.0
+    svi.calc_implied_vol(expiry, x_strike)

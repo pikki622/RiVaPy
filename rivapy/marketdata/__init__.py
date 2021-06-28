@@ -123,8 +123,6 @@ class   VolatilityParametrizationSVI:
                 j += 1
         return x
         
-    @classmethod
-    def _transform()
     def _set_param(self, x)->np.array:
         self._x = x
 

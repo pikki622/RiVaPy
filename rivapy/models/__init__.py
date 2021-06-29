@@ -37,7 +37,7 @@ class LocalVol:
         eps = 1e-8
         min_lv = 0.001
         max_lv = 2.5
-        inv_dt = 1.0/time_grid[1:]-time_grid[:-1]
+        inv_dt = 1.0/(time_grid[1:]-time_grid[:-1])
 
         dyw = fd1a*tiv[:,:-2] + fd1b*tiv[:,1:-1] + fd1c*tiv[:,2:]
         dyyw = fd2a*tiv[:,:-2] + fd2b*tiv[:,1:-1] + fd2c*tiv[:,2:]

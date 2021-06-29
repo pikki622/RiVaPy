@@ -53,6 +53,44 @@ class LocalVol:
         local_var[-1,:] = local_var[-2,:]
         return local_var
 
+
+    def apply_mc_step(self, ln_x0, x0, t0, t1, rnd):
+        drift, vol = self.get_SDE_coeff(t0, x0)
+        return ln_x0 + drift*(t1-t0) + vol*np.sqrt(t1-t0)*rnd
+
+class HestonModel:
+    def __init__(self, long_run_variance, mean_reversion_speed, vol_of_vol, initial_variance, correlation, drift_stock: np.array):
+        self._long_run_variance = long_run_variance
+        self._mean_reversion_speed = mean_reversion_speed
+        self._vol_of_vol = vol_of_vol
+        self._initial_variance = initial_variance
+        self._correlation = correlation
+        self._drift_stock = interpolation.interp1d(time_grid, drift_stock)
+
+
+    def get_SDE_coeff(self, t, x):
+        #variance = self._variance(x, t)
+        drift = self._drift(t) - 0.5*variance
+        vol = np.sqrt(variance)
+        return drift, vol
+class HestonLocalVol:
+    def __init__(self, stoch_vol,  vol_param, x_strikes: np.array, time_grid: np.array, drift_stock: np.array):
+        self._stoch_vol = stoch_vol
+        self._local_vol = LocalVol(vol_param, x_strikes, time_grid, drift_stock)
+        self._stoch_local_variance = np.empty(shape=(time_grid.shape[0], x_strikes.shape[0]))
+
+    @staticmethod
+    def calibrate_MC(stoch_vol,  vol_param, x_strikes: np.array, time_grid: np.array, drift_stock: np.array, local_var: np.ndarray=None):
+        if local_var is None:
+            local_var = LocalVol.compute_local_var(vol_param, x_strikes, time_grid)
+
+    @staticmethod    
+    def apply_mc_step(ln_x0, x0, t0, t1, rnd, model):
+        drift, vol = model.get_SDE_coeff(t0, x0)
+        #print(vol)
+        #ln_x0 += drift*(t1-t0) + vol*np.sqrt(t1-t0)*rnd
+        return ln_x0 + drift*(t1-t0) + vol*np.sqrt(t1-t0)*rnd
+
 if __name__=='__main__':
     import rivapy.marketdata as mktdata
     ssvi = mktdata.VolatilityParametrizationSSVI(expiries=[1.0/365, 30/365, 0.5, 1.0], fwd_atm_vols=[0.25, 0.3, 0.28, 0.25], rho=-0.9, eta=0.5, gamma=0.5)

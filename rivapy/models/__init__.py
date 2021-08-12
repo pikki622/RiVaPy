@@ -20,13 +20,14 @@ class LocalVol:
     @staticmethod
     def compute_local_var(vol_param, x_strikes: np.array, time_grid: np.array):
         # setup grids 
+        eps = 1e-8
         log_x_strikes = np.log(x_strikes)
         iv = np.empty(shape=(time_grid.shape[0], x_strikes.shape[0])) #implied variance grid
         for i in range(time_grid.shape[0]):
             for j in range(x_strikes.shape[0]):
                 iv[i,j] = vol_param.calc_implied_vol(time_grid[i], x_strikes[j])
         iv *= iv
-        tiv = (time_grid*iv.T).T
+        tiv = np.maximum((time_grid*iv.T).T, eps)
         h = log_x_strikes[1:] - log_x_strikes[:-1]
         hm = h[:-1]
         hp = h[1:]
@@ -37,7 +38,6 @@ class LocalVol:
         fd2c = 2.0 / (hp*(hm + hp))
         fd2b = -(fd2a + fd2c)
 
-        eps = 1e-8
         min_lv = 0.001
         max_lv = 2.5
         inv_dt = 1.0/(time_grid[1:]-time_grid[:-1])
@@ -63,13 +63,12 @@ class LocalVol:
 
 class HestonModel:
     def __init__(self, long_run_variance, mean_reversion_speed, vol_of_vol, 
-                initial_variance, correlation, drift_stock):
+                initial_variance, correlation):
         self._long_run_variance = long_run_variance
         self._mean_reversion_speed = mean_reversion_speed
         self._vol_of_vol = vol_of_vol
         self._initial_variance = initial_variance
         self._correlation = correlation
-        self._drift_stock = drift_stock
 
     def apply_mc_step(self, x: np.ndarray, t0: float, t1: float, rnd: np.ndarray, inplace: bool = True):
         """Apply a MC-Euler step for the Heston Model for n different paths.
@@ -84,17 +83,15 @@ class HestonModel:
             x_ = x.copy()
         else:
             x_ = x
-        rnd_S = rnd[:,0]
+        rnd_corr_S = np.sqrt(1.0-self._correlation**2)*rnd[:,0] + self._correlation*rnd[:,1]
         rnd_V = rnd[:,1]
-        rnd_corr_S = np.sqrt(1.0-self._correlation**2)*rnd_S + self._correlation*rnd_V
         S = x_[:,0]
         v = x_[:,1]
         dt = t1-t0
         sqrt_dt = np.sqrt(dt)
-        log_s = (self._drift_stock(t0) - 0.5*v)*(t1-t0) + np.sqrt(v)*rnd_corr_S*np.sqrt(t1-t0)
-        S *= np.exp(log_s)
+        S *= np.exp(- 0.5*v*dt + np.sqrt(v)*rnd_corr_S*sqrt_dt)
         v += self._mean_reversion_speed*(self._long_run_variance-v)*dt + self._vol_of_vol*np.sqrt(v)*rnd_V*sqrt_dt
-        v = np.max(v,0)
+        x_[:,1] = np.maximum(v,0)
         return x_
         
 class HestonLocalVol:
@@ -157,6 +154,8 @@ class HestonLocalVol:
             apply_mc_step(x, time_grid[i-1], time_grid[i], rnd, stoch_local_variance[i-1])
             kr = kernel_regression.KernelRegression().fit(x[:,0:1],x[:,1])
             stoch_local_variance[i] = kr.predict(x_strikes.reshape((-1,1)))
+            
+            
         return stoch_local_variance
 
     @staticmethod    
@@ -173,21 +172,34 @@ if __name__=='__main__':
     #time_grid = np.linspace(0.0, 1.0, 80)
     #LocalVol.compute_local_var(ssvi, x_strikes, time_grid)
 
-    ssvi = mktdata.VolatilityParametrizationSSVI(expiries=[1.0/365, 30/365, 0.5, 1.0], fwd_atm_vols=[0.25, 0.3, 0.28, 0.25], rho=-0.9, eta=0.5, gamma=0.5)
+    import pickle
+    with open('~/doeltz/development/RiVaPy/notebooks/models/depp.pck', 'rb') as f:
+        heston_grid_param = pickle.load(f)
+    heston = HestonModel(long_run_variance=0.3**2, 
+                            mean_reversion_speed=0.5, 
+                            vol_of_vol=0.2, 
+                            initial_variance=0.1**2, 
+                            correlation = -0.9)
     x_strikes = np.linspace(0.7, 1.3, 50)
     time_grid = np.linspace(0.0, 1.0, 80)
-    heston = HestonModel(long_run_variance=0.2**2, 
-                            mean_reversion_speed=2.0, 
-                            vol_of_vol=0.1, 
-                            initial_variance=0.1**2, 
-                            correlation = -0.9, 
-                            drift_stock=lambda x: 0)
-    heston_lv = HestonLocalVol.calibrate_MC(heston, ssvi,  x_strikes=x_strikes, 
-                                                time_grid=time_grid, drift_stock=np.zeros(time_grid.shape),
-                                                n_sims=1000) 
+    heston_lv = HestonLocalVol(heston)
+    heston_lv.calibrate_MC(heston_grid_param,  x_strikes=x_strikes, time_grid=time_grid, n_sims=1000) 
 
-    import matplotlib.pyplot as plt
-    time_index = 0
-    plt.plot(x_strikes, heston_lv._stoch_local_variance[time_index])
-    plt.plot(x_strikes, heston_lv._local_vol._local_variance[time_index])
-    plt.show()
+    # ssvi = mktdata.VolatilityParametrizationSSVI(expiries=[1.0/365, 30/365, 0.5, 1.0], fwd_atm_vols=[0.25, 0.3, 0.28, 0.25], rho=-0.9, eta=0.5, gamma=0.5)
+    # x_strikes = np.linspace(0.7, 1.3, 50)
+    # time_grid = np.linspace(0.0, 1.0, 80)
+    # heston = HestonModel(long_run_variance=0.2**2, 
+    #                         mean_reversion_speed=2.0, 
+    #                         vol_of_vol=0.1, 
+    #                         initial_variance=0.1**2, 
+    #                         correlation = -0.9, 
+    #                         drift_stock=lambda x: 0)
+    # heston_lv = HestonLocalVol.calibrate_MC(heston, ssvi,  x_strikes=x_strikes, 
+    #                                             time_grid=time_grid, drift_stock=np.zeros(time_grid.shape),
+    #                                             n_sims=1000) 
+
+    # import matplotlib.pyplot as plt
+    # time_index = 0
+    # plt.plot(x_strikes, heston_lv._stoch_local_variance[time_index])
+    # plt.plot(x_strikes, heston_lv._local_vol._local_variance[time_index])
+    # plt.show()

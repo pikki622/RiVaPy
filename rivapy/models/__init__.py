@@ -1,7 +1,9 @@
 import bisect
 import numpy as np
 from numpy.core.fromnumeric import var
+import scipy
 import scipy.interpolate as interpolation
+#from scipy.integrate import quad, quad_vec
 import rivapy.numerics.kernel_regression as kernel_regression
 
 def _interpolate_2D(time_grid, strikes, f, x, t):
@@ -91,7 +93,8 @@ class LocalVol:
         #print(lv.shape)
         S *= np.exp(- 0.5*lv*dt + np.sqrt(lv)*rnd[:,0]*sqrt_dt)
         return x_
-
+ 
+    
 class HestonModel:
     def __init__(self, long_run_variance, mean_reversion_speed, vol_of_vol, 
                 initial_variance, correlation):
@@ -100,6 +103,36 @@ class HestonModel:
         self._vol_of_vol = vol_of_vol
         self._initial_variance = initial_variance
         self._correlation = correlation
+
+    def _characteristic_func(self, xi, s0, v0, tau):
+        ixi = 1j * xi
+        d = np.sqrt((self._mean_reversion_speed - ixi * self._correlation * self._vol_of_vol)**2
+                       + self._vol_of_vol**2 * (ixi + xi**2))
+        g = (self._mean_reversion_speed - ixi * self._correlation * self._vol_of_vol - d) / (self._mean_reversion_speed - ixi * self._correlation * self._vol_of_vol + d)
+        ee = np.exp(-d * tau)
+        C = ixi * self.r * tau + self._mean_reversion_speed * self.theta / self._vol_of_vol**2 * (
+            (self._mean_reversion_speed - ixi * self._correlation * self._vol_of_vol - d) * tau - 2. * np.log((1 - g * ee) / (1 - g))
+        )
+        D = (self._mean_reversion_speed - ixi * self._correlation * self._vol_of_vol - d) / self._vol_of_vol**2 * (
+            (1 - ee) / (1 - g * ee)
+        )
+        return np.exp(C + D*v0 + ixi * np.log(s0))
+    
+    def call_price(self, s0, v0, K, tau):
+        def integ_func(xi, s0, v0, K, tau, num):
+            ixi = 1j * xi
+            if num == 1:
+                return (self._characteristic_func(xi - 1j, s0, v0, tau) / (ixi * self._characteristic_func(-1j, s0, v0, tau)) * np.exp(-ixi * np.log(K))).real
+            else:
+                return (self._characteristic_func(xi, s0, v0, tau) / (ixi) * np.exp(-ixi * np.log(K))).real
+
+        "Simplified form, with only one integration. "
+        h = lambda xi: s0 * integ_func(xi, s0, v0, K, tau, 1) - K * integ_func(xi, s0, v0, K, tau, 2)
+        res = 0.5 * (s0 - K) + 1/scipy.pi * scipy.integrate.quad_vec(h, 0, 500.)[0]  #vorher 500
+        if tau == 0:
+            res = (s0-K > 0) * (s0-K)
+        return res
+    
 
     def apply_mc_step(self, x: np.ndarray, t0: float, t1: float, rnd: np.ndarray, inplace: bool = True):
         """Apply a MC-Euler step for the Heston Model for n different paths.

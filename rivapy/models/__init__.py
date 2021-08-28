@@ -105,12 +105,14 @@ class HestonModel:
         self._correlation = correlation
 
     def _characteristic_func(self, xi, s0, v0, tau):
+        """Characteristic function needed internally to compute call prices with analytic formula.
+        """
         ixi = 1j * xi
         d = np.sqrt((self._mean_reversion_speed - ixi * self._correlation * self._vol_of_vol)**2
                        + self._vol_of_vol**2 * (ixi + xi**2))
         g = (self._mean_reversion_speed - ixi * self._correlation * self._vol_of_vol - d) / (self._mean_reversion_speed - ixi * self._correlation * self._vol_of_vol + d)
         ee = np.exp(-d * tau)
-        C = ixi * self.r * tau + self._mean_reversion_speed * self.theta / self._vol_of_vol**2 * (
+        C = self._mean_reversion_speed * self._long_run_variance / self._vol_of_vol**2 * (
             (self._mean_reversion_speed - ixi * self._correlation * self._vol_of_vol - d) * tau - 2. * np.log((1 - g * ee) / (1 - g))
         )
         D = (self._mean_reversion_speed - ixi * self._correlation * self._vol_of_vol - d) / self._vol_of_vol**2 * (
@@ -119,6 +121,14 @@ class HestonModel:
         return np.exp(C + D*v0 + ixi * np.log(s0))
     
     def call_price(self, s0, v0, K, tau):
+        """Computes a call price for the Heston model via integration over characteristic function.
+
+        Args:
+            s0 ([type]): 
+            v0 ([type]): [description]
+            K ([type]): [description]
+            tau ([type]): [description]
+        """
         def integ_func(xi, s0, v0, K, tau, num):
             ixi = 1j * xi
             if num == 1:

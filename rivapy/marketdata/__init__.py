@@ -166,7 +166,6 @@ class VolatilityParametrizationSABR:
         return self._x[4*expiry:4*(expiry+1)]
     
     def calc_implied_vol(self, ttm, strike):
-        T = ttm
         K = strike
         alpha = self.get_params_at_expiry(ttm)[0] 
         ny = self.get_params_at_expiry(ttm)[1]
@@ -178,10 +177,10 @@ class VolatilityParametrizationSABR:
         chi_zeta = np.log((np.sqrt(1-2*rho*zeta+zeta**2)+zeta-rho)/(1-rho))
 
         if f == K:
-            sigma = alpha*(1+((1-beta)**2/24*alpha**2/f**(2-2*beta)+1/4*rho*beta*ny*alpha/f**(1-beta)+(2-3*rho**2)/24*ny**2)*T)/f**(1-beta)
+            sigma = alpha*(1+((1-beta)**2/24*alpha**2/f**(2-2*beta)+1/4*rho*beta*ny*alpha/f**(1-beta)+(2-3*rho**2)/24*ny**2)*ttm)/f**(1-beta)
 
         else:
-            sigma = alpha*(1+((1-beta)**2/24*alpha**2/(f*K)**(1-beta)+1/4*rho*beta*ny*alpha/(f*K)**((1-beta)/2)+(2-3*rho**2)/24*ny**2)*T)/(f*K)**((1-beta)/2)*(1+(1-beta)**2/24*np.log(f/K)**2+(1-beta)**4/1920*np.log(f/K)**4)*zeta/chi_zeta
+            sigma = alpha*(1+((1-beta)**2/24*alpha**2/(f*K)**(1-beta)+1/4*rho*beta*ny*alpha/(f*K)**((1-beta)/2)+(2-3*rho**2)/24*ny**2)*ttm)/(f*K)**((1-beta)/2)*(1+(1-beta)**2/24*np.log(f/K)**2+(1-beta)**4/1920*np.log(f/K)**4)*zeta/chi_zeta
 
         return sigma
 

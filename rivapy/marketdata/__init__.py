@@ -166,16 +166,30 @@ class VolatilityParametrizationSABR:
         return self._x[4*expiry:4*(expiry+1)]
     
     def calc_implied_vol(self, ttm, strike):
+        i = np.searchsorted(self.expiries, ttm)
+        if i == 0 or i == self.expiries.shape[0]:
+            if i == self.expiries.shape[0]:
+                i -= 1
+                
+            return self._s(i,ttm, strike)
+        s0 = self._s(i-1,ttm,strike)
+        s1 = self._s(i,ttm, strike)
+        #linear n total variance
+        delta_t = self.expiries[i]-self.expiries[i-1]
+        s = ((self.expiries[i]-ttm)*s0 + (ttm-self.expiries[i-1])*s1)/delta_t
+        return s
+    
+    def _s(self, i: int, ttm: float, strike: float):
         K = strike
-        alpha = self.get_params_at_expiry(ttm)[0] 
-        ny = self.get_params_at_expiry(ttm)[1]
-        beta = self.get_params_at_expiry(ttm)[2]
-        rho = self.get_params_at_expiry(ttm)[3]
+        alpha = self.get_params_at_expiry(i)[0] 
+        ny = self.get_params_at_expiry(i)[1]
+        beta = self.get_params_at_expiry(i)[2]
+        rho = self.get_params_at_expiry(i)[3]
         f = 1
         
         zeta = ny/alpha*(f*K)**((1-beta)/2)*np.log(f/K)
         chi_zeta = np.log((np.sqrt(1-2*rho*zeta+zeta**2)+zeta-rho)/(1-rho))
-
+        
         if f == K:
             sigma = alpha*(1+((1-beta)**2/24*alpha**2/f**(2-2*beta)+1/4*rho*beta*ny*alpha/f**(1-beta)+(2-3*rho**2)/24*ny**2)*ttm)/f**(1-beta)
 
@@ -183,6 +197,7 @@ class VolatilityParametrizationSABR:
             sigma = alpha*(1+((1-beta)**2/24*alpha**2/(f*K)**(1-beta)+1/4*rho*beta*ny*alpha/(f*K)**((1-beta)/2)+(2-3*rho**2)/24*ny**2)*ttm)/(f*K)**((1-beta)/2)*(1+(1-beta)**2/24*np.log(f/K)**2+(1-beta)**4/1920*np.log(f/K)**4)*zeta/chi_zeta
 
         return sigma
+        
 
     def _get_x(self, sabr_params)->np.array:
         x = np.empty(len(sabr_params)*4)
@@ -235,11 +250,11 @@ class VolatilitySurface:
         else:
             expiries = np.linspace(0.0, 4.0, 13, endpoint=True)
         strikes = np.linspace(0.4, 1.6, num=100)
-        vols = np.empty(expiries.shape[0], strikes.shape[0])
-        for i in range(expiries.shape[0]):
-            for j in range(expiries.shape[0]):
-                vols[i,j] = vol_param.calc_implied_vol(expiries[i], vols[j])
-        return VolatilityGridParametrization(expiries, strikes, vols)
+        vols = np.empty((expiries.size, strikes.size))
+        for i in range(expiries.size):
+            for j in range(strikes.size):
+                vols[i,j] = vol_param.calc_implied_vol(expiries[i], strikes[j])
+        return VolatilityGridParametrization(expiries, strikes, vols)._get_pyvacon_obj()
 
     def __init__(self, id: str, refdate: datetime, forward_curve, daycounter, vol_param):
         """Volatility surface
@@ -264,7 +279,7 @@ class VolatilitySurface:
                 fwd_curve = self.forward_curve
             self._pyvacon_obj = _mkt_data.VolatilitySurface(self.id, self.refdate,
                 fwd_curve._get_pyvacon_obj(),self.daycounter.name, 
-                VolatilitySurface._get_pyvacon_obj(self.vol_param))
+                VolatilitySurface._create_param_pyvacon_obj(self.vol_param))
         return self._pyvacon_obj
     
     def calc_implied_vol(self,  expiry: datetime, strike: float, refdate: datetime = None, forward_curve=None)->float:

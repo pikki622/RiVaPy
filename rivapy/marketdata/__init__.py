@@ -176,8 +176,8 @@ class VolatilityParametrizationSABR:
         s1 = self._s(i,ttm, strike)
         #linear n total variance
         delta_t = self.expiries[i]-self.expiries[i-1]
-        s = ((self.expiries[i]-ttm)*s0 + (ttm-self.expiries[i-1])*s1)/delta_t
-        return s
+        w = ((self.expiries[i]-ttm)*s0**2 + (ttm-self.expiries[i-1])*s1**2)/delta_t
+        return np.sqrt(w/ttm)
     
     def _s(self, i: int, ttm: float, strike: float):
         K = strike

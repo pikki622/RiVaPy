@@ -119,6 +119,23 @@ class VolatilityParametrizationTerm:
             self._pyvacon_obj = _mkt_data.VolatilityParametrizationTerm(self.expiries, self.fwd_atm_vols)  
         return self._pyvacon_obj
 
+class   VolatilityParametrizationSVI2(_VolatilityParametrizationExpiry):
+    def __init__(self, expiries: List[float], svi_params: List[Tuple]):
+        """Raw SVI parametrization (definition 3.1 in  https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2033323)
+
+            ..math:
+                w(k) = a + b(\rho (k-m) + \sqrt{(k-m)^2+\sigma^2 })
+        Args:
+            expiries (List[float]): List of expiries (sorted from nearest to farest)
+            svi_params (List): List of SVI parameters (one Tuple for each expiry). Tuple in the order (a, b, rho, m, sigma)
+
+        """
+        super().__init__(expiries,svi_params)
+
+    def _calc_implied_vol_at_expiry(self, params: List[float], ttm: float, k: float):
+        return params[0] + params[1]*(params[2] * (np.log(k)-params[3])+np.sqrt((np.log(k)-params[3])**2+params[4]**2))# log strike hier reinstecken?
+
+
 class   VolatilityParametrizationSVI:
     def __init__(self, expiries: List[float], svi_params: List[Tuple]):
         """Raw SVI parametrization (definition 3.1 in  https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2033323)

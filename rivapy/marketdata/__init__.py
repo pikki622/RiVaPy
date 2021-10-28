@@ -1,3 +1,4 @@
+import abc
 import numpy as np
 from rivapy import enums
 from typing import List, Union, Tuple
@@ -47,6 +48,44 @@ class DividendTable:
         if self._pyvacon_obj is None:
             self._pyvacon_obj = _mkt_data.DividendTable(self.id, self.refdate, self.ex_dates, self.div_yield, self.div_cash, self.tax_factors, self.pay_dates)
         return self._pyvacon_obj
+
+class _VolatilityParametrizationExpiry:
+    def __init__(self, expiries: List[float], params_at_expiry: List[Tuple]):
+        self.n_params = len(params_at_expiry[0])
+        self.expiries = np.array(expiries)
+        self._x = self._get_x(params_at_expiry)
+    
+    def get_params_at_expiry(self, expiry: int)->np.array:
+        return self._x[self.n_params*expiry:self.n_params*(expiry+1)]
+    
+    def calc_implied_vol(self, ttm, strike):
+        i = np.searchsorted(self.expiries, ttm)
+        if i == 0 or i == self.expiries.shape[0]:
+            if i == self.expiries.shape[0]:
+                i -= 1
+            return np.sqrt(self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i),ttm,strike)/ttm)#warum log strike
+        w0 = self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i-1),self.expiries[i-1],strike)#warum log strike
+        w1 = self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i),self.expiries[i],strike)#warum log strike
+        #linear n total variance
+        delta_t = self.expiries[i]-self.expiries[i-1]
+        w = ((self.expiries[i]-ttm)*w0 + (ttm-self.expiries[i-1])*w1)/delta_t
+        return np.sqrt(w/ttm)
+    
+    @abc.abstractmethod
+    def _calc_implied_vol_at_expiry(self, params, ttm: float, strike: float):
+        pass
+    
+    def _get_x(self, params)->np.array:
+        x = np.empty(len(params)*self.n_params)
+        j = 0
+        for i in range(len(params)):
+            for k in range(self.n_params):
+                x[j] = params[i][k]
+                j += 1
+        return x
+    
+    def _set_param(self, x)->np.array:
+        self._x = x
     
 class VolatilityParametrizationFlat:
     def __init__(self,vol: float):
@@ -80,7 +119,7 @@ class VolatilityParametrizationTerm:
             self._pyvacon_obj = _mkt_data.VolatilityParametrizationTerm(self.expiries, self.fwd_atm_vols)  
         return self._pyvacon_obj
 
-class   VolatilityParametrizationSVI:
+class   VolatilityParametrizationSVI(_VolatilityParametrizationExpiry):
     def __init__(self, expiries: List[float], svi_params: List[Tuple]):
         """Raw SVI parametrization (definition 3.1 in  https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2033323)
 
@@ -91,42 +130,11 @@ class   VolatilityParametrizationSVI:
             svi_params (List): List of SVI parameters (one Tuple for each expiry). Tuple in the order (a, b, rho, m, sigma)
 
         """
-        self.expiries = np.array(expiries)
-        self._x = self._get_x(svi_params)
+        super().__init__(expiries,svi_params)
 
-    def get_params_at_expiry(self, expiry: int)->np.array:
-        return self._x[5*expiry:5*(expiry+1)]
+    def _calc_implied_vol_at_expiry(self, params: List[float], ttm: float, k: float):
+        return params[0] + params[1]*(params[2] * (np.log(k)-params[3])+np.sqrt((np.log(k)-params[3])**2+params[4]**2))# log strike hier reinstecken?
 
-    def calc_implied_vol(self, ttm, strike):
-        i = np.searchsorted(self.expiries, ttm)
-        if i == 0 or i == self.expiries.shape[0]:
-            if i == self.expiries.shape[0]:
-                i -= 1
-            return np.sqrt(self._w(i,np.log(strike))/ttm)
-        w0 = self._w(i-1,np.log(strike))
-        w1 = self._w(i,np.log(strike))
-        #linear n total variance
-        delta_t = self.expiries[i]-self.expiries[i-1]
-        w = ((self.expiries[i]-ttm)*w0 + (ttm-self.expiries[i-1])*w1)/delta_t
-        return np.sqrt(w/ttm)
-
-    def _w(self, expiry: int, k: float):
-        p = self.get_params_at_expiry(expiry)
-        return p[0] + p[1]*(p[2] * (k-p[3])+np.sqrt((k-p[3])**2+p[4]**2))
-
-    def _get_x(self, svi_params)->np.array:
-        x = np.empty(len(svi_params)*5)
-        j=0
-        for i in range(len(svi_params)):
-            for k in range(5):
-                x[j] = svi_params[i][k]
-                j += 1
-        return x
-        
-    def _set_param(self, x)->np.array:
-        self._x = x
-
-   
 
 class VolatilityParametrizationSSVI:
     def __init__(self, expiries: List[float], fwd_atm_vols: List[float], rho: float, eta: float, gamma: float):
@@ -155,36 +163,19 @@ class VolatilityParametrizationSSVI:
         if self._pyvacon_obj is None:
             self._pyvacon_obj = _mkt_data.VolatilityParametrizationSSVI(self.expiries, self.fwd_atm_vols, self.rho, self.eta, self.gamma)  
         return self._pyvacon_obj
-    
-class VolatilityParametrizationSABR:
+
+class VolatilityParametrizationSABR(_VolatilityParametrizationExpiry):
     def __init__(self, expiries: List[float], sabr_params: List[Tuple]):
         
-        self.expiries = np.array(expiries)
-        self._x = self._get_x(sabr_params)
-        
-    def get_params_at_expiry(self, expiry: int)->np.array:
-        return self._x[4*expiry:4*(expiry+1)]
+        super().__init__(expiries,sabr_params)
     
-    def calc_implied_vol(self, ttm, strike):
-        i = np.searchsorted(self.expiries, ttm)
-        if i == 0 or i == self.expiries.shape[0]:
-            if i == self.expiries.shape[0]:
-                i -= 1
-                
-            return self._s(i,ttm, strike)
-        s0 = self._s(i-1,ttm,strike)
-        s1 = self._s(i,ttm, strike)
-        #linear n total variance
-        delta_t = self.expiries[i]-self.expiries[i-1]
-        w = ((self.expiries[i]-ttm)*s0**2 + (ttm-self.expiries[i-1])*s1**2)/delta_t
-        return np.sqrt(w/ttm)
     
-    def _s(self, i: int, ttm: float, strike: float):
+    def _calc_implied_vol_at_expiry(self, params: List[float], ttm: float, strike: float):
         K = strike
-        alpha = self.get_params_at_expiry(i)[0] 
-        ny = self.get_params_at_expiry(i)[1]
-        beta = self.get_params_at_expiry(i)[2]
-        rho = self.get_params_at_expiry(i)[3]
+        alpha = params[0] 
+        ny = params[1] 
+        beta = params[2] 
+        rho = params[3] 
         f = 1
         
         zeta = ny/alpha*(f*K)**((1-beta)/2)*np.log(f/K)
@@ -196,21 +187,8 @@ class VolatilityParametrizationSABR:
         else:
             sigma = alpha*(1+((1-beta)**2/24*alpha**2/(f*K)**(1-beta)+1/4*rho*beta*ny*alpha/(f*K)**((1-beta)/2)+(2-3*rho**2)/24*ny**2)*ttm)/(f*K)**((1-beta)/2)*(1+(1-beta)**2/24*np.log(f/K)**2+(1-beta)**4/1920*np.log(f/K)**4)*zeta/chi_zeta
 
-        return sigma
-        
-
-    def _get_x(self, sabr_params)->np.array:
-        x = np.empty(len(sabr_params)*4)
-        j = 0
-        for i in range(len(sabr_params)):
-            for k in range(4):
-                x[j] = sabr_params[i][k]
-                j += 1
-        return x
-    
-    def _set_param(self, x)->np.array:
-        self._x = x
-    
+        return sigma**2
+            
 class VolatilityGridParametrization:
     def __init__(self, expiries: np.array, strikes: np.ndarray, vols: np.ndarray):
         """Grid parametrization

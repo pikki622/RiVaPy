@@ -56,9 +56,26 @@ class _VolatilityParametrizationExpiry:
         self._x = self._get_x(params_at_expiry)
     
     def get_params_at_expiry(self, expiry: int)->np.array:
+        """Get parameters for given expiry.
+
+        Args:
+            expiry (int): Position in expiry list.
+
+        Returns:
+            np.array: Parameter Tuple for given expiry.
+        """
         return self._x[self.n_params*expiry:self.n_params*(expiry+1)]
     
     def calc_implied_vol(self, ttm, strike):
+        """Calculate implied volatility for given expiry and strike
+
+        Args:
+            ttm ([float]): Expiry.
+            strike ([float]): Strike.
+
+        Returns:
+            [float]: Implied volatility.
+        """
         i = np.searchsorted(self.expiries, ttm)
         if i == 0 or i == self.expiries.shape[0]:
             if i == self.expiries.shape[0]:
@@ -107,7 +124,7 @@ class VolatilityParametrizationTerm:
         """Term volatility parametrization
 
         Args:
-            expiries (List[float]): List of expiration dates.
+            expiries (List[float]): List of expiries (sorted from nearest to farest).
             fwd_atm_vols (List[float]): List of at-the-money volatilities.
         """
         self.expiries = expiries
@@ -126,8 +143,8 @@ class   VolatilityParametrizationSVI(_VolatilityParametrizationExpiry):
             ..math:
                 w(k) = a + b(\rho (k-m) + \sqrt{(k-m)^2+\sigma^2 })
         Args:
-            expiries (List[float]): List of expiries (sorted from nearest to farest)
-            svi_params (List): List of SVI parameters (one Tuple for each expiry). Tuple in the order (a, b, rho, m, sigma)
+            expiries (List[float]): List of expiries (sorted from nearest to farest).
+            svi_params (List[Tuple]): List of SVI parameters (one Tuple for each expiry). Tuple in the order (a, b, rho, m, sigma).
 
         """
         super().__init__(expiries,svi_params)
@@ -142,7 +159,7 @@ class VolatilityParametrizationSSVI:
         https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2033323
 
         Args:
-            expiries (List[float]): List of expiration dates.
+            expiries (List[float]): List of expiries (sorted from nearest to farest).
             fwd_atm_vols (List[float]): List of at-the-money volatilities.
             rho (float): Responsible for the skewness of the volatility surface.
             eta (float): Responsible for the curvature.
@@ -157,6 +174,15 @@ class VolatilityParametrizationSSVI:
         self._pyvacon_obj = None
 
     def calc_implied_vol(self, ttm, strike):
+        """Calculate implied volatility for given expiry and strike
+
+        Args:
+            ttm ([float]): Expiry.
+            strike ([float]): Strike.
+
+        Returns:
+            [float]: Implied volatility.
+        """
         return self._get_pyvacon_obj().calcImpliedVol(ttm, strike)
 
     def _get_pyvacon_obj(self):
@@ -166,26 +192,63 @@ class VolatilityParametrizationSSVI:
 
 class VolatilityParametrizationSABR(_VolatilityParametrizationExpiry):
     def __init__(self, expiries: List[float], sabr_params: List[Tuple]):
-        
+        """SABR parametrization
+        https://bsic.it/sabr-stochastic-volatility-model-volatility-smile/
+
+        The SABR model assumes that the forward rate and the instantaneous volatility are driven by two correlated Brownian motions:
+
+        $$df_t = \alpha_t f_t^\beta d W_t^1$$
+
+        $$d\alpha_t = \nu\alpha_t d W_t^2$$
+
+        $$E\bigl[d W_t^1 d W_T^2\bigr] = \rho d t$$
+
+        The expression that the implied volatility must satisfy is
+
+        $$\sigma_B(K,f) = \frac{\alpha\biggl\{1+\biggl[\frac{(1-\beta)^2}{24}\frac{\alpha^2}{(fK)^{1-\beta}}+\frac{1}{4}\frac{\rho\beta\nu\alpha}{(FK)^{(1-\beta)/2}}+\frac{2-3\rho^2}{24}\nu^2\biggr]T\biggr\}}{(fK)^{(1-\beta)/2}\biggl[1+\frac{(1-\beta)^2}{24}{ln}^2\frac{f}{K}+\frac{(1-\beta)^4}{1920}{ln}^4\frac{f}{K}\biggr]}\frac{z}{\chi(z)}$$
+
+        $$z=\frac{\nu}{\alpha}(fK)^{(1-\beta)/2}ln\frac{f}{K}$$
+
+        $$\chi(z) = ln\Biggl[\frac{\sqrt{1-2\rho z+z^2}+z-\rho}{1-\rho}\Biggr]$$
+
+        When $f = K $ (for ATM options), the above formula for implied volatility simplifies to:
+
+        $$\sigma_{ATM} = \sigma_B(f,f)=\frac{\alpha\biggl\{1+\biggl[\frac{(1-\beta)^2}{24}\frac{\alpha^2}{f^{2-2\beta}}+\frac{1}{4}\frac{\rho\beta\nu\alpha}{f^{1-\beta}}\frac{2-3\rho^2}{24}\nu^2\biggr]T\biggr\}}{f^{1-\beta}}$$
+
+        where
+
+        > $\alpha$ is the instantaneous vol;
+
+        > $\nu$ is the vol of vol;
+
+        > $\rho$ is the correlation between the Brownian motions driving the forward rate and the instantaneous vol;
+
+        > $\beta$ is the CEV component for forward rate (determines shape of forward rates, leverage effect and backbond of ATM vol).
+
+        Args:
+            expiries (List[float]): List of expiries (sorted from nearest to farest).
+            sabr_params (List[Tuple]): List of SABR parameters (one Tuple for each expiry). Tuple in the order (alpha, nu, beta, rho).
+        """
+
         super().__init__(expiries,sabr_params)
     
     
     def _calc_implied_vol_at_expiry(self, params: List[float], ttm: float, strike: float):
         K = strike
         alpha = params[0] 
-        ny = params[1] 
+        nu = params[1] 
         beta = params[2] 
         rho = params[3] 
         f = 1
         
-        zeta = ny/alpha*(f*K)**((1-beta)/2)*np.log(f/K)
+        zeta = nu/alpha*(f*K)**((1-beta)/2)*np.log(f/K)
         chi_zeta = np.log((np.sqrt(1-2*rho*zeta+zeta**2)+zeta-rho)/(1-rho))
         
         if f == K:
-            sigma = alpha*(1+((1-beta)**2/24*alpha**2/f**(2-2*beta)+1/4*rho*beta*ny*alpha/f**(1-beta)+(2-3*rho**2)/24*ny**2)*ttm)/f**(1-beta)
+            sigma = alpha*(1+((1-beta)**2/24*alpha**2/f**(2-2*beta)+1/4*rho*beta*nu*alpha/f**(1-beta)+(2-3*rho**2)/24*nu**2)*ttm)/f**(1-beta)
 
         else:
-            sigma = alpha*(1+((1-beta)**2/24*alpha**2/(f*K)**(1-beta)+1/4*rho*beta*ny*alpha/(f*K)**((1-beta)/2)+(2-3*rho**2)/24*ny**2)*ttm)/(f*K)**((1-beta)/2)*(1+(1-beta)**2/24*np.log(f/K)**2+(1-beta)**4/1920*np.log(f/K)**4)*zeta/chi_zeta
+            sigma = alpha*(1+((1-beta)**2/24*alpha**2/(f*K)**(1-beta)+1/4*rho*beta*nu*alpha/(f*K)**((1-beta)/2)+(2-3*rho**2)/24*nu**2)*ttm)/(f*K)**((1-beta)/2)*(1+(1-beta)**2/24*np.log(f/K)**2+(1-beta)**4/1920*np.log(f/K)**4)*zeta/chi_zeta
 
         return sigma**2
             
@@ -209,7 +272,16 @@ class VolatilityGridParametrization:
         self.vols = vols
         self._pyvacon_obj = None
 
-    def calc_implied_vol(self, ttm, strike):
+    def calc_implied_vol(self, ttm: float, strike:float):
+        """Calculate implied volatility for given expiry and strike
+
+        Args:
+            ttm ([float]): Expiry.
+            strike ([float]): Strike.
+
+        Returns:
+            [float]: Implied volatility.
+        """
         return self._get_pyvacon_obj().calcImpliedVol(ttm, strike)
 
     def _get_pyvacon_obj(self):

@@ -83,14 +83,9 @@ class LocalVol:
         else:
             x_ = x
         S = x_[:,0]
-        #try:
         lv = self._variance(t0, S).reshape((-1,)) #_interpolate_2D(self._time_grid, self._x_strikes, self._local_variance)
-        #except:
-            #return t0, S
-            #raise Exception()
         dt = t1-t0
         sqrt_dt = np.sqrt(dt)
-        #print(lv.shape)
         S *= np.exp(- 0.5*lv*dt + np.sqrt(lv)*rnd[:,0]*sqrt_dt)
         return x_
  

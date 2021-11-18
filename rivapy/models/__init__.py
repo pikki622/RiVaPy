@@ -1,9 +1,9 @@
+from typing import Union
 import bisect
 import numpy as np
 from numpy.core.fromnumeric import var
 import scipy
 import scipy.interpolate as interpolation
-#from scipy.integrate import quad, quad_vec
 import rivapy.numerics.kernel_regression as kernel_regression
 
 def _interpolate_2D(time_grid, strikes, f, x, t):
@@ -115,15 +115,22 @@ class HestonModel:
         )
         return np.exp(C + D*v0 + ixi * np.log(s0))
     
-    def call_price(self, s0, v0, K, tau):
+    def call_price(self, s0: float, v0: float, K: Union[np.ndarray, float], tau: Union[np.ndarray, float])->Union[np.ndarray, float]:
         """Computes a call price for the Heston model via integration over characteristic function.
 
         Args:
-            s0 ([type]): 
-            v0 ([type]): [description]
-            K ([type]): [description]
-            tau ([type]): [description]
+            s0 (float): current spot
+            v0 (float): current variance
+            K (float): strike
+            tau (float): time to maturity
         """
+        if isinstance(K, np.ndarray):
+            result = np.empty((tau.shape[0], K.shape[0], ))
+            for i in range(tau.shape[0]):
+                for j in range(K.shape[0]):
+                    result[i,j] = self.call_price(s0,v0,K[j], tau[i])
+            return result
+
         def integ_func(xi, s0, v0, K, tau, num):
             ixi = 1j * xi
             if num == 1:

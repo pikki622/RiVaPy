@@ -8,12 +8,13 @@ import rivapy.pricing.analytics as analytics
 import rivapy.enums as enums
 
 class LocalVolModelTest(unittest.TestCase):
-	def test_local_vol(self):
+	
+	def test_local_vol_mc_with_ssvi(self):
 		"""Simple test where call price from Local Vol MC simulation is compared against BS price
 		"""
 		ssvi = mktdata.VolatilityParametrizationSSVI(expiries=[1.0/365, 30/365, 0.5, 1.0], fwd_atm_vols=[0.25, 0.3, 0.28, 0.25], rho=-0.9, eta=0.5, gamma=0.5)
-		x_strikes = np.linspace(0.5,1.5)
-		time_grid = np.linspace(0.0,1.0)
+		x_strikes = np.linspace(0.5,1.5,100)
+		time_grid = np.linspace(0.0,1.0,100)
 		lv = models.LocalVol(ssvi, x_strikes, time_grid)
 		n_sims = 100_000
 		S = np.ones((n_sims,1))
@@ -24,7 +25,56 @@ class LocalVolModelTest(unittest.TestCase):
 		strike = 1.0
 		call_price = np.mean(np.maximum(S-strike, 0))
 		call_price_ref = analytics.compute_european_price_Buehler(strike = strike, maturity=1.0, volatility=ssvi.calc_implied_vol(1.0,strike))
-		self.assertAlmostEqual(call_price, call_price_ref)
+		self.assertAlmostEqual(call_price, call_price_ref, places=2)
+	
+	def test_local_vol_with_flat_input_vol(self):
+		"""Simple test where the flat input volatility is compared with the local volatility calculated with call prices from black scholes
+		"""
+		x_strikes = np.linspace(0.5,1.5,100)
+		time_grid = np.linspace(0.0,1.0,365)
+		input_vol = 0.3
+		call_prices = np.array([[analytics.compute_european_price_Buehler(strike=k, maturity=t, volatility=input_vol) for k in x_strikes] for t in time_grid])
+		lv_model = models.LocalVol(vol_param=None, x_strikes=x_strikes, time_grid=time_grid, call_param=call_prices)
+		var = lv_model.compute_local_var(vol_param=None, call_param = call_prices, x_strikes = x_strikes, time_grid = time_grid)
+		vol = np.sqrt(np.abs(var))
+
+		for i,t in enumerate(time_grid):
+			if t < 1/365: 
+				continue
+			elif t < 2/365: 
+				factor = 1.0
+			else: 
+				factor = 2.0
+			range_low = np.exp(-factor * input_vol * np.sqrt(t))
+			range_up = np.exp(factor * input_vol * np.sqrt(t))
+			val_in_range = vol[i,(x_strikes>range_low)&(x_strikes<range_up)]
+
+			self.assertAlmostEqual(input_vol, np.mean(val_in_range), places=2)
+	
+	def test_compare_local_var_implied_and_call(self):
+		"""Simple test where the local volatility of a volatility surface is compared with the local volatility of the corresponding call price surface
+		"""
+		x_strikes = np.linspace(0.5,1.5,100)
+		time_grid = np.linspace(0.0,1.0,100)
+		
+		ssvi = mktdata.VolatilityParametrizationSSVI(expiries=[1.0/365, 30/365, 0.5, 1.0], fwd_atm_vols=[0.25, 0.3, 0.28, 0.25], rho=-0.9, eta=0.5, gamma=0.5)
+		var_vol = np.sqrt(models.LocalVol.compute_local_var(ssvi, x_strikes, time_grid))
+		
+		input_vol = np.array([[ssvi.calc_implied_vol(ttm=t, strike=k) for k in x_strikes] for t in time_grid])		
+		call_prices = np.array([[analytics.compute_european_price_Buehler(strike=k, maturity=t, volatility=input_vol[i,j]) for j,k in enumerate(x_strikes)] for  i,t in enumerate(time_grid)])
+
+		lv_model = models.LocalVol(vol_param=None, x_strikes=x_strikes, time_grid=time_grid, call_param=call_prices)
+		var_call = np.sqrt(lv_model.compute_local_var(vol_param=None, call_param = call_prices, x_strikes = x_strikes, time_grid = time_grid))
+				
+		for i,t in enumerate(time_grid):
+			if t < 1/365: 
+				continue
+			range_low = np.exp(-input_vol[i,:] * np.sqrt(t))
+			range_up = np.exp(input_vol[i,:] * np.sqrt(t))
+			var_vol_range = var_vol[i,(x_strikes>range_low)&(x_strikes<range_up)]
+			var_call_range = var_call[i,(x_strikes>range_low)&(x_strikes<range_up)]
+			error = np.mean(var_vol_range) - np.mean(var_call_range)
+			self.assertLess(error, 2E-2)
 
 class HestonModelTest(unittest.TestCase):
 	

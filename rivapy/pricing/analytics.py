@@ -1,6 +1,7 @@
 import math
 from scipy.optimize import brentq
 from scipy.stats import norm
+import numpy as np
 
 
 def compute_european_price_Buehler(strike:float, maturity:float, volatility:float, is_call: bool=True)->float:
@@ -13,6 +14,8 @@ def compute_european_price_Buehler(strike:float, maturity:float, volatility:floa
     Returns:
         float: Black-Scholes call price
     """
+    if maturity < 1E-12:
+	    return np.maximum(1.0 - strike, 0)
     sqrt_mat = math.sqrt(maturity)
     d1 = ( math.log( 1.0 / strike ) + 0.5*volatility*volatility*maturity ) / ( volatility *  sqrt_mat)
     d2 = d1 - volatility * sqrt_mat

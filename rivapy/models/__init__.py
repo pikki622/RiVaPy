@@ -21,16 +21,22 @@ def _interpolate_2D(time_grid, strikes, f, x, t):
     
 class LocalVol:
 
-    def __init__(self, vol_param, x_strikes: np.array, time_grid: np.array):
-        self._local_variance = LocalVol.compute_local_var(vol_param, x_strikes, time_grid)
+    def __init__(self, vol_param, x_strikes: np.array, time_grid: np.array, call_param: np.ndarray=None):
+
+        if (vol_param is None) and (call_param is None):
+            raise Exception('Set vol_params or call_params!')
+
+        if (vol_param is not None) and (call_param is not None):
+            raise Exception('Set either vol_params or call_params, not both!')
+
         self._x_strikes = x_strikes
         self._time_grid = time_grid
+        self._local_variance = LocalVol.compute_local_var(vol_param, x_strikes, time_grid, call_param)
         self._variance = interpolation.interp2d(time_grid, x_strikes, self._local_variance.T)
-                        #interpolation.RectBivariateSpline(time_grid, x_strikes,  
-                         #               self._local_variance, bbox=[None, None, None, None], kx=1, ky=1, s=0)
-        
+                #interpolation.RectBivariateSpline(time_grid, x_strikes, self._local_variance, bbox=[None, None, None, None], kx=1, ky=1, s=0)
+
     @staticmethod
-    def compute_local_var(vol_param, x_strikes: np.array, time_grid: np.array):
+    def _compute_local_var_from_vol(vol_param, x_strikes: np.array, time_grid: np.array):
         # setup grids 
         eps = 1e-8
         log_x_strikes = np.log(x_strikes)
@@ -68,6 +74,99 @@ class LocalVol:
         local_var[-1,:] = local_var[-2,:]
         return local_var
 
+    @staticmethod
+    def _compute_local_var_from_call(call_param: np.ndarray, x_strikes:np.ndarray, time_grid:np.ndarray) -> float:
+        """
+        Calculate the local volatility from a call price surface with Dupire's equation
+            
+        sigma^2(K,T) = d_T(C) / (1/2*K^2 * d_KK(C))
+        
+        with 
+        
+        dx1 = x_i - x_i-1
+        dx2 = x_i+1 - x_i
+
+        d_T[i,:] = 1/(d_t1+d_t2) * [(d_t1/d_t2)*(c[i+1,:]-c[i,:]) + (d_t2/d_t1)*(c[i,:]-c[i-1,:])]
+        which simplifies on a uniform grid to: d_T[i,:] = (c[i+1,:]-c[i-1,:])/(2*d_t)
+        for i = 1, ..., len(time_grid)-1
+        
+        d_KK[:,i] = 2.0*(c[:,i-1]/(d_k1*(d_k1+d_k2)) - (c[:,i]/(d_k1*d_k2)) + (c[:,i+1]/(d_k2*(d_k1+d_k2))))  
+        which simplifies on a uniform grid to: d_KK[:,i] = (c[:,i-1]-2*c[:,i]+c[:,i+1])/(d_k**2)
+        for i = 1, ..., len(strikes)-1
+
+        The formula can be interpreted as an infinitesimal calendar / butterfly.
+
+        The square root yields the local volatility.
+
+        Args:
+            call_param (np.ndarray): array of call prices (2D) of the form (n_expiries, n_strikes)
+            x_strikes (np.ndarray): timegrid of x_strikes (1D)
+            time_grid (np.ndarray): timegrid of expiries (1D)
+
+        Returns:
+            float: local variance as a 2D grid of expiries and x_strikes 
+        """
+        
+        d_T = np.zeros((len(time_grid),len(x_strikes)))
+        deltas_t = np.diff(time_grid) #time_grid[1:]-time_grid[:-1]
+        if all(deltas_t-deltas_t[0]) < 1E-15: #uniform grid
+            d_T[1:-1,:]  = 1/(2*deltas_t[0]) * (call_param[2:,:] - call_param[:-2,:])
+        else: 
+            d_t1 = time_grid[1:-1] - time_grid[:-2] #time_grid[i] - time_grid[i-1]
+            d_t2 = time_grid[2:] - time_grid[1:-1] #time_grid[i+1] - time_grid[i] 
+            d_T[1:-1,:] = np.multiply(
+                            np.multiply((call_param[2:,:]-call_param[1:-1,:]).T, (d_t1/d_t2)) + 
+                            np.multiply((call_param[1:-1,:]-call_param[:-2,:]).T, (d_t2/d_t1)), 
+                            1./(d_t1+d_t2)).T
+            
+        d_KK = np.zeros((len(time_grid),len(x_strikes)))
+        deltas_k = np.diff(x_strikes)
+        if all(deltas_k-deltas_k[0]) < 1E-15: #uniform grid
+            d_KK[:,1:-1]  = (1/(deltas_k[0]**2))*(call_param[:,:-2]-2*call_param[:,1:-1]+call_param[:,2:])
+        else:        
+            
+            d_k1 = x_strikes[1:-1] - x_strikes[:-2] # x_strikes[i] - x_strikes[i-1]
+            d_k2 = x_strikes[2:] - x_strikes[1:-1] # x_strikes[i+1] - x_strikes[i] 
+            d_KK[:,1:-1] = 2.0 * (np.multiply((call_param[:,:-2]), 1/(d_k1*(d_k1+d_k2))) - 
+                            np.multiply((call_param[:,1:-1]), 1/(d_k1*d_k2)) +
+                            np.multiply((call_param[:,2:]), 1/(d_k2*(d_k1+d_k2))))
+        
+        # remove extreme cases (numerical inconsistencies)
+        d_KK = np.maximum(d_KK, 1E-8)
+        
+        var = d_T / (1/2*(x_strikes**2)*d_KK)
+                
+        # boundary cases 
+        var[0,:] = var[1,:]
+        var[-1,:] = var[-2,:]
+        var[:,0] = var[:,1]
+        var[:,-1] = var[:,-2]
+
+        # corner cases
+        var[0,0] = var[1,1]
+        var[-1,-1] = var[-2,-2]
+        var[0,-1] = var[1,-2]
+        var[-1,0] = var[-2,1]
+
+        # remove extreme cases (numerical inconsistencies)
+        var[var>2.5] = 2.5
+
+        return var
+
+    @staticmethod
+    def compute_local_var(vol_param, x_strikes: np.array, time_grid: np.array, call_param: np.ndarray=None):
+
+        if (vol_param is None) and (call_param is None):
+            raise Exception('Set vol_params or call_params!')
+
+        if (vol_param is not None) and (call_param is not None):
+            raise Exception('Set either vol_params or call_params, not both!')
+        
+        if vol_param is not None:
+            return LocalVol._compute_local_var_from_vol(vol_param, x_strikes, time_grid)
+
+        if call_param is not None:
+            return LocalVol._compute_local_var_from_call(call_param, x_strikes, time_grid)
 
     def apply_mc_step(self, x: np.ndarray, t0: float, t1: float, rnd: np.ndarray, inplace: bool = True):
         """Apply a MC-Euler step for the LV Model for n different paths.

@@ -13,5 +13,4 @@
         "**/__pycache__": true,
         "docs/build/*": true
     },
-    "python.pythonPath": "C:\\Users\\Anwender\\anaconda3\\python.exe",
 }

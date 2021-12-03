@@ -1,5 +1,6 @@
 import abc
 import numpy as np
+# from pyvacon.pyvacon_swig import EquityOptionQuoteTable
 from rivapy import enums
 from typing import List, Union, Tuple
 from rivapy.marketdata.curves import *
@@ -11,6 +12,7 @@ import pyvacon.finance.pricing as _pricing
 InflationIndexForwardCurve = _mkt_data.InflationIndexForwardCurve
 SurvivalCurve = _mkt_data.SurvivalCurve
 DatedCurve = _mkt_data.DatedCurve
+EquityOptionQuoteTable = _mkt_data.EquityOptionQuoteTable
 # DividendTable = _mkt_data.DividendTable
 
 class DividendTable:
@@ -80,9 +82,9 @@ class _VolatilityParametrizationExpiry:
         if i == 0 or i == self.expiries.shape[0]:
             if i == self.expiries.shape[0]:
                 i -= 1
-            return np.sqrt(self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i),ttm,strike)/ttm)#warum log strike
-        w0 = self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i-1),self.expiries[i-1],strike)#warum log strike
-        w1 = self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i),self.expiries[i],strike)#warum log strike
+            return np.sqrt(self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i),ttm,strike)/ttm)
+        w0 = self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i-1),self.expiries[i-1],strike)
+        w1 = self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i),self.expiries[i],strike)
         #linear n total variance
         delta_t = self.expiries[i]-self.expiries[i-1]
         w = ((self.expiries[i]-ttm)*w0 + (ttm-self.expiries[i-1])*w1)/delta_t
@@ -150,7 +152,7 @@ class   VolatilityParametrizationSVI(_VolatilityParametrizationExpiry):
         super().__init__(expiries,svi_params)
 
     def _calc_implied_vol_at_expiry(self, params: List[float], ttm: float, k: float):
-        return params[0] + params[1]*(params[2] * (np.log(k)-params[3])+np.sqrt((np.log(k)-params[3])**2+params[4]**2))# log strike hier reinstecken?
+        return params[0] + params[1]*(params[2] * (np.log(k)-params[3])+np.sqrt((np.log(k)-params[3])**2+params[4]**2))
 
 
 class VolatilityParametrizationSSVI:

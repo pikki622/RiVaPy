@@ -10,18 +10,26 @@ def _interpolate_2D(time_grid, strikes, f, x, t):
     t_index = bisect.bisect_left(time_grid, t)
     if t_index == 0:# or t0_index == self._time_grid.shape[0]:
         result = f[0]
-    elif t_index == time_grid:
+    elif t_index == time_grid.shape[0]-1:
         result = f[-1]
     else:
         dt = time_grid[t_index] - time_grid[t_index-1]
         w1 = (t-time_grid[t_index-1])/dt
         w2 = (time_grid[t_index] - t)/dt
         result = w1*f[t_index] + w2*f[t_index-1]
-    return np.interp(x[:,0], strikes, result)
+    return np.interp(x, strikes, result)
     
 class LocalVol:
 
     def __init__(self, vol_param, x_strikes: np.array, time_grid: np.array, call_param: np.ndarray=None):
+        """Local Volatility Class 
+
+        Args:
+            vol_param: a grid or a parametrisation of the volatility
+            x_strikes (np.array): strikes
+            time_grid (np.array): time_grid
+            call_param (np.ndarray, optional): A grid of call prices. Not compatible with vol_param. Defaults to None.
+        """
 
         if (vol_param is None) and (call_param is None):
             raise Exception('Set vol_params or call_params!')
@@ -32,18 +40,21 @@ class LocalVol:
         self._x_strikes = x_strikes
         self._time_grid = time_grid
         self._local_variance = LocalVol.compute_local_var(vol_param, x_strikes, time_grid, call_param)
-        self._variance = interpolation.interp2d(time_grid, x_strikes, self._local_variance.T)
-                #interpolation.RectBivariateSpline(time_grid, x_strikes, self._local_variance, bbox=[None, None, None, None], kx=1, ky=1, s=0)
+        self._variance = interpolation.RectBivariateSpline(time_grid, x_strikes, self._local_variance, bbox=[None, None, None, None], kx=1, ky=1, s=0)
+                #interpolation.interp2d(time_grid, x_strikes, self._local_variance.T)
 
     @staticmethod
     def _compute_local_var_from_vol(vol_param, x_strikes: np.array, time_grid: np.array):
         # setup grids 
         eps = 1e-8
         log_x_strikes = np.log(x_strikes)
-        iv = np.empty(shape=(time_grid.shape[0], x_strikes.shape[0])) #implied variance grid
-        for i in range(time_grid.shape[0]):
-            for j in range(x_strikes.shape[0]):
-                iv[i,j] = vol_param.calc_implied_vol(time_grid[i], x_strikes[j])
+        if isinstance(vol_param, np.ndarray):
+            iv = np.copy(vol_param)
+        else:
+            iv = np.empty(shape=(time_grid.shape[0], x_strikes.shape[0])) #implied variance grid
+            for i in range(time_grid.shape[0]):
+                for j in range(x_strikes.shape[0]):
+                    iv[i,j] = vol_param.calc_implied_vol(time_grid[i], x_strikes[j])
         iv *= iv
         tiv = np.maximum((time_grid*iv.T).T, eps)
         h = log_x_strikes[1:] - log_x_strikes[:-1]
@@ -75,7 +86,7 @@ class LocalVol:
         return local_var
 
     @staticmethod
-    def _compute_local_var_from_call(call_param: np.ndarray, x_strikes:np.ndarray, time_grid:np.ndarray) -> float:
+    def _compute_local_var_from_call(call_param: np.ndarray, x_strikes:np.ndarray, time_grid:np.ndarray):
         """
         Calculate the local volatility from a call price surface with Dupire's equation
             
@@ -104,7 +115,7 @@ class LocalVol:
             time_grid (np.ndarray): timegrid of expiries (1D)
 
         Returns:
-            float: local variance as a 2D grid of expiries and x_strikes 
+            local variance as a 2D grid of expiries and x_strikes 
         """
         
         d_T = np.zeros((len(time_grid),len(x_strikes)))
@@ -155,6 +166,17 @@ class LocalVol:
 
     @staticmethod
     def compute_local_var(vol_param, x_strikes: np.array, time_grid: np.array, call_param: np.ndarray=None):
+        """Calculate the local variance from vol_param or call_param for x_strikes on time_grid
+
+        Args:
+            vol_param: a grid or a parametrisation of the volatility
+            x_strikes (np.array): strikes
+            time_grid (np.array): time_grid
+            call_param (np.ndarray, optional): A grid of call prices. Not compatible with vol_param. Defaults to None.
+
+        Returns:
+            local volatility surface on the grid
+        """
 
         if (vol_param is None) and (call_param is None):
             raise Exception('Set vol_params or call_params!')
@@ -182,13 +204,12 @@ class LocalVol:
         else:
             x_ = x
         S = x_[:,0]
-        lv = self._variance(t0, S).reshape((-1,)) #_interpolate_2D(self._time_grid, self._x_strikes, self._local_variance)
+        lv = _interpolate_2D(self._time_grid, self._x_strikes, self._local_variance, S, t0) #self._variance(t0, S).reshape((-1,))
         dt = t1-t0
         sqrt_dt = np.sqrt(dt)
         S *= np.exp(- 0.5*lv*dt + np.sqrt(lv)*rnd[:,0]*sqrt_dt)
         return x_
  
-    
 class HestonModel:
     def __init__(self, long_run_variance, mean_reversion_speed, vol_of_vol, 
                 initial_variance, correlation):

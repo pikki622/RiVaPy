@@ -109,13 +109,18 @@ class _VolatilityParametrizationExpiry:
         self._x = x
         
     def calibrate_params(self, quotes: pd.DataFrame,**kwargs):
+        """Calibrate parameters to given implied volatility quotes.
+
+        Args:
+            quotes (pd.DataFrame): pd.DataFrame with columns EXPIRY as year fraction, STRIKE asm moneyness, BID_IV, ASK_IV.
+        """
         def cost_function(x):
             self._set_param(x)
-            quotes['Vols'] = [self.calc_implied_vol(expiry,strike) for expiry, strike in zip(quotes['Expiry'],quotes['Strike'])]
-            quotes['Dist_Ask']  = [max(vol-ask,0) for ask, vol in zip(quotes['Ask'],quotes['Vols'])]
-            quotes['Dist_Bid']  = [max(bid-vol,0) for bid, vol in zip(quotes['Bid'],quotes['Vols'])]
-            quotes['Dist_Total'] = quotes['Dist_Ask']+quotes['Dist_Bid']
-            return np.copy(quotes['Dist_Total'].values)
+            quotes['VOLS'] = [self.calc_implied_vol(expiry,strike) for expiry, strike in zip(quotes['EXPIRY'],quotes['STRIKE'])]
+            quotes['DIST_ASK']  = [max(vol-ask,0) for ask, vol in zip(quotes['ASK_IV'],quotes['VOLS'])]
+            quotes['DIST_BID']  = [max(bid-vol,0) for bid, vol in zip(quotes['BID_IV'],quotes['VOLS'])]
+            quotes['DIST_TOTAL'] = quotes['DIST_ASK']+quotes['DIST_BID']
+            return np.copy(quotes['DIST_TOTAL'].values)
         
         if kwargs is None:
             kwargs = {'method':'lm'}

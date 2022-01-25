@@ -1,5 +1,6 @@
 import abc
 import numpy as np
+# from pyvacon.pyvacon_swig import EquityOptionQuoteTable
 from rivapy import enums
 from typing import List, Union, Tuple
 from rivapy.marketdata.curves import *
@@ -8,9 +9,12 @@ import pyvacon.finance.marketdata as _mkt_data
 import pyvacon.finance.utils as _utils
 import pyvacon.finance.pricing as _pricing
 
+from scipy.optimize import least_squares
+
 InflationIndexForwardCurve = _mkt_data.InflationIndexForwardCurve
 SurvivalCurve = _mkt_data.SurvivalCurve
 DatedCurve = _mkt_data.DatedCurve
+EquityOptionQuoteTable = _mkt_data.EquityOptionQuoteTable
 # DividendTable = _mkt_data.DividendTable
 
 class DividendTable:
@@ -80,9 +84,9 @@ class _VolatilityParametrizationExpiry:
         if i == 0 or i == self.expiries.shape[0]:
             if i == self.expiries.shape[0]:
                 i -= 1
-            return np.sqrt(self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i),ttm,strike)/ttm)#warum log strike
-        w0 = self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i-1),self.expiries[i-1],strike)#warum log strike
-        w1 = self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i),self.expiries[i],strike)#warum log strike
+            return np.sqrt(self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i),ttm,strike)/ttm)
+        w0 = self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i-1),self.expiries[i-1],strike)
+        w1 = self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i),self.expiries[i],strike)
         #linear n total variance
         delta_t = self.expiries[i]-self.expiries[i-1]
         w = ((self.expiries[i]-ttm)*w0 + (ttm-self.expiries[i-1])*w1)/delta_t
@@ -103,6 +107,26 @@ class _VolatilityParametrizationExpiry:
     
     def _set_param(self, x)->np.array:
         self._x = x
+        
+    def calibrate_params(self, quotes: pd.DataFrame,**kwargs):
+        """Calibrate parameters to given implied volatility quotes.
+
+        Args:
+            quotes (pd.DataFrame): pd.DataFrame with columns EXPIRY as year fraction, STRIKE asm moneyness, BID_IV, ASK_IV.
+        """
+        def cost_function(x):
+            self._set_param(x)
+            quotes['VOLS'] = [self.calc_implied_vol(expiry,strike) for expiry, strike in zip(quotes['EXPIRY'],quotes['STRIKE'])]
+            quotes['DIST_ASK']  = [max(vol-ask,0) for ask, vol in zip(quotes['ASK_IV'],quotes['VOLS'])]
+            quotes['DIST_BID']  = [max(bid-vol,0) for bid, vol in zip(quotes['BID_IV'],quotes['VOLS'])]
+            quotes['DIST_TOTAL'] = quotes['DIST_ASK']+quotes['DIST_BID']
+            return np.copy(quotes['DIST_TOTAL'].values)
+        
+        if kwargs is None:
+            kwargs = {'method':'lm'}
+        result = least_squares(cost_function,self._x,**kwargs)
+        
+        return result.x
     
 class VolatilityParametrizationFlat:
     def __init__(self,vol: float):
@@ -150,8 +174,7 @@ class   VolatilityParametrizationSVI(_VolatilityParametrizationExpiry):
         super().__init__(expiries,svi_params)
 
     def _calc_implied_vol_at_expiry(self, params: List[float], ttm: float, k: float):
-        return params[0] + params[1]*(params[2] * (np.log(k)-params[3])+np.sqrt((np.log(k)-params[3])**2+params[4]**2))# log strike hier reinstecken?
-
+        return params[0] + params[1]*(params[2] * (np.log(k)-params[3])+np.sqrt((np.log(k)-params[3])**2+params[4]**2))
 
 class VolatilityParametrizationSSVI:
     def __init__(self, expiries: List[float], fwd_atm_vols: List[float], rho: float, eta: float, gamma: float):
@@ -167,11 +190,14 @@ class VolatilityParametrizationSSVI:
 
         """
         self.expiries = expiries
-        self.fwd_atm_vols = fwd_atm_vols
-        self.rho = rho
-        self.eta = eta
-        self.gamma = gamma
+        # self.fwd_atm_vols = fwd_atm_vols
+        # self.rho = rho
+        # self.eta = eta
+        # self.gamma = gamma
         self._pyvacon_obj = None
+        
+        self._x = self._get_x(fwd_atm_vols, rho, eta,gamma)
+        self.n_fwd_atm_vols = len(fwd_atm_vols)
 
     def calc_implied_vol(self, ttm, strike):
         """Calculate implied volatility for given expiry and strike
@@ -187,8 +213,36 @@ class VolatilityParametrizationSSVI:
 
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
-            self._pyvacon_obj = _mkt_data.VolatilityParametrizationSSVI(self.expiries, self.fwd_atm_vols, self.rho, self.eta, self.gamma)  
+            # self._pyvacon_obj = _mkt_data.VolatilityParametrizationSSVI(self.expiries, self.fwd_atm_vols, self.rho, self.eta, self.gamma) 
+            self._pyvacon_obj = _mkt_data.VolatilityParametrizationSSVI(self.expiries, self._x[:self.n_fwd_atm_vols], self._x[-3], self._x[-2], self._x[-1])   
         return self._pyvacon_obj
+    
+    def _get_x(self, fwd_atm_vols, rho, eta, gamma)->np.array:
+        x = np.empty(len(fwd_atm_vols)+3)
+        j = 0
+        for i in range(len(fwd_atm_vols)):
+            x[i] = fwd_atm_vols[i]
+        x[i+1] = rho
+        x[i+2] = eta
+        x[i+3] = gamma
+        
+        return x
+    
+    def _set_param(self, x)->np.array:
+        self._x = x
+        self._pyvacon_obj = None
+        
+    def get_rho(self):
+        return self._x[-3]
+    
+    def get_eta(self):
+        return self._x[-2]
+    
+    def get_gamma(self):
+        return self._x[-1]
+    
+    def get_fwd_atm_vols(self):
+        return self._x[:self.n_fwd_atm_vols]
 
 class VolatilityParametrizationSABR(_VolatilityParametrizationExpiry):
     def __init__(self, expiries: List[float], sabr_params: List[Tuple]):
@@ -292,6 +346,10 @@ class VolatilityGridParametrization:
     
 class VolatilitySurface:
     @staticmethod
+    def load(filename:str):
+        return _mkt_data.VolatilitySurface.load(filename)
+    
+    @staticmethod
     def _create_param_pyvacon_obj(vol_param):
         if hasattr(vol_param, '_get_pyvacon_obj'):
             return vol_param._get_pyvacon_obj()
@@ -327,8 +385,12 @@ class VolatilitySurface:
         if self._pyvacon_obj is None:
             if fwd_curve is None:
                 fwd_curve = self.forward_curve
+            try:
+                _py_fwd_curve = fwd_curve._get_pyvacon_obj()
+            except:
+                _py_fwd_curve = fwd_curve
             self._pyvacon_obj = _mkt_data.VolatilitySurface(self.id, self.refdate,
-                fwd_curve._get_pyvacon_obj(),self.daycounter.name, 
+                _py_fwd_curve,self.daycounter.name, 
                 VolatilitySurface._create_param_pyvacon_obj(self.vol_param))
         return self._pyvacon_obj
     

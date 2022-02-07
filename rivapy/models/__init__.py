@@ -291,9 +291,13 @@ class HestonModel:
         return x_
         
 class HestonLocalVol:
-    def __init__(self, heston):
+    def __init__(self, heston: HestonModel):
+        """ A Heston Local Volatility model
+
+        Args:
+            heston (HestonModel): The underlying Heston Model
+        """
         self._heston = heston
-        #self._local_vol = LocalVol(vol_param, x_strikes, time_grid, drift_stock)
         self._stoch_local_variance = None #np.ones(shape=(time_grid.shape[0], x_strikes.shape[0]))
         self._x_strikes = None
         self._time_grid = None
@@ -304,6 +308,19 @@ class HestonLocalVol:
                     time_grid: np.array, 
                     n_sims, 
                     local_var: np.ndarray=None):
+        """Calibrate the Heston Local Volatility Model using kernel regression.
+
+        This method calibrates the local volatility part of the Heston Model given a volatility parametrization so that the 
+        respective implied volatilities from the given vol parametrization are reproduced by the Heston Local Volatility model.
+        The calibration is based on kernel regression as described in `Applied Machine Learning for Stochastic Local Volatility Calibration <https://www.frontiersin.org/articles/10.3389/frai.2019.00004/full>`_.
+
+        Args:
+            vol_param ([type]): [description]
+            x_strikes (np.array): [description]
+            time_grid (np.array): [description]
+            n_sims ([type]): [description]
+            local_var (np.ndarray, optional): [description]. Defaults to None.
+        """
         self._stoch_local_variance = HestonLocalVol._calibrate_MC(self._heston, vol_param,
                                 x_strikes, time_grid,  n_sims, local_var)
         self._x_strikes = x_strikes

@@ -292,6 +292,10 @@ class VolatilityGridParametrization:
     
 class VolatilitySurface:
     @staticmethod
+    def load(filename:str): 
+        return _mkt_data.VolatilitySurface.load(filename)
+        
+    @staticmethod
     def _create_param_pyvacon_obj(vol_param):
         if hasattr(vol_param, '_get_pyvacon_obj'):
             return vol_param._get_pyvacon_obj()

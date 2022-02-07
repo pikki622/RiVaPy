@@ -244,11 +244,12 @@ class HestonModel:
             K (float): strike
             tau (float): time to maturity
         """
-        if isinstance(K, np.ndarray):
+        if isinstance(tau, np.ndarray):
             result = np.empty((tau.shape[0], K.shape[0], ))
             for i in range(tau.shape[0]):
-                for j in range(K.shape[0]):
-                    result[i,j] = self.call_price(s0,v0,K[j], tau[i])
+                #for j in range(K.shape[0]):
+                    #result[i,j] = self.call_price(s0,v0,K[j], tau[i])
+                result[i,:] = self.call_price(s0,v0,K, tau[i])
             return result
 
         def integ_func(xi, s0, v0, K, tau, num):
@@ -399,7 +400,7 @@ class HestonLocalVol:
         for i in range(1,time_grid.shape[0]):
             rnd = np.random.normal(size=(n_sims,2))
             apply_mc_step(x, time_grid[i-1], time_grid[i], rnd, stoch_local_variance[i-1])
-            gamma = ((4.0*np.std(x[:,0])**5)/x.shape[0])**(-1.0/5.0)
+            gamma = ( (4.0*np.std(x[:,0])**5) / (3.0*x.shape[0]) )**(-1.0/5.0)
             kr = kernel_regression.KernelRegression(gamma = gamma).fit(x[:,0:1],x[:,1])
             stoch_local_variance[i] = local_var[i]/kr.predict(x_strikes.reshape((-1,1)))
         return stoch_local_variance

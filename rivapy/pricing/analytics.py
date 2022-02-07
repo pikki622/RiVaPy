@@ -1,6 +1,7 @@
 import math
 from scipy.optimize import brentq
 from scipy.stats import norm
+from scipy.special import ndtr
 import numpy as np
 
 
@@ -21,8 +22,8 @@ def compute_european_price_Buehler(strike:float, maturity:float, volatility:floa
     d2 = d1 - volatility * sqrt_mat
     #print(d1,d2)
     if is_call:
-        return  norm.cdf(d1) - strike * norm.cdf(d2)
-    return -norm.cdf(-d1) + strike*norm.cdf(-d2)
+        return  ndtr(d1) - strike * ndtr(d2)
+    return -ndtr(-d1) + strike*ndtr(-d2)
 
 def compute_implied_vol_Buehler(strike: float, maturity:float, price:float,
                                 min_vol = 0.05, max_vol = 2.0, is_call=True, **kwargs)->float:
@@ -40,5 +41,6 @@ def compute_implied_vol_Buehler(strike: float, maturity:float, price:float,
         float: [description]
     """
     def error(vol:float):
-        return price - compute_european_price_Buehler(strike, maturity, vol, is_call= is_call)
+        result = price - compute_european_price_Buehler(strike, maturity, vol, is_call= is_call)
+        return result
     return brentq(error,a=min_vol, b=max_vol, **kwargs)

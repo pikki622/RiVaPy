@@ -133,26 +133,47 @@ class HestonLocalVolModelTest(unittest.TestCase):
 				print('Extrapolation necessary for expiry ' + str(i))
 		return vols
 
+	@staticmethod
+	def calc_callprice_MC(expiries, strikes, n_sims, model):
+		call_prices = np.empty((expiries.shape[0], strikes.shape[0]))
+		x = np.empty((n_sims,2))
+		x[:,0] = model.get_initial_value()[0]
+		x[:,1] = model.get_initial_value()[1]
+		np.random.seed(42)
+		t0 = 0
+		for i in range(expiries.shape[0]):
+			rnd = np.random.normal(size=(n_sims, 2))
+			model.apply_mc_step(x, t0, expiries[i], rnd, inplace=True)
+			for j in range(strikes.shape[0]):
+				call_prices[i][j] = np.mean(np.maximum(x[:,0]-strikes[j], 0.0) )
+			t0 = expiries[i]
+		return call_prices
+
 	def test_simple(self):
 		"""Simple test: The given implied volatility surface equals the heston surface->stoch local variance must equal 1
 		"""
 		heston = models.HestonModel(long_run_variance=0.3**2, 
                             mean_reversion_speed=0.5, 
-                            vol_of_vol=0.01, 
+                            vol_of_vol=0.2, 
                             initial_variance=0.3**2, 
                             correlation = -0.95)
 		x_strikes = np.linspace(0.5,1.5, num=240)
-		time_grid = np.linspace(1.0/365.0,1.0, num=120) 
+		time_grid = np.linspace(1.0/365.0,1.0, num=240) 
 		call_prices = heston.call_price(1.0, heston._initial_variance, x_strikes, time_grid)
-		vols_heston = HestonLocalVolModelTest.calc_imlied_vol_grid(time_grid, x_strikes, call_prices)   
-		heston_grid_param = mktdata.VolatilityGridParametrization(time_grid, x_strikes, vols_heston)
+		#vols_heston = HestonLocalVolModelTest.calc_imlied_vol_grid(time_grid, x_strikes, call_prices)   
+		#heston_grid_param = mktdata.VolatilityGridParametrization(time_grid, x_strikes, vols_heston)
 		#dc = mktdata.curves.DiscountCurve('dc', dt.datetime(2021,1,1), [dt.datetime(2021,1,1), dt.datetime(2021,2,1)],[1.0, 1.0])
 		# heston_surface = mktdata.VolatilitySurface('heston_surface', dt.datetime(2021,1,1), 
         #                   mktdata.EquityForwardCurve(1.0,dc,dc,div_table=None), 
         #                  enums.DayCounterType.Act365Fixed, heston_grid_param)
 		heston_lv = models.HestonLocalVol(heston)
-		heston_lv.calibrate_MC(heston_grid_param, x_strikes, time_grid, n_sims=10000)
-		self.assertAlmostEqual(heston_lv._stoch_local_variance, 1.0, 3)
+		heston_lv.calibrate_MC(None, x_strikes, time_grid, n_sims=10000, call_prices=call_prices)
+		call_prices_sim = HestonLocalVolModelTest.calc_callprice_MC(time_grid, x_strikes,1000000, heston_lv)
+		vol = analytics.compute_implied_vol_Buehler(x_strikes[120], maturity=time_grid[-1], 
+																	price=call_prices[-1, 120], min_vol=0.01)
+		vol_sim = analytics.compute_implied_vol_Buehler(x_strikes[120], maturity=time_grid[-1], 
+																	price=call_prices_sim[-1, 120], min_vol=0.01)
+		self.assertAlmostEqual(heston_lv._stoch_local_variance[0,0], 1.0, 3)
 
 if __name__ == '__main__':
     unittest.main()

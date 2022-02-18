@@ -330,6 +330,14 @@ class HestonLocalVol:
         self._x_strikes = x_strikes
         self._time_grid = time_grid
 
+    def get_initial_value(self)->np.ndarray:
+        """Return the initial value (x0, v0)
+
+        Returns:
+            np.ndarray: Initial value.
+        """
+        return np.array([1.0, self._heston._initial_variance])
+        
     def apply_mc_step(self, x: np.ndarray, t0: float, t1: float, rnd: np.ndarray, inplace: bool = True):
         """Apply a MC-Euler step for the Heston Local Vol Model for n different paths.
 
@@ -400,6 +408,11 @@ class HestonLocalVol:
             gamma = ( (4.0*np.std(x[:,0])**5) / (3.0*x.shape[0]) )**(-1.0/5.0)
             kr = kernel_regression.KernelRegression(gamma = gamma).fit(x[:,0:1],x[:,1])
             stoch_local_variance[i] = local_var[i]/kr.predict(x_strikes.reshape((-1,1)))
+            # overwrite all values at strikes that are outside the simulated spot range
+            min_spot = np.min(x[:,0])
+            stoch_local_variance[i][x_strikes<min_spot] = stoch_local_variance[i][[x_strikes>min_spot]][0]
+            max_spot = np.max(x[:,0])
+            stoch_local_variance[i][x_strikes>max_spot] = stoch_local_variance[i][[x_strikes<max_spot]][-1]
         return stoch_local_variance
 
 if __name__=='__main__':

@@ -21,7 +21,7 @@ def _interpolate_2D(time_grid, strikes, f, x, t):
     
 class LocalVol:
 
-    def __init__(self, vol_param, x_strikes: np.array, time_grid: np.array, call_param: np.ndarray=None):
+    def __init__(self, vol_param, x_strikes: np.array, time_grid: np.array, call_prices: np.ndarray=None):
         """Local Volatility Class 
 
         Args:
@@ -31,15 +31,15 @@ class LocalVol:
             call_param (np.ndarray, optional): A grid of call prices. Not compatible with vol_param. Defaults to None.
         """
 
-        if (vol_param is None) and (call_param is None):
+        if (vol_param is None) and (call_prices is None):
             raise Exception('Set vol_params or call_params!')
 
-        if (vol_param is not None) and (call_param is not None):
+        if (vol_param is not None) and (call_prices is not None):
             raise Exception('Set either vol_params or call_params, not both!')
 
         self._x_strikes = x_strikes
         self._time_grid = time_grid
-        self._local_variance = LocalVol.compute_local_var(vol_param, x_strikes, time_grid, call_param)
+        self._local_variance = LocalVol.compute_local_var(vol_param, x_strikes, time_grid, call_prices)
         self._variance = interpolation.RectBivariateSpline(time_grid, x_strikes, self._local_variance, bbox=[None, None, None, None], kx=1, ky=1, s=0)
                 #interpolation.interp2d(time_grid, x_strikes, self._local_variance.T)
 
@@ -165,7 +165,7 @@ class LocalVol:
         return var
 
     @staticmethod
-    def compute_local_var(vol_param, x_strikes: np.array, time_grid: np.array, call_param: np.ndarray=None):
+    def compute_local_var(vol_param, x_strikes: np.array, time_grid: np.array, call_param: np.ndarray=None, min_lv = 0.01, max_lv = 1.5):
         """Calculate the local variance from vol_param or call_param for x_strikes on time_grid
 
         Args:
@@ -183,12 +183,11 @@ class LocalVol:
 
         if (vol_param is not None) and (call_param is not None):
             raise Exception('Set either vol_params or call_params, not both!')
-        
         if vol_param is not None:
-            return LocalVol._compute_local_var_from_vol(vol_param, x_strikes, time_grid)
-
-        if call_param is not None:
-            return LocalVol._compute_local_var_from_call(call_param, x_strikes, time_grid)
+            local_var = LocalVol._compute_local_var_from_vol(vol_param, x_strikes, time_grid)
+        elif call_param is not None:
+            local_var = LocalVol._compute_local_var_from_call(call_param, x_strikes, time_grid)
+        return np.minimum(np.maximum(min_lv*min_lv, local_var), max_lv*max_lv)
 
     def apply_mc_step(self, x: np.ndarray, t0: float, t1: float, rnd: np.ndarray, inplace: bool = True):
         """Apply a MC-Euler step for the LV Model for n different paths.
@@ -305,10 +304,11 @@ class HestonLocalVol:
 
     def calibrate_MC(self,
                     vol_param, 
-                    x_strikes: np.array,
-                    time_grid: np.array, 
+                    x_strikes: np.ndarray,
+                    time_grid: np.ndarray, 
                     n_sims, 
-                    local_var: np.ndarray=None):
+                    local_var: np.ndarray=None,
+                    call_prices: np.ndarray=None):
         """Calibrate the Heston Local Volatility Model using kernel regression.
 
         This method calibrates the local volatility part of the Heston Model given a volatility parametrization so that the 
@@ -321,8 +321,11 @@ class HestonLocalVol:
             time_grid (np.array): [description]
             n_sims ([type]): [description]
             local_var (np.ndarray, optional): [description]. Defaults to None.
+            call_prices (np.ndarray, optional): Defaults to None.
         """
-        self._stoch_local_variance = HestonLocalVol._calibrate_MC(self._heston, vol_param,
+        if local_var is None:
+            local_var = LocalVol.compute_local_var(vol_param, x_strikes, time_grid, call_prices)
+        self._stoch_local_variance = HestonLocalVol._calibrate_MC(self._heston,
                                 x_strikes, time_grid,  n_sims, local_var)
         self._x_strikes = x_strikes
         self._time_grid = time_grid
@@ -365,12 +368,11 @@ class HestonLocalVol:
 
 
     @staticmethod
-    def _calibrate_MC(heston: HestonModel,  
-                    vol_param, 
+    def _calibrate_MC(heston: HestonModel,   
                     x_strikes: np.array,
                     time_grid: np.array, 
                     n_sims, 
-                    local_var: np.ndarray=None,
+                    local_var: np.ndarray,
                     x0 = 1.0):
         
         def apply_mc_step( x, t0, t1, rnd, stoch_local_var):
@@ -386,11 +388,6 @@ class HestonLocalVol:
             v += heston._mean_reversion_speed*(heston._long_run_variance-v)*dt + heston._vol_of_vol*np.sqrt(v)*rnd_V*sqrt_dt
             x[:,1] = np.maximum(v,0)
 
-        if local_var is None:
-            local_var = LocalVol.compute_local_var(vol_param, x_strikes, time_grid)
-        else:
-            if local_var.shape[0] != time_grid.shape[0] or local_var.shape[1] != x_strikes.shape[0]:
-                raise Exception('Local variance has not the right dimension.')
         stoch_local_variance = np.empty(local_var.shape)
         stoch_local_variance[0] = local_var[0]/heston._initial_variance
         #now apply explicit euler to get new values for v and S and then apply kernel regression to estimate new local variance

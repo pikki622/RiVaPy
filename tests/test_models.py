@@ -164,7 +164,7 @@ class HestonLocalVolModelTest(unittest.TestCase):
 		x_strikes = np.linspace(0.5, 1.5, num=240)
 		time_grid = np.linspace(0.0, 1.0, num=240) 
 		call_prices = heston.call_price(1.0, heston._initial_variance, x_strikes, time_grid)
-		heston_lv = models.HestonLocalVol(heston)
+		heston_lv = models.StochasticLocalVol(heston)
 		heston_lv.calibrate_MC(None, x_strikes, time_grid, n_sims=10_000, call_prices=call_prices)
 		call_prices_sim = HestonLocalVolModelTest.calc_callprice_MC(time_grid, x_strikes, 10_000, heston_lv)
 		for t in [80,120,180,239]:
@@ -193,7 +193,7 @@ class HestonLocalVolModelTest(unittest.TestCase):
 		x_strikes = np.linspace(0.5,1.5, num=240)
 		time_grid = np.linspace(0.0, 1.0, num=240) 
 		call_prices = heston.call_price(1.0, heston._initial_variance, x_strikes, time_grid)
-		heston_lv = models.HestonLocalVol(heston_2)
+		heston_lv = models.StochasticLocalVol(heston_2)
 		heston_lv.calibrate_MC(None, x_strikes, time_grid, n_sims=10_000, call_prices=call_prices)
 		call_prices_sim = HestonLocalVolModelTest.calc_callprice_MC(time_grid, x_strikes, 10_000, heston_lv)
 		for t in [80,120,180,239]:

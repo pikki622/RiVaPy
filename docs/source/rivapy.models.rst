@@ -17,7 +17,7 @@ Stochastic Volatility
 
 Local Stochastic Volatility
 -------------------------------
-.. autoclass:: rivapy.models.HestonLocalVol
+.. autoclass:: rivapy.models.StochasticLocalVol
    :members:
    :undoc-members:
    :show-inheritance:

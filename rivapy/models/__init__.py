@@ -258,11 +258,12 @@ class HestonModel:
             else:
                 return (self._characteristic_func(xi, s0, v0, tau) / (ixi) * np.exp(-ixi * np.log(K))).real
 
-        "Simplified form, with only one integration. "
-        h = lambda xi: s0 * integ_func(xi, s0, v0, K, tau, 1) - K * integ_func(xi, s0, v0, K, tau, 2)
-        res = 0.5 * (s0 - K) + 1/scipy.pi * scipy.integrate.quad_vec(h, 0, 500.)[0]  #vorher 500
-        if tau == 0:
+        if tau < 1e-3:
             res = (s0-K > 0) * (s0-K)
+        else:
+            "Simplified form, with only one integration. "
+            h = lambda xi: s0 * integ_func(xi, s0, v0, K, tau, 1) - K * integ_func(xi, s0, v0, K, tau, 2)
+            res = 0.5 * (s0 - K) + 1/scipy.pi * scipy.integrate.quad_vec(h, 0, 500.)[0]  #vorher 500
         return res
     
 

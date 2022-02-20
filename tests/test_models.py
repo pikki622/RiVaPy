@@ -160,20 +160,16 @@ class HestonLocalVolModelTest(unittest.TestCase):
 		x_strikes = np.linspace(0.5,1.5, num=240)
 		time_grid = np.linspace(1.0/365.0,1.0, num=240) 
 		call_prices = heston.call_price(1.0, heston._initial_variance, x_strikes, time_grid)
-		#vols_heston = HestonLocalVolModelTest.calc_imlied_vol_grid(time_grid, x_strikes, call_prices)   
-		#heston_grid_param = mktdata.VolatilityGridParametrization(time_grid, x_strikes, vols_heston)
-		#dc = mktdata.curves.DiscountCurve('dc', dt.datetime(2021,1,1), [dt.datetime(2021,1,1), dt.datetime(2021,2,1)],[1.0, 1.0])
-		# heston_surface = mktdata.VolatilitySurface('heston_surface', dt.datetime(2021,1,1), 
-        #                   mktdata.EquityForwardCurve(1.0,dc,dc,div_table=None), 
-        #                  enums.DayCounterType.Act365Fixed, heston_grid_param)
 		heston_lv = models.HestonLocalVol(heston)
-		heston_lv.calibrate_MC(None, x_strikes, time_grid, n_sims=10000, call_prices=call_prices)
-		call_prices_sim = HestonLocalVolModelTest.calc_callprice_MC(time_grid, x_strikes,1000000, heston_lv)
-		vol = analytics.compute_implied_vol_Buehler(x_strikes[120], maturity=time_grid[-1], 
-																	price=call_prices[-1, 120], min_vol=0.01)
-		vol_sim = analytics.compute_implied_vol_Buehler(x_strikes[120], maturity=time_grid[-1], 
-																	price=call_prices_sim[-1, 120], min_vol=0.01)
-		self.assertAlmostEqual(heston_lv._stoch_local_variance[0,0], 1.0, 3)
+		heston_lv.calibrate_MC(None, x_strikes, time_grid, n_sims=10_000, call_prices=call_prices)
+		call_prices_sim = HestonLocalVolModelTest.calc_callprice_MC(time_grid, x_strikes, 10_000, heston_lv)
+		for t in [80,120,180,239]:
+			for k in [80, 100, 120, 140, 160]:
+				vol = analytics.compute_implied_vol_Buehler(x_strikes[k], maturity=time_grid[t], 
+																			price=call_prices[t, k], min_vol=0.01)
+				vol_sim = analytics.compute_implied_vol_Buehler(x_strikes[k], maturity=time_grid[t], 
+																			price=call_prices_sim[t, k], min_vol=0.01)
+				self.assertTrue(np.abs(vol-vol_sim)< 0.02)
 
 if __name__ == '__main__':
     unittest.main()

@@ -12,6 +12,14 @@ class HestonModel:
 		self._initial_variance = initial_variance
 		self._correlation = correlation
 
+	def get_initial_value(self)->np.ndarray:
+		"""Return the initial value (x0, v0)
+
+		Returns:
+			np.ndarray: Initial value.
+		"""
+		return np.array([1.0, self._initial_variance])
+
 	def _characteristic_func(self, xi, s0, v0, tau):
 		"""Characteristic function needed internally to compute call prices with analytic formula.
 		"""
@@ -83,7 +91,7 @@ class HestonModel:
 		sqrt_dt = np.sqrt(dt)
 		if slv is None:
 			slv=1.0
-		S *= np.exp(- 0.5*v*dt + np.sqrt(v*slv)*rnd_corr_S*sqrt_dt)
+		S *= np.exp(- 0.5*v*slv*dt + np.sqrt(v*slv)*rnd_corr_S*sqrt_dt)
 		v += self._mean_reversion_speed*(self._long_run_variance-v)*dt + self._vol_of_vol*np.sqrt(v)*rnd_V*sqrt_dt
 		x_[:,1] = np.maximum(v,0)
 		return x_

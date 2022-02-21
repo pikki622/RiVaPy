@@ -43,13 +43,7 @@ class StochasticLocalVol:
 		self._x_strikes = x_strikes
 		self._time_grid = time_grid
 
-	def get_initial_value(self)->np.ndarray:
-		"""Return the initial value (x0, v0)
-
-		Returns:
-			np.ndarray: Initial value.
-		"""
-		return np.array([1.0, self._stoch_vol_model._initial_variance])
+	
 		
 	def apply_mc_step(self, x: np.ndarray, t0: float, t1: float, rnd: np.ndarray, inplace: bool = True):
 		"""Apply a MC-Euler step for the Heston Local Vol Model for n different paths.
@@ -84,7 +78,13 @@ class StochasticLocalVol:
 			v += self._stoch_vol_model._mean_reversion_speed*(self._stoch_vol_model._long_run_variance-v)*dt + self._stoch_vol_model._vol_of_vol*np.sqrt(v)*rnd_V*sqrt_dt
 			x_[:,1] = np.maximum(v,0)
 			return x_
+	def get_initial_value(self)->np.ndarray:
+		"""Return the initial value (x0, v0)
 
+		Returns:
+			np.ndarray: Initial value.
+		"""
+		return self._stoch_vol_model.get_initial_value()
 
 	@staticmethod
 	def _calibrate_MC(stoch_vol,   
@@ -111,8 +111,9 @@ class StochasticLocalVol:
 		stoch_local_variance[0] = local_var[0]/stoch_vol._initial_variance
 		#now apply explicit euler to get new values for v and S and then apply kernel regression to estimate new local variance
 		x = np.empty((n_sims,2))
-		x[:,0] = x0
-		x[:,1] = stoch_vol._initial_variance
+		initial_value = stoch_vol.get_initial_value()
+		x[:,0] = initial_value[0]
+		x[:,1] = initial_value[1]
 		for i in range(1,time_grid.shape[0]):
 			rnd = np.random.normal(size=(n_sims,2))
 			slv = np.interp(x[:,0], x_strikes, stoch_local_variance[i-1])

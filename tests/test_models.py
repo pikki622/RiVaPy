@@ -22,7 +22,7 @@ class LocalVolModelTest(unittest.TestCase):
 		strike = 1.0
 		call_price = np.mean(np.maximum(S-strike, 0))
 		call_price_ref = analytics.compute_european_price_Buehler(strike = strike, maturity=1.0, volatility=ssvi.calc_implied_vol(1.0,strike))
-		self.assertAlmostEqual(call_price, call_price_ref)
+		self.assertAlmostEqual(call_price, call_price_ref, delta=0.1)
 
 class HestonModelTest(unittest.TestCase):
 	

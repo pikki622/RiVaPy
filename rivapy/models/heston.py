@@ -12,6 +12,15 @@ class HestonModel:
 		self._initial_variance = initial_variance
 		self._correlation = correlation
 
+	def feller_condition(self):
+		"""Return True if the model parameter fulfill the Feller condition
+		..:
+
+		Returns:
+			bool: True->Feller condition is fullfilled
+		"""
+		return 2*self._mean_reversion_speed*self._long_run_variance>self._vol_of_vol > 0
+
 	def get_initial_value(self)->np.ndarray:
 		"""Return the initial value (x0, v0)
 

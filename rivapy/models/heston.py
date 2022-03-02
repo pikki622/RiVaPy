@@ -92,8 +92,8 @@ class HestonModel:
 			x_ = x.copy()
 		else:
 			x_ = x
-		rnd_corr_S = np.sqrt(1.0-self._correlation**2)*rnd[:,0] + self._correlation*rnd[:,1]
-		rnd_V = rnd[:,1]
+		rnd_V = np.sqrt(1.0-self._correlation**2)*rnd[:,1] + self._correlation*rnd[:,0]
+		rnd_corr_S = rnd[:,0]
 		S = x_[:,0]
 		v = x_[:,1]
 		dt = t1-t0

@@ -12,6 +12,23 @@ class HestonModel:
 		self._initial_variance = initial_variance
 		self._correlation = correlation
 
+	def feller_condition(self):
+		"""Return True if the model parameter fulfill the Feller condition
+		..:
+
+		Returns:
+			bool: True->Feller condition is fullfilled
+		"""
+		return 2*self._mean_reversion_speed*self._long_run_variance>self._vol_of_vol > 0
+
+	def get_initial_value(self)->np.ndarray:
+		"""Return the initial value (x0, v0)
+
+		Returns:
+			np.ndarray: Initial value.
+		"""
+		return np.array([1.0, self._initial_variance])
+
 	def _characteristic_func(self, xi, s0, v0, tau):
 		"""Characteristic function needed internally to compute call prices with analytic formula.
 		"""
@@ -75,15 +92,15 @@ class HestonModel:
 			x_ = x.copy()
 		else:
 			x_ = x
-		rnd_corr_S = np.sqrt(1.0-self._correlation**2)*rnd[:,0] + self._correlation*rnd[:,1]
-		rnd_V = rnd[:,1]
+		rnd_V = np.sqrt(1.0-self._correlation**2)*rnd[:,1] + self._correlation*rnd[:,0]
+		rnd_corr_S = rnd[:,0]
 		S = x_[:,0]
 		v = x_[:,1]
 		dt = t1-t0
 		sqrt_dt = np.sqrt(dt)
 		if slv is None:
 			slv=1.0
-		S *= np.exp(- 0.5*v*dt + np.sqrt(v*slv)*rnd_corr_S*sqrt_dt)
+		S *= np.exp(- 0.5*v*slv*dt + np.sqrt(v*slv)*rnd_corr_S*sqrt_dt)
 		v += self._mean_reversion_speed*(self._long_run_variance-v)*dt + self._vol_of_vol*np.sqrt(v)*rnd_V*sqrt_dt
 		x_[:,1] = np.maximum(v,0)
 		return x_

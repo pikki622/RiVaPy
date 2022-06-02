@@ -34,7 +34,7 @@ class LocalVolModelTest(unittest.TestCase):
 		time_grid = np.linspace(0.0,1.0,365)
 		input_vol = 0.3
 		call_prices = np.array([[analytics.compute_european_price_Buehler(strike=k, maturity=t, volatility=input_vol) for k in x_strikes] for t in time_grid])
-		lv_model = models.LocalVol(vol_param=None, x_strikes=x_strikes, time_grid=time_grid, call_param=call_prices)
+		lv_model = models.LocalVol(vol_param=None, x_strikes=x_strikes, time_grid=time_grid, call_prices=call_prices)
 		var = lv_model.compute_local_var(vol_param=None, call_param = call_prices, x_strikes = x_strikes, time_grid = time_grid)
 		vol = np.sqrt(np.abs(var))
 
@@ -63,7 +63,7 @@ class LocalVolModelTest(unittest.TestCase):
 		input_vol = np.array([[ssvi.calc_implied_vol(ttm=t, strike=k) for k in x_strikes] for t in time_grid])		
 		call_prices = np.array([[analytics.compute_european_price_Buehler(strike=k, maturity=t, volatility=input_vol[i,j]) for j,k in enumerate(x_strikes)] for  i,t in enumerate(time_grid)])
 
-		lv_model = models.LocalVol(vol_param=None, x_strikes=x_strikes, time_grid=time_grid, call_param=call_prices)
+		lv_model = models.LocalVol(vol_param=None, x_strikes=x_strikes, time_grid=time_grid, call_prices=call_prices)
 		var_call = np.sqrt(lv_model.compute_local_var(vol_param=None, call_param = call_prices, x_strikes = x_strikes, time_grid = time_grid))
 				
 		for i,t in enumerate(time_grid):

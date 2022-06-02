@@ -1,6 +1,6 @@
 import bisect
 import numpy as np
-
+from scipy import interpolate
 
 def _interpolate_2D(time_grid, strikes, f, x, t):
     t_index = bisect.bisect_left(time_grid, t)
@@ -36,7 +36,7 @@ class LocalVol:
         self._x_strikes = x_strikes
         self._time_grid = time_grid
         self._local_variance = LocalVol.compute_local_var(vol_param, x_strikes, time_grid, call_prices)
-        self._variance = interpolation.RectBivariateSpline(time_grid, x_strikes, self._local_variance, bbox=[None, None, None, None], kx=1, ky=1, s=0)
+        self._variance = interpolate.RectBivariateSpline(time_grid, x_strikes, self._local_variance, bbox=[None, None, None, None], kx=1, ky=1, s=0)
                 #interpolation.interp2d(time_grid, x_strikes, self._local_variance.T)
 
     @staticmethod

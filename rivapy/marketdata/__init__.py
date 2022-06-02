@@ -164,8 +164,9 @@ class   VolatilityParametrizationSVI(_VolatilityParametrizationExpiry):
     def __init__(self, expiries: List[float], svi_params: List[Tuple]):
         """Raw SVI parametrization (definition 3.1 in  https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2033323)
 
-            ..math:
-                w(k) = a + b(\rho (k-m) + \sqrt{(k-m)^2+\sigma^2 })
+        .. math::
+            w(k) = a + b(\\rho (k-m) + \\sqrt{(k-m)^2+\\sigma^2 })
+        
         Args:
             expiries (List[float]): List of expiries (sorted from nearest to farest).
             svi_params (List[Tuple]): List of SVI parameters (one Tuple for each expiry). Tuple in the order (a, b, rho, m, sigma).
@@ -251,33 +252,38 @@ class VolatilityParametrizationSABR(_VolatilityParametrizationExpiry):
 
         The SABR model assumes that the forward rate and the instantaneous volatility are driven by two correlated Brownian motions:
 
-        $$df_t = \alpha_t f_t^\beta d W_t^1$$
+        .. math::                
+            df_t = \\alpha_t f_t^\\beta dW_t^1
+        .. math::
+            d\\alpha_t = \\nu\\alpha_t dW_t^2
+        .. math::
+            E\\bigl[dW_t^1 dW_T^2\\bigr] = \\rho dt
 
-        $$d\alpha_t = \nu\alpha_t d W_t^2$$
+        The expression that the implied volatility must satisfy is 
+        
+        .. math::
+            \\sigma_B(K,f) = \\frac{\\alpha\\biggl\{1+\\biggl[\\frac {(1-\\beta)^2}{24}\\frac {\\alpha^2}{(fK)^{1-\\beta}}+\\frac {1}{4}\\frac {\\rho\\beta\\nu\\alpha}{(FK)^{(1-\\beta)/2}}+\\frac {2-3\\rho^2}{24}\\nu^2\\biggr ]T\\biggr \\}}{(fK)^{(1-\\beta)/2}\\biggl[1+\\frac {(1-\\beta)^2}{24}{ln}^2\\frac {f}{K}+\\frac {(1-\\beta)^4}{1920}{ln}^4\\frac {f}{K}\\biggr]} \\frac {z}{\\chi(z)}
+              
+        .. math::
+            z = \\frac {\\nu }{\\alpha }(fK)^{(1-\\beta )/2} ln \\frac {f}{K}
 
-        $$E\bigl[d W_t^1 d W_T^2\bigr] = \rho d t$$
+        .. math::
+            \\chi(z) = ln \\bigl[ \\frac {\\sqrt{1-2 \\rho z+z^2}+z-\\rho }{1- \\rho} \\bigr]
 
-        The expression that the implied volatility must satisfy is
+        When :math:`f = K` (for ATM options), the above formula for implied volatility simplifies to:
 
-        $$\sigma_B(K,f) = \frac{\alpha\biggl\{1+\biggl[\frac{(1-\beta)^2}{24}\frac{\alpha^2}{(fK)^{1-\beta}}+\frac{1}{4}\frac{\rho\beta\nu\alpha}{(FK)^{(1-\beta)/2}}+\frac{2-3\rho^2}{24}\nu^2\biggr]T\biggr\}}{(fK)^{(1-\beta)/2}\biggl[1+\frac{(1-\beta)^2}{24}{ln}^2\frac{f}{K}+\frac{(1-\beta)^4}{1920}{ln}^4\frac{f}{K}\biggr]}\frac{z}{\chi(z)}$$
-
-        $$z=\frac{\nu}{\alpha}(fK)^{(1-\beta)/2}ln\frac{f}{K}$$
-
-        $$\chi(z) = ln\Biggl[\frac{\sqrt{1-2\rho z+z^2}+z-\rho}{1-\rho}\Biggr]$$
-
-        When $f = K $ (for ATM options), the above formula for implied volatility simplifies to:
-
-        $$\sigma_{ATM} = \sigma_B(f,f)=\frac{\alpha\biggl\{1+\biggl[\frac{(1-\beta)^2}{24}\frac{\alpha^2}{f^{2-2\beta}}+\frac{1}{4}\frac{\rho\beta\nu\alpha}{f^{1-\beta}}\frac{2-3\rho^2}{24}\nu^2\biggr]T\biggr\}}{f^{1-\beta}}$$
+        .. math::
+            \\sigma_{ATM} = \\sigma_B(f,f)=\\frac{\\alpha\\biggl\{1+\\biggl[\\frac{(1-\\beta)^2}{24}\\frac{\\alpha^2}{f^{2-2\\beta}}+\\frac{1}{4}\\frac{\\rho\\beta\\nu\\alpha}{f^{1-\\beta}}\\frac{2-3\\rho^2}{24}\\nu^2\\biggr]T\\biggr\}}{f^{1-\\beta}}
 
         where
-
-        > $\alpha$ is the instantaneous vol;
-
-        > $\nu$ is the vol of vol;
-
-        > $\rho$ is the correlation between the Brownian motions driving the forward rate and the instantaneous vol;
-
-        > $\beta$ is the CEV component for forward rate (determines shape of forward rates, leverage effect and backbond of ATM vol).
+                
+        > :math:`\\alpha` is the instantaneous vol;
+            
+        > :math:`\\nu` is the vol of vol;
+        
+        > :math:`\\rho` is the correlation between the Brownian motions driving the forward rate and the instantaneous vol;
+        
+        > :math:`\\beta` is the CEV component for forward rate (determines shape of forward rates, leverage effect and backbond of ATM vol).
 
         Args:
             expiries (List[float]): List of expiries (sorted from nearest to farest).

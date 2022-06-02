@@ -76,6 +76,7 @@ class LocalVolModelTest(unittest.TestCase):
 			error = np.mean(var_vol_range) - np.mean(var_call_range)
 			self.assertLess(error, 2E-2)
 
+
 class HestonModelTest(unittest.TestCase):
 	
 	def test_callprice_formula(self):

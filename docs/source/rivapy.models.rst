@@ -1,23 +1,26 @@
 Models
 ===========================
 
-Local Volatility
+Equity
 -------------------------------
 .. autoclass:: rivapy.models.LocalVol
    :members:
    :undoc-members:
    :show-inheritance:
 
-Stochastic Volatility
--------------------------------
-.. autoclass:: rivapy.models.HestonModel
+
+.. automodule:: rivapy.models.HestonModel
    :members:
    :undoc-members:
    :show-inheritance:
 
-Local Stochastic Volatility
--------------------------------
-.. autoclass:: rivapy.models.StochasticLocalVol
-   :members:
-   :undoc-members:
-   :show-inheritance:
+
+.. automodule:: rivapy.models.HestonLocalVol
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. automodule:: rivapy.models.HestonLocalVol
+    :members:
+    :undoc-members:
+    :show-inheritance:

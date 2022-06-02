@@ -45,21 +45,21 @@ class HestonModel:
 		)
 		return np.exp(C + D*v0 + ixi * np.log(s0))
 	
-	def call_price(self, s0: float, v0: float, K: Union[np.ndarray, float], tau: Union[np.ndarray, float])->Union[np.ndarray, float]:
+	def call_price(self, s0: float, v0: float, K: Union[np.ndarray, float], ttm: Union[np.ndarray, float])->Union[np.ndarray, float]:
 		"""Computes a call price for the Heston model via integration over characteristic function.
 
 		Args:
 			s0 (float): current spot
 			v0 (float): current variance
 			K (float): strike
-			tau (float): time to maturity
+			ttm (float): time to maturity
 		"""
-		if isinstance(tau, np.ndarray):
-			result = np.empty((tau.shape[0], K.shape[0], ))
-			for i in range(tau.shape[0]):
+		if isinstance(ttm, np.ndarray):
+			result = np.empty((ttm.shape[0], K.shape[0], ))
+			for i in range(ttm.shape[0]):
 				#for j in range(K.shape[0]):
 					#result[i,j] = self.call_price(s0,v0,K[j], tau[i])
-				result[i,:] = self.call_price(s0,v0,K, tau[i])
+				result[i,:] = self.call_price(s0,v0,K, ttm[i])
 			return result
 
 		def integ_func(xi, s0, v0, K, tau, num):
@@ -69,11 +69,11 @@ class HestonModel:
 			else:
 				return (self._characteristic_func(xi, s0, v0, tau) / (ixi) * np.exp(-ixi * np.log(K))).real
 
-		if tau < 1e-3:
+		if ttm < 1e-3:
 			res = (s0-K > 0) * (s0-K)
 		else:
 			"Simplified form, with only one integration. "
-			h = lambda xi: s0 * integ_func(xi, s0, v0, K, tau, 1) - K * integ_func(xi, s0, v0, K, tau, 2)
+			h = lambda xi: s0 * integ_func(xi, s0, v0, K, ttm, 1) - K * integ_func(xi, s0, v0, K, ttm, 2)
 			res = 0.5 * (s0 - K) + 1/scipy.pi * scipy.integrate.quad_vec(h, 0, 500.)[0]  #vorher 500
 		return res
 	
@@ -83,10 +83,10 @@ class HestonModel:
 
 		Args:
 			x (np.ndarray): 2-d array containing the start values for the spot and variance. The first column contains the spot, the second the variance values.
-			t0 ([type]): [description]
-			t1 ([type]): [description]
-			rnd ([type]): [description]
-			slv (np.ndarray): Stochastic local variance (for each path) to be multiplied with the heston variance. This is used by the StochasticVolatilityModel.
+			t0 (float): The current time.
+			t1 (float): The next timestep to be computed.
+			rnd (np.ndarray): Two-dimensional array of shape (n_sims,2) containing the normal random numbers. Each row of the array is used to compute the correlated random numbers for the respective simulation.
+			slv (np.ndarray): Stochastic local variance (for each path) to be multiplied with the heston variance. This is used by the StochasticVolatilityModel and can be ignored.
 		"""
 		if not inplace:
 			x_ = x.copy()

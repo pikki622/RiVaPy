@@ -97,7 +97,7 @@ class HestonModelTest(unittest.TestCase):
 		simulated_values[:,1] = heston._initial_variance
 
 		
-		cp_anayltic = heston.call_price(1.0, heston._initial_variance, K = strikes, tau = 1.0)
+		cp_anayltic = heston.call_price(1.0, heston._initial_variance, K = strikes, ttm = 1.0)
 
 		for i in range(1, timegrid.shape[0]):
 			rnd = np.random.normal(size=(n_sims,2))

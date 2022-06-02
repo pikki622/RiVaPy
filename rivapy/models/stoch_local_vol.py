@@ -123,7 +123,7 @@ class StochasticLocalVol:
 			stoch_local_variance[i] = local_var[i]/kr.predict(x_strikes.reshape((-1,1)))
 			# overwrite all values at strikes that are outside the simulated spot range
 			min_spot = np.min(x[:,0])
-			stoch_local_variance[i][x_strikes<min_spot] = stoch_local_variance[i][[x_strikes>min_spot]][0]
+			stoch_local_variance[i][x_strikes<min_spot] = stoch_local_variance[i][x_strikes>min_spot][0]
 			max_spot = np.max(x[:,0])
-			stoch_local_variance[i][x_strikes>max_spot] = stoch_local_variance[i][[x_strikes<max_spot]][-1]
+			stoch_local_variance[i][x_strikes>max_spot] = stoch_local_variance[i][x_strikes<max_spot][-1]
 		return stoch_local_variance

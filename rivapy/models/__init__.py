@@ -5,6 +5,7 @@ from numpy.core.fromnumeric import var
 from rivapy.models.local_vol import LocalVol
 from rivapy.models.heston import HestonModel
 from rivapy.models.stoch_local_vol import StochasticLocalVol
+from rivapy.models.scott_chesney import ScottChesneyModel
 
 
 if __name__=='__main__':

@@ -6,6 +6,15 @@ import scipy
 class HestonModel:
 	def __init__(self, long_run_variance, mean_reversion_speed, vol_of_vol, 
 				initial_variance, correlation):
+		"""_summary_
+
+		Args:
+			long_run_variance (_type_): _description_
+			mean_reversion_speed (_type_): _description_
+			vol_of_vol (_type_): _description_
+			initial_variance (_type_): _description_
+			correlation (_type_): _description_
+		"""
 		self._long_run_variance = long_run_variance
 		self._mean_reversion_speed = mean_reversion_speed
 		self._vol_of_vol = vol_of_vol

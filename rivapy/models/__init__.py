@@ -21,7 +21,7 @@ def _interpolate_2D(time_grid, strikes, f, x, t):
     
 class LocalVol:
 
-    def __init__(self, vol_param, x_strikes: np.array, time_grid: np.array, call_param: np.ndarray=None):
+    def __init__(self, vol_param, x_strikes: np.array, time_grid: np.array, call_param: np.ndarray=None, local_vol_grid: np.ndarray=None):
         """Local Volatility Class 
 
         Args:
@@ -31,15 +31,29 @@ class LocalVol:
             call_param (np.ndarray, optional): A grid of call prices. Not compatible with vol_param. Defaults to None.
         """
 
-        if (vol_param is None) and (call_param is None):
-            raise Exception('Set vol_params or call_params!')
+        if (vol_param is None) and (call_param is None) and (local_vol_grid is None):
+            raise Exception('Set vol_params, call_params or local_vol_grid!')
+
+        if (vol_param is not None) and (call_param is not None) and (local_vol_grid is not None):
+            raise Exception('Set either vol_params or call_params or local_vol_grid, not all!')
 
         if (vol_param is not None) and (call_param is not None):
             raise Exception('Set either vol_params or call_params, not both!')
 
+        if (vol_param is not None) and (local_vol_grid is not None):
+            raise Exception('Set either vol_params or local_vol_grid, not both!')
+
+        if (local_vol_grid is not None) and (call_param is not None):
+            raise Exception('Set either local_vol_grid or call_params, not both!')
+
         self._x_strikes = x_strikes
         self._time_grid = time_grid
-        self._local_variance = LocalVol.compute_local_var(vol_param, x_strikes, time_grid, call_param)
+        
+        if local_vol_grid is not None:
+            self._local_variance = local_vol_grid**2
+        else:
+            self._local_variance = LocalVol.compute_local_var(vol_param, x_strikes, time_grid, call_param)
+
         self._variance = interpolation.RectBivariateSpline(time_grid, x_strikes, self._local_variance, bbox=[None, None, None, None], kx=1, ky=1, s=0)
                 #interpolation.interp2d(time_grid, x_strikes, self._local_variance.T)
 

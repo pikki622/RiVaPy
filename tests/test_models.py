@@ -34,7 +34,7 @@ class LocalVolModelTest(unittest.TestCase):
 		time_grid = np.linspace(0.0,1.0,365)
 		input_vol = 0.3
 		call_prices = np.array([[analytics.compute_european_price_Buehler(strike=k, maturity=t, volatility=input_vol) for k in x_strikes] for t in time_grid])
-		lv_model = models.LocalVol(vol_param=None, x_strikes=x_strikes, time_grid=time_grid, call_param=call_prices)
+		lv_model = models.LocalVol(vol_param=None, x_strikes=x_strikes, time_grid=time_grid, call_prices=call_prices)
 		var = lv_model.compute_local_var(vol_param=None, call_param = call_prices, x_strikes = x_strikes, time_grid = time_grid)
 		vol = np.sqrt(np.abs(var))
 
@@ -63,7 +63,7 @@ class LocalVolModelTest(unittest.TestCase):
 		input_vol = np.array([[ssvi.calc_implied_vol(ttm=t, strike=k) for k in x_strikes] for t in time_grid])		
 		call_prices = np.array([[analytics.compute_european_price_Buehler(strike=k, maturity=t, volatility=input_vol[i,j]) for j,k in enumerate(x_strikes)] for  i,t in enumerate(time_grid)])
 
-		lv_model = models.LocalVol(vol_param=None, x_strikes=x_strikes, time_grid=time_grid, call_param=call_prices)
+		lv_model = models.LocalVol(vol_param=None, x_strikes=x_strikes, time_grid=time_grid, call_prices=call_prices)
 		var_call = np.sqrt(lv_model.compute_local_var(vol_param=None, call_param = call_prices, x_strikes = x_strikes, time_grid = time_grid))
 				
 		for i,t in enumerate(time_grid):
@@ -75,6 +75,7 @@ class LocalVolModelTest(unittest.TestCase):
 			var_call_range = var_call[i,(x_strikes>range_low)&(x_strikes<range_up)]
 			error = np.mean(var_vol_range) - np.mean(var_call_range)
 			self.assertLess(error, 2E-2)
+
 
 class HestonModelTest(unittest.TestCase):
 	
@@ -97,7 +98,7 @@ class HestonModelTest(unittest.TestCase):
 		simulated_values[:,1] = heston._initial_variance
 
 		
-		cp_anayltic = heston.call_price(1.0, heston._initial_variance, K = strikes, tau = 1.0)
+		cp_anayltic = heston.call_price(1.0, heston._initial_variance, K = strikes, ttm = 1.0)
 
 		for i in range(1, timegrid.shape[0]):
 			rnd = np.random.normal(size=(n_sims,2))
@@ -122,7 +123,7 @@ class HestonLocalVolModelTest(unittest.TestCase):
 		for i in range(expiries.shape[0]):
 			extrapolation = False
 			for j in range(int(strikes.shape[0]/2),strikes.shape[0]):
-				if vols[i,j] <1e-1:
+				if vols[i,j] <1e-6:
 					vols[i,j] = vols[i,j-1]
 					extrapolation = True
 			for j in range(23,-1,-1):
@@ -133,24 +134,78 @@ class HestonLocalVolModelTest(unittest.TestCase):
 				print('Extrapolation necessary for expiry ' + str(i))
 		return vols
 
+	@staticmethod
+	def calc_callprice_MC(time_grid, strikes, n_sims, model):
+		if time_grid[0] > 1e-7:
+			raise Exception('The time_grid must include 0.0 as first point.')
+		call_prices = np.empty((time_grid.shape[0], strikes.shape[0]))
+		x = np.empty((n_sims,2))
+		x[:,0] = model.get_initial_value()[0]
+		x[:,1] = model.get_initial_value()[1]
+		for j in range(strikes.shape[0]):
+			call_prices[0][j] = np.maximum(x[0,0]-strikes[j], 0.0)
+		np.random.seed(42)
+		t0 = 0
+		for i in range(1, time_grid.shape[0]):
+			rnd = np.random.normal(size=(n_sims, 2))
+			model.apply_mc_step(x, t0, time_grid[i], rnd, inplace=True)
+			for j in range(strikes.shape[0]):
+				call_prices[i][j] = np.mean(np.maximum(x[:,0]-strikes[j], 0.0) )
+			t0 = time_grid[i]
+		return call_prices
+
 	def test_simple(self):
+		"""Simple test: The given implied volatility surface equals the heston surface->stoch local variance must equal 1
+		"""
 		heston = models.HestonModel(long_run_variance=0.3**2, 
                             mean_reversion_speed=0.5, 
                             vol_of_vol=0.2, 
-                            initial_variance=0.15**2, 
+                            initial_variance=0.3**2, 
+                            correlation = -0.95)
+		x_strikes = np.linspace(0.5, 1.5, num=240)
+		time_grid = np.linspace(0.0, 1.0, num=240) 
+		call_prices = heston.call_price(1.0, heston._initial_variance, x_strikes, time_grid)
+		heston_lv = models.StochasticLocalVol(heston)
+		heston_lv.calibrate_MC(None, x_strikes, time_grid, n_sims=10_000, call_prices=call_prices)
+		call_prices_sim = HestonLocalVolModelTest.calc_callprice_MC(time_grid, x_strikes, 10_000, heston_lv)
+		for t in [80,120,180,239]:
+			for k in [80, 100, 120, 140, 160]:
+				vol = analytics.compute_implied_vol_Buehler(x_strikes[k], maturity=time_grid[t], 
+																			price=call_prices[t, k], min_vol=0.01)
+				vol_sim = analytics.compute_implied_vol_Buehler(x_strikes[k], maturity=time_grid[t], 
+																			price=call_prices_sim[t, k], min_vol=0.01)
+				self.assertTrue(np.abs(vol-vol_sim)< 0.02, 
+					'Vol from calibrated model ('+str(vol_sim)+') is not close enough to reference vol('+str(vol)+') for strike/expiry: '
+					 + str(x_strikes[k])+'/'+str(time_grid[t]))
+
+	def test_simple_2(self):
+		"""Simple test 2: The given implied volatility surface equals a surface from a heston model. Try to calibrate Heston Local Vol with other heson parameters to fit the surface
+		"""
+		heston = models.HestonModel(long_run_variance=0.3**2, 
+                            mean_reversion_speed=0.5, 
+                            vol_of_vol=0.2, 
+                            initial_variance=0.3**2, 
+                            correlation = -0.95)
+		heston_2 = models.HestonModel(long_run_variance=0.2**2, 
+                            mean_reversion_speed=0.5, 
+                            vol_of_vol=0.2, 
+                            initial_variance=0.3**2, 
                             correlation = -0.95)
 		x_strikes = np.linspace(0.5,1.5, num=240)
-		time_grid = np.linspace(1.0/365.0,1.0, num=120) 
+		time_grid = np.linspace(0.0, 1.0, num=240) 
 		call_prices = heston.call_price(1.0, heston._initial_variance, x_strikes, time_grid)
-		vols_heston = HestonLocalVolModelTest.calc_imlied_vol_grid(time_grid, x_strikes, call_prices)   
-		heston_grid_param = mktdata.VolatilityGridParametrization(time_grid, x_strikes, vols_heston)
-		dc = mktdata.curves.DiscountCurve('dc', dt.datetime(2021,1,1), [dt.datetime(2021,1,1)],[1.0])
-		heston_surface = mktdata.VolatilitySurface('heston_surface', dt.datetime(2021,1,1), 
-                          mktdata.EquityForwardCurve(1.0,dc,dc,dc), 
-                         enums.DayCounterType.Act365Fixed, heston_grid_param)
-		heston_lv = models.HestonLocalVol(heston)
-		heston_lv.calibrate_MC(heston_surface, x_strikes, time_grid, n_sims=1000)
-		self.assertAlmostEqual(heston_lv._stoch_local_variance,1.0,3)
+		heston_lv = models.StochasticLocalVol(heston_2)
+		heston_lv.calibrate_MC(None, x_strikes, time_grid, n_sims=10_000, call_prices=call_prices)
+		call_prices_sim = HestonLocalVolModelTest.calc_callprice_MC(time_grid, x_strikes, 10_000, heston_lv)
+		for t in [80,120,180,239]:
+			for k in [80, 100, 120, 140, 160]:
+				vol = analytics.compute_implied_vol_Buehler(x_strikes[k], maturity=time_grid[t], 
+																			price=call_prices[t, k], min_vol=0.01)
+				vol_sim = analytics.compute_implied_vol_Buehler(x_strikes[k], maturity=time_grid[t], 
+																			price=call_prices_sim[t, k], min_vol=0.01)
+				self.assertTrue(np.abs(vol-vol_sim)< 0.02, 
+					'Vol from calibrated model ('+str(vol_sim)+') is not close enough to reference vol('+str(vol)+') for strike/expiry: '
+					 + str(x_strikes[k])+'/'+str(time_grid[t]))
 
 if __name__ == '__main__':
     unittest.main()

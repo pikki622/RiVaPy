@@ -4,6 +4,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from enum import IntEnum as _IntEnum
 import pyvacon as _pyvacon
+import rivapy
 from rivapy.instruments import CDSSpecification
 
 class ResultType(_IntEnum):
@@ -38,7 +39,17 @@ def _create_pricing_request(pr_dict : Iterable[ResultType]):
     return result
 
 class Black76PricingData:
-    def __init__(self, val_date, spec, discount_curve, vol_surface, pricing_request : Iterable[ResultType]):
+    def __init__(self, val_date: datetime, spec, discount_curve, vol_surface, pricing_request : Iterable[ResultType]):
+        """Constructor for Black76PricingDate
+
+        Args:
+            val_date ([datetime]): Valuation date.
+            spec ([type]): Specification.
+            discount_curve ([type]): Discount curve.
+            vol_surface ([type]): Volatility surface.
+            pricing_request (Iterable[ResultType]): Pricing request. Can be selected from rivapy.pricing.ResultType.
+        """
+        
         self.spec = spec
         self.val_date = val_date
         self.discount_curve = discount_curve
@@ -59,6 +70,48 @@ class Black76PricingData:
 
     def price(self):
         return _pyvacon.finance.pricing.BasePricer.price(self._get_pyvacon_obj())
+        
+class AmericanPdePricingData:
+    def __init__(self, val_date: datetime, spec, discount_curve, vol_surface, pricing_request : Iterable[ResultType], time_steps_year: int = 60, spot_steps: int = 200):
+        """Constructor for AmericanPdePricingDate
+
+        Args:
+            val_date ([datetime]): Valuation date.
+            spec ([type]): Specification
+            discount_curve ([type]): Discount curve.
+            vol_surface ([type]): Volatility surface.
+            pricing_request (Iterable[ResultType]): Pricing request. Can be selected from rivapy.pricing.ResultType.
+            time_steps_year (int, optional): [description]. Defaults to 60.
+            spot_steps (int, optional): [description]. Defaults to 200.
+        """
+        
+        self.val_date = val_date
+        self.spec = spec
+        self.discount_curve = discount_curve
+        self.vol_surface = vol_surface
+        self.pricing_request = pricing_request
+        self.time_steps_year = time_steps_year
+        self.spot_steps = spot_steps
+        self._pyvacon_obj = None
+    
+    
+    def _get_pyvacon_obj(self):
+        if self._pyvacon_obj is None:
+            self._pyvacon_obj = _pyvacon.finance.pricing.LocalVolPdePricingData()
+            self._pyvacon_obj.valDate = self.val_date
+            self._pyvacon_obj.spec = self.spec._get_pyvacon_obj().convertIntoBarrierSpecification()
+            self._pyvacon_obj.dsc = self.discount_curve._get_pyvacon_obj()
+            self._pyvacon_obj.param = _pyvacon.finance.pricing.PdePricingParameter()
+            self._pyvacon_obj.param.nTimeStepsPerYear = self.time_steps_year
+            self._pyvacon_obj.param.nSpotSteps = self.spot_steps   
+            self._pyvacon_obj.vol = self.vol_surface._get_pyvacon_obj()
+            self._pyvacon_obj.pricingRequest = _create_pricing_request(self.pricing_request)   
+        return self._pyvacon_obj
+
+    def price(self):
+        return _pyvacon.finance.pricing.BasePricer.price(self._get_pyvacon_obj())
+
+    
 class CDSPricingData:
     def __init__(self, spec: CDSSpecification, val_date, discount_curve, survival_curve, 
                 recovery_curve=None, integration_step = relativedelta(days=30)):

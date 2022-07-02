@@ -13,7 +13,8 @@ if _pyvacon_available:
     from pyvacon.numerics.extrapolation import ExtrapolationType
 else:
     class DayCounterType:
-        pass
+        Act365Fixed='Act365Fixed'
+        
     class InterpolationType:
         HAGAN_DF = 'HAGAN_DF'
 

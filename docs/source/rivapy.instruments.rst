@@ -1,9 +1,5 @@
 instruments
 ===========================
-
-
-
-
 .. autoclass:: rivapy.instruments.ComboSpecification
    :members:
    :undoc-members:
@@ -45,10 +41,19 @@ Credit Instruments
    :undoc-members:
    :show-inheritance:
 
+Power Instruments
+-----------------------------------
+This secton contains all contracts w.r.t. power.
 
-.. .. automodule:: rivapy.instruments.specifications
+.. .. autoclass:: rivapy.instruments
+.. .. automodule:: rivapy.instruments.ppa_specification
 ..    :members:
 ..    :undoc-members:
 ..    :show-inheritance:
+
+.. automodule:: rivapy.instruments.ppa_specification
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 

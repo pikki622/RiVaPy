@@ -1,5 +1,5 @@
 # generate from notebook: !conda env export > environment.yml
-name: python_3.8
+name: rivapy
 
 channel:
     - conda-forge
@@ -16,5 +16,6 @@ dependencies:
   - sphinx
   - pip:
     - python-dateutil
-    - --index-url https://test.pypi.org/simple/ pyvacon_depp
+    - sphinx-rtd-theme
+    #- --index-url https://test.pypi.org/simple/ pyvacon_depp
     #- jupyter-contrib-nbextensions==0.5.1

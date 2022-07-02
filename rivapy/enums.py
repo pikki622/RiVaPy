@@ -4,65 +4,22 @@ Created on Thu Dec  1 17:51:16 2016
 
 @author: oeltz
 """
-from pyvacon.finance.definition import DayCounter as _DayCounter
-DayCounterType = _DayCounter.Type
+from rivapy import _pyvacon_available
+if _pyvacon_available:
+    from pyvacon.finance.definition import DayCounter as _DayCounter
+    DayCounterType = _DayCounter.Type
 
-from pyvacon.numerics.interpolation import InterpolationType
-from pyvacon.numerics.extrapolation import ExtrapolationType
+    from pyvacon.numerics.interpolation import InterpolationType
+    from pyvacon.numerics.extrapolation import ExtrapolationType
+else:
+    class DayCounterType:
+        pass
+    class InterpolationType:
+        HAGAN_DF = 'HAGAN_DF'
 
-# class DBUdl:
-#     DAX = '4517'
-#     STOXX50E = '2676'
-#     BASF = '123'
-#     APPLE = '91'
-#     EON = '48'
-#     EXXON = '1'
-#     DOWJOWNS = '4612' 
-#     SPX= '13'
-#     NASDAX = '17'
-#     ADS = '600' #ADIDAS
-#     ALV = '66' # Allianz
-#     BASF = '123'
-#     BAYER = '150'
-#     BEIERSDORF = '1356'
-#     BMW = '374'
-#     COMMERZBANK = '273'
-#     CONTINENTAL = '428'
-#     DAIMLER = '109'
-#     DBK = '80'
-#     DEUTSCHE_BOERSE = '414'
-#     DB11 = '20261'
-#     DEUTSCHE_POST = '314'
-#     DTE = '113'
-#     EON = '48'
-#     FRESENIUS = '14880'
-#     FRESENIUS_MEDICAL_CARE = '748'
-#     HEIDELBER_CEMENT = '1578'
-#     HENKEL = '797'
-#     INFINEON = '697'
-#     LINDE = '665'
-#     LUFTHANSA = '1117'
-#     MERCK = '1073'
-#     MUV = '180'
-#     PRO_SIEBEN = '1539'
-#     RWE = '129'
-#     SAP = '131'
-#     SIEMENS = '61'
-#     THYSSEN = '439'
-#     VW = '4623'
-#     VONOVIA = '18078'
-#     DAX_list = {'DAX':DAX,
-#                         'ADS':ADS, 'ALV':ALV, 'BASF':BASF, 
-#                         'BAYER':BAYER, 'BEIERSDORF':BEIERSDORF, 
-#                         'BMW':BMW, 'COMMERZBANK':COMMERZBANK, 'CONTINENTAL':CONTINENTAL, 
-#                         'DAIMLER':DAIMLER,  'DBK':DBK, 'DEUTSCHE_BOERSE':DEUTSCHE_BOERSE,
-#                         'DB11': DB11,
-#                         'DEUTSCHE_POST':DEUTSCHE_POST, 'DTE':DTE, 'EON':EON, 'FRESENIUS':FRESENIUS,
-#                          'FRESENIUS_MEDICAL_CARE':FRESENIUS_MEDICAL_CARE, 'HEIDELBER_CEMENT':HEIDELBER_CEMENT, 
-#                          'HENKEL':HENKEL, 'INFINEON':INFINEON, 'LINDE':LINDE, 'LUFTHANSA':LUFTHANSA,
-#                         'MERCK':MERCK, 'MUV':MUV, 'PRO_SIEBEN':PRO_SIEBEN, 'RWE':RWE, 'SAP':SAP,  
-#                         'SIEMENS':SIEMENS, 'THYSSEN':THYSSEN, 'VW': VW, 'VONOVIA':VONOVIA}
-
+    class ExtrapolationType:
+        NONE = 'NONE'
+        
 
 class SecuritizationLevel:
     NONE = 'NONE'

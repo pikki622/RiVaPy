@@ -1,13 +1,14 @@
 
 from typing import List, Union, Tuple
+from rivapy import _pyvacon_available
 from rivapy.marketdata.curves import *
 
-import pyvacon.finance.marketdata as _mkt_data
-
-InflationIndexForwardCurve = _mkt_data.InflationIndexForwardCurve
-SurvivalCurve = _mkt_data.SurvivalCurve
-DatedCurve = _mkt_data.DatedCurve
-DividendTable = _mkt_data.DividendTable
+if _pyvacon_available:
+    import pyvacon.finance.marketdata as _mkt_data
+    InflationIndexForwardCurve = _mkt_data.InflationIndexForwardCurve
+    SurvivalCurve = _mkt_data.SurvivalCurve
+    DatedCurve = _mkt_data.DatedCurve
+    DividendTable = _mkt_data.DividendTable
 
 class DividendTable:
     def __init__(self, id: str,

@@ -3,9 +3,11 @@ from typing import Tuple, Iterable
 from datetime import datetime 
 from dateutil.relativedelta import relativedelta
 from enum import IntEnum as _IntEnum
-import pyvacon as _pyvacon
-from rivapy.instruments import CDSSpecification
 
+from rivapy.instruments import CDSSpecification
+from rivapy import _pyvacon_available
+if _pyvacon_available:
+    import pyvacon as _pyvacon
 class ResultType(_IntEnum):
     PRICE = 0
     DELTA = 1

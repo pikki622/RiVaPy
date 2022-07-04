@@ -340,6 +340,18 @@ class PowerPriceForwardCurve:
                 values: np.ndarray,
                 freq: str='1H',
                 tz: str=None):
+        """Simple forward curve for power.
+
+        Args:
+            id (str): Identifier for the curve. It has no impact on the valuation functionality.
+            refdate (Union[datetime, date]): Reference date of curve
+            start (dt.datetime): Start of forward curve datetimepoints (including this timepoint).
+			end (dt.datetime): End of forad curve datetimepoints (excluding this timepoint).
+            values (np.ndarray): One dimensional array holding the price for each datetimepint in the curve. The method value will raise an exception if the number of values is not equal to the number of datetimepoints.
+			freq (str, optional): Frequency of timepoints. Defaults to '1H'. See documentation for pandas.date_range for further details on freq.
+			tz (str or tzinfo): Time zone name for returning localized datetime points, for example ‘Asia/Hong_Kong’. 
+								By default, the resulting datetime points are timezone-naive. See documentation for pandas.date_range for further details on tz.
+        """
         self.id = id
         self.refdate = refdate
         self.start = start

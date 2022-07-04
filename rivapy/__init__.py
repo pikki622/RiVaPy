@@ -5,7 +5,7 @@ try:
     import pyvacon
     _pyvacon_available = True
 except Exception as e:
-    warnings.warn('The pyacon module is not available. You may not use all functionality without this module. Consider installing pyvacon.')
+    warnings.warn('The pyvacon module is not available. You may not use all functionality without this module. Consider installing pyvacon.')
 
 if _pyvacon_available:
     import pyvacon.version as version

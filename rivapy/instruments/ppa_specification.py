@@ -18,7 +18,7 @@ class SimpleSchedule:
 			weekdays (Set[int], optional): List of integers representing the weekdays where the schedule is defined. 
 											Integers according to datetime weekdays (0->Monay, 1->Tuesday,...,6->Sunday). 
 											If None, all weekdays are used. Defaults to None.
-			hours (Set[int], optional): List of hours where schedule is defined. Defaults to None.
+			hours (Set[int], optional): List of hours where schedule is defined. If None, all hours are included. Defaults to None.
 			tz (str or tzinfo): Time zone name for returning localized datetime points, for example ‘Asia/Hong_Kong’. 
 								By default, the resulting datetime points are timezone-naive. See documentation for pandas.date_range for further details on tz.
 		Examples:
@@ -69,7 +69,7 @@ class PPASpecification:
 		"""Specification for a power purchase agreement (PPA).
 
 		Args:
-			amount (Union[None, float, np.ndarray]): Amount of power delivered at each timepoint/period. Either a single value s.t. all volumes delivered are constant or a loead table.
+			amount (Union[None, float, np.ndarray]): Amount of power delivered at each timepoint/period. Either a single value s.t. all volumes delivered are constant or a load table.
 			schedule (Union[SimpleSchedule, List[dt.datetime]): Schedule describing when power is delivered.
 		"""
 		self.amount = amount

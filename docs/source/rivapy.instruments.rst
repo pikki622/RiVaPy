@@ -5,55 +5,15 @@ instruments
    :undoc-members:
    :show-inheritance:
 
-Equity Instruments
---------------------------------
-
-.. autoclass:: rivapy.instruments.BarrierSpecification
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. autoclass:: rivapy.instruments.EuropeanVanillaSpecification
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. autoclass:: rivapy.instruments.AmericanVanillaSpecification
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+   
+   rivapy.instruments.equity
+   rivapy.instruments.credit
+   rivapy.instruments.power
 
 
-.. autoclass:: rivapy.instruments.RainbowSpecification
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
-.. autoclass:: rivapy.instruments.MemoryExpressSpecification
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Credit Instruments
----------------------------------
-.. automodule:: rivapy.instruments.cds_specification
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Power Instruments
------------------------------------
-This secton contains all contracts w.r.t. power.
-
-.. .. autoclass:: rivapy.instruments
-.. .. automodule:: rivapy.instruments.ppa_specification
-..    :members:
-..    :undoc-members:
-..    :show-inheritance:
-
-.. automodule:: rivapy.instruments.ppa_specification
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
+   
+   

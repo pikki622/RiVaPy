@@ -14,6 +14,9 @@ if _pyvacon_available:
     SurvivalCurve = _mkt_data.SurvivalCurve
     DatedCurve = _mkt_data.DatedCurve
     EquityOptionQuoteTable = _mkt_data.EquityOptionQuoteTable
+    import pyvacon.finance.marketdata as _mkt_data
+    import pyvacon.finance.utils as _utils
+    import pyvacon.finance.pricing as _pricing
     #DividendTable = _mkt_data.DividendTable
 
 

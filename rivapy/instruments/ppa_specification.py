@@ -49,8 +49,12 @@ class SimpleSchedule:
 		self.hours = hours
 		self.tz = tz
 
-	def get_schedule(self)->List[dt.datetime]:
+	def get_schedule(self, refdate: dt.datetime = None)->List[dt.datetime]:
 		"""Return list of datetime values belonging to the schedule.
+
+		
+		Args:
+			refdate (dt.datetime): All schedule dates are ignored before this reference dats. If None, al schedule dates are returned. Defaults to None.
 
 		Returns:
 			List[dt.datetime]: List of all datetimepoints of the schedule.
@@ -60,7 +64,17 @@ class SimpleSchedule:
 			d_ = [d for d in d_ if d.weekday() in self.weekdays]
 		if self.hours is not None:
 			d_ = [d for d in d_ if d.hour in self.hours]
+		if refdate is not None:
+			d_ = [d for d in d_ if d >= refdate]
 		return d_
+
+	def get_params(self)->dict:
+		"""Return all params as json serializable dictionary.
+
+		Returns:
+			dict: Dictionary of all parameters.
+		"""
+		return {'start': self.start, 'end': self.end, 'freq': self.freq, 'weekdays': self.weekdays, 'hours': self.hours, 'tz': self.tz}
 
 class PPASpecification:
 	def __init__(self, 

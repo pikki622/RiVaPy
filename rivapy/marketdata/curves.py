@@ -7,6 +7,7 @@ import dateutil.relativedelta as relativedelta
 from typing import List
 import scipy.optimize
 import pandas as pd
+import numpy as np
 
 from rivapy.enums import DayCounterType, InterpolationType, ExtrapolationType
 
@@ -330,5 +331,37 @@ class BootstrapHazardCurve:
     #         self._pyvacon_obj = _SurvivalCurve('survival_curve', self.refdate, 
     #                                         self.calibrate_hazard_rate[1], self.calibrate_hazard_rate[0])                                    
     #     return self._pyvacon_obj
+
+class PowerPriceForwardCurve:
+    def __init__(self, id: str,
+                refdate: Union[datetime, date], 
+                start: datetime, 
+                end: datetime, 
+                values: np.ndarray,
+                freq: str='1H',
+                tz: str=None):
+        self.id = id
+        self.refdate = refdate
+        self.start = start
+        self.end = end
+        self.freq = freq
+        self.tz = tz
+        self.values = values
+        # timegrid used to compute prices for a certain schedule
+        self._tg = None
+        
+    def value(self, refdate: Union[date, datetime], schedule)->np.ndarray:
+        if self._tg is None:
+            self._tg = pd.DataFrame({'dates': pd.date_range(self.start, self.end, freq=self.freq, tz=self.tz, closed='left').to_pydatetime()}).reset_index()
+            if self._tg.shape[0] != self.values.shape[0]:
+                raise Exception('The number of dates (' + str(self._tg.shape[0])+') does not equal number of values (' + str(self.values.shape[0]) + ') in forward curve.')
+        tg = self._tg[(self._tg.dates>=schedule.start)&(self._tg.dates<schedule.end)].set_index('dates')
+        _schedule = pd.DataFrame({'dates': schedule.get_schedule(refdate)})
+        tg = _schedule.join(tg, on='dates')
+        #tg = tg[tg['dates']>=refdate]
+        if tg['index'].isna().sum()>0:
+            raise Exception('There are ' + str(tg['index'].isna().sum()) + ' dates in the schedule not covered by the forward curve.')
+        return self.values[tg['index'].values]
+        
 
         

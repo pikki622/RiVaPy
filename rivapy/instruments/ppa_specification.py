@@ -48,13 +48,13 @@ class SimpleSchedule:
 		self.weekdays = weekdays
 		self.hours = hours
 		self.tz = tz
+		self._df = None
 
 	def get_schedule(self, refdate: dt.datetime = None)->List[dt.datetime]:
 		"""Return list of datetime values belonging to the schedule.
 
-		
 		Args:
-			refdate (dt.datetime): All schedule dates are ignored before this reference dats. If None, al schedule dates are returned. Defaults to None.
+			refdate (dt.datetime): All schedule dates are ignored before this reference dats. If None, all schedule dates are returned. Defaults to None.
 
 		Returns:
 			List[dt.datetime]: List of all datetimepoints of the schedule.
@@ -68,6 +68,11 @@ class SimpleSchedule:
 			d_ = [d for d in d_ if d >= refdate]
 		return d_
 
+	def get_df(self)->pd.DataFrame:
+		if self._df is None:
+			self._df = pd.DataFrame({'dates': pd.date_range(self.start, self.end, freq=self.freq, tz=self.tz, closed='left').to_pydatetime()}).reset_index()
+		return self._df
+
 	def get_params(self)->dict:
 		"""Return all params as json serializable dictionary.
 
@@ -79,12 +84,47 @@ class SimpleSchedule:
 class PPASpecification:
 	def __init__(self, 
 				amount: Union[float, np.ndarray], 
-				schedule: Union[SimpleSchedule, List[dt.datetime]]):
-		"""Specification for a power purchase agreement (PPA).
+				schedule: Union[SimpleSchedule, List[dt.datetime]],
+				fixed_price: float,
+				id:str = None):
+		"""Specification for a simple power purchase agreement (PPA).
 
 		Args:
 			amount (Union[None, float, np.ndarray]): Amount of power delivered at each timepoint/period. Either a single value s.t. all volumes delivered are constant or a load table.
 			schedule (Union[SimpleSchedule, List[dt.datetime]): Schedule describing when power is delivered.
+			fixed_price (float): The fixed price paif for the power.
+			id (str): Simple id of the specification. If None, a uuid will be generated. Defaults to None.
 		"""
+		self.id = id
+		if id is None:
+			self.id = type(self).__name__+'/'+str(dt.datetime.now())
 		self.amount = amount
 		self.schedule = schedule
+		self.fixed_price = fixed_price
+		self._schedule_df = schedule.get_df().set_index(['dates']).sort_index()
+		self._schedule_df['amount'] = amount
+		self._schedule_df['flow'] = None
+
+	def set_amount(self, amount):
+		self.amount = amount
+		self._schedule_df['amount'] = amount
+
+	def compute_flows(self, refdate: dt.datetime, pfc, result: pd.DataFrame=None, result_col = None)->pd.DataFrame:
+		df = pfc.get_df()
+		if result is None:
+			self._schedule_df['flow'] = self._schedule_df['amount']*(df.loc[self._schedule_df.index]['values']-self.fixed_price)
+			return self._schedule_df
+		result[result_col] = self._schedule_df['amount']*(df.loc[self._schedule_df.index]['values']-self.fixed_price)
+
+class GreenPPASpecification(PPASpecification):
+	def __init__(self,schedule: Union[SimpleSchedule, List[dt.datetime]],
+				technology: str,
+				fixed_price: float,
+				id:str = None):
+		super().__init__(None, schedule, fixed_price, id)
+		self.technology = technology
+
+	def compute_flows(self, refdate: dt.datetime, pfc, forecast_amount: np.ndarray, result: pd.DataFrame=None, result_col = None)->pd.DataFrame:
+		self.set_amount(forecast_amount)
+		return super().compute_flows(refdate, pfc, result, result_col)
+

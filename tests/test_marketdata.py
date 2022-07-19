@@ -81,7 +81,7 @@ class PowerPriceForwardCurveTest(unittest.TestCase):
         """
         simple_schedule = SimpleSchedule(dt.datetime(2022,12,1), dt.datetime(2023,11,1,4,0,0), freq='1H')
         values = np.ones((len(simple_schedule.get_schedule()),)).cumsum()
-        hpfc = PowerPriceForwardCurve('', dt.datetime(2022,12,1), dt.datetime(2022,12,1), dt.datetime(2023,11,1,4,0,0), freq='1H', values = values)
+        hpfc = PowerPriceForwardCurve(dt.datetime(2022,12,1), dt.datetime(2022,12,1), dt.datetime(2023,11,1,4,0,0), freq='1H', values = values)
         simple_schedule = SimpleSchedule(dt.datetime(2022,12,1), dt.datetime(2022,12,1,4,0,0), freq='1H')
         values = hpfc.value(dt.datetime(2022,1,1), simple_schedule)
         self.assertEqual(values.shape[0], 4)
@@ -98,7 +98,7 @@ class PowerPriceForwardCurveTest(unittest.TestCase):
         """
         simple_schedule = SimpleSchedule(dt.datetime(2022,12,1), dt.datetime(2023,11,1,4,0,0), freq='1H')
         values = np.ones((len(simple_schedule.get_schedule()),)).cumsum()
-        hpfc = PowerPriceForwardCurve('', dt.datetime(2022,12,1), dt.datetime(2022,12,1), dt.datetime(2023,11,1,4,0,0), freq='1H', values = values)
+        hpfc = PowerPriceForwardCurve(dt.datetime(2022,12,1), dt.datetime(2022,12,1), dt.datetime(2023,11,1,4,0,0), freq='1H', values = values)
         # schedule starts before first date of forward curve
         simple_schedule = SimpleSchedule(dt.datetime(2022,11,30), dt.datetime(2022,12,1,4,0,0), freq='1H')
         self.assertRaises(Exception, lambda: hpfc.value(dt.datetime(2022,1,1), simple_schedule))
@@ -107,7 +107,7 @@ class PowerPriceForwardCurveTest(unittest.TestCase):
         self.assertRaises(Exception, lambda: hpfc.value(dt.datetime(2022,1,1), simple_schedule))
         # hpfc where  number of values 
         values = np.ones((len(simple_schedule.get_schedule()),)).cumsum()
-        hpfc = PowerPriceForwardCurve('', dt.datetime(2022,12,1), dt.datetime(2022,12,1), dt.datetime(2023,11,1,4,0,0), freq='1H', values = values[:-1])
+        hpfc = PowerPriceForwardCurve(dt.datetime(2022,12,1), dt.datetime(2022,12,1), dt.datetime(2023,11,1,4,0,0), freq='1H', values = values[:-1])
         simple_schedule = SimpleSchedule(dt.datetime(2022,12,1), dt.datetime(2022,12,1,4,0,0), freq='1H', hours=[2])
         self.assertRaises(Exception, lambda: hpfc.value(dt.datetime(2022,1,1), simple_schedule))
         

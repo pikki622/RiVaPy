@@ -6,6 +6,7 @@ from rivapy.models.local_vol import LocalVol
 from rivapy.models.heston import HestonModel
 from rivapy.models.stoch_local_vol import StochasticLocalVol
 from rivapy.models.scott_chesney import ScottChesneyModel
+from rivapy.models.ornstein_uhlenbeck import OrnsteinUhlenbeck
 
 
 if __name__=='__main__':

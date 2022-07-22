@@ -126,8 +126,12 @@ class SupplyFunction:
             return cutoff(self.offpeak[0]+self.offpeak[1]/(q-self.floor[0])+self.offpeak[2]*q)
         return cutoff(self.peak[0]+self.peak[1]/(self.cap[0]-q))
 
-    def plot(self, d:dt.datetime):
-        q = np.linspace(self.floor[0], self.cap[0], 50)
+    def plot(self, d:dt.datetime, res_demand_low = None, res_demand_high = None):
+        if res_demand_low is None:
+            res_demand_low = self.floor[0]
+        if res_demand_high is None:
+            res_demand_high = self.cap[0]
+        q = np.linspace(res_demand_low, res_demand_high, 50)
         f = [self.compute(x, d) for x in q]
         plt.plot(q,f,'-', label=str(d))
         plt.xlabel('residual demand')
@@ -142,12 +146,16 @@ class LoadModel:
         result = np.empty((timegrid.shape[0], rnd.shape[0]))
         result[0,:] = start_value
         deviation = self.deviation_process.simulate(timegrid.timegrid, start_value, rnd)
-        return self.load_profile.compute(timegrid)[:, np.newaxis] + deviation
+        return self.load_profile.get_profile(timegrid)[:, np.newaxis] + deviation
         
 class ResidualDemandModel:
-    def __init__(self, wind_model, solar_model, load_model, supply_curve):
+    def __init__(self, wind_model, capacity_wind, 
+                    solar_model, capacity_solar,  
+                    load_model, supply_curve):
         self.wind_model = wind_model
+        self.capacity_wind = capacity_wind
         self.solar_model = solar_model
+        self.capacity_solar = capacity_solar
         self.load_model = load_model
         self.supply_curve = supply_curve
 
@@ -155,11 +163,11 @@ class ResidualDemandModel:
                     start_value_wind: float, 
                     start_value_solar: float, 
                     start_value_load: float,
+                    n_sims: int,
                     rnd_wind: np.ndarray=None,
                     rnd_solar: np.ndarray=None,
                     rnd_load: float=None,
-                    rnd_state = None,
-                    n_sims = None):
+                    rnd_state = None):
         np.random.seed(rnd_state)
         if rnd_wind is None:
             rnd_wind = np.random.normal(size=(n_sims, timegrid.shape[0]-1))
@@ -168,12 +176,16 @@ class ResidualDemandModel:
         if rnd_load is None:
             rnd_load = np.random.normal(size=(n_sims, timegrid.shape[0]-1))
         lm = self.load_model.simulate(timegrid, start_value_load, rnd_load)
-        sm = self.solar_model.simulate(timegrid, start_value_solar, rnd_solar)
-        wm = self.wind_model.simulate(timegrid, start_value_wind, rnd_wind)
-        residual_demand =lm - sm - wm
-        power_price = np.zeros(shape=(n_sims, timegrid.shape[0]))
-        for i in range(1,timegrid.shape[0]):
-            power_price[i,:] =  self.supply_curve.compute(residual_demand[i],timegrid.dates[i] )
+        sm = self.capacity_solar*self.solar_model.simulate(timegrid, start_value_solar, rnd_solar)
+        wm = self.capacity_wind*self.wind_model.simulate(timegrid, start_value_wind, rnd_wind)
+        residual_demand = lm - sm - wm
+        power_price = np.zeros(shape=( timegrid.shape[0], n_sims))
+        for i in range(timegrid.shape[0]):
+            for j in range(n_sims):
+                power_price[i,j] =  self.supply_curve.compute(residual_demand[i,j],timegrid.dates[i] )
         result = {}
+        result['load'] = lm
+        result['solar'] = sm
+        result['wind'] = wm
         result['price'] = power_price
         return result

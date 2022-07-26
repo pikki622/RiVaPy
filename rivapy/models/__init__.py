@@ -7,6 +7,7 @@ from rivapy.models.heston import HestonModel
 from rivapy.models.stoch_local_vol import StochasticLocalVol
 from rivapy.models.scott_chesney import ScottChesneyModel
 from rivapy.models.ornstein_uhlenbeck import OrnsteinUhlenbeck
+from rivapy.models.residual_demand_model import ResidualDemandModel, WindPowerModel, SolarPowerModel, SupplyFunction, LoadModel
 
 
 if __name__=='__main__':

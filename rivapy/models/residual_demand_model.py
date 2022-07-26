@@ -21,7 +21,7 @@ class SolarProfile:
             result[i] = self._profile(timegrid.dates[i])
         return result
 
-class SolarModel:
+class SolarPowerModel:
     def _eval_grid(f, timegrid):
         try:
             return f(timegrid)
@@ -42,7 +42,7 @@ class SolarModel:
     def simulate(self, timegrid: DateTimeGrid, start_value: float, rnd):
         # daily timegrid for daily maximum simulation
         tg_ = timegrid.get_daily_subgrid()
-        ml = SolarModel._eval_grid(self.mean_level, tg_)
+        ml = SolarPowerModel._eval_grid(self.mean_level, tg_)
         start_value_ = _logit(start_value) - ml[0]
         daily_maximum = self._daily_maximum_process.simulate(tg_.timegrid, start_value_, rnd)
         profile = self._profile.get_profile(timegrid)
@@ -138,7 +138,13 @@ class SupplyFunction:
         plt.ylabel('price')
 
 class LoadModel:
-    def __init__(self,deviation_process, load_profile):
+    def __init__(self,deviation_process: object, load_profile: object):
+        """Model the power load. 
+
+        Args:
+            deviation_process (object): _description_
+            load_profile (object): _description_
+        """
         self.load_profile = load_profile
         self.deviation_process = deviation_process
 
@@ -147,11 +153,39 @@ class LoadModel:
         result[0,:] = start_value
         deviation = self.deviation_process.simulate(timegrid.timegrid, start_value, rnd)
         return self.load_profile.get_profile(timegrid)[:, np.newaxis] + deviation
-        
+   
 class ResidualDemandModel:
-    def __init__(self, wind_model, capacity_wind, 
-                    solar_model, capacity_solar,  
-                    load_model, supply_curve):
+    def __init__(self, wind_model: object, capacity_wind: float, 
+                    solar_model: object, capacity_solar: float,  
+                    load_model: object, supply_curve: object):
+        """Residual demand model to model power prices.
+
+        This model is based on the paper by :footcite:t:`Wagner2012` and models power (spot) prices :math:`p_t` depending (by a deterministic function :math:`f`) on the residual demand
+        :math:`R_t`,
+
+        .. math::
+            p_t = f(R_t) = f(L_t - IC^w\cdot E_t^w - IC_t^s\cdot E_t^s)
+
+        where
+
+            - :math:`L_t` is the demand (load) at time :math:`t`,
+            - :math:`IC^w` denotes the installed capacity of wind (in contrast to the paper this is not time dependent),
+            - :math:`E_t^w` is the wind efficiency at time :math:`t`,
+            - :math:`IC^s` denotes the installed capacity of solar (in contrast to the paper this is not time dependent),
+            - :math:`E_t^s` is the solar efficiency at time :math:`t`.
+
+
+
+        Args:
+            wind_model (object): Model for wind efficiency (needs to implement a method simulate in order to work with this model). 
+                        See :func:`rivapy.models.WindPowerModel` as an example for a wind model.
+            capacity_wind (object): The capacity of wind power. This is multiplied with the simulated efficiency to obtain the simulated absolute amount of wind.
+            solar_model (object): Model for solar efficiency (needs to implement a method simulate in order to work with this model). 
+                        See :func:`rivapy.models.SolarPowerModel` as an example for a solar model.
+            capacity_solar (object): The capacity of solar power. This is multiplied with the simulated efficiency to obtain the simulated absolute amount of solar.
+            load_model (object): Model for load. See :func:`rivapy.models.LoadModel` as an example for a load model.
+            supply_curve (object): The total demand, see :func:`rivapy.models.SupplyFunction` for an example.
+        """
         self.wind_model = wind_model
         self.capacity_wind = capacity_wind
         self.solar_model = solar_model
@@ -168,6 +202,22 @@ class ResidualDemandModel:
                     rnd_solar: np.ndarray=None,
                     rnd_load: float=None,
                     rnd_state = None):
+        """Simulate the residual demand model on a given datetimegrid.
+
+        Args:
+            timegrid (DateTimeGrid): _description_
+            start_value_wind (float): _description_
+            start_value_solar (float): _description_
+            start_value_load (float): _description_
+            n_sims (int): _description_
+            rnd_wind (np.ndarray, optional): _description_. Defaults to None.
+            rnd_solar (np.ndarray, optional): _description_. Defaults to None.
+            rnd_load (float, optional): _description_. Defaults to None.
+            rnd_state (_type_, optional): _description_. Defaults to None.
+
+        Returns:
+            _type_: _description_
+        """
         np.random.seed(rnd_state)
         if rnd_wind is None:
             rnd_wind = np.random.normal(size=(n_sims, timegrid.shape[0]-1))

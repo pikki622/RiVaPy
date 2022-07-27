@@ -31,11 +31,41 @@ class OrnsteinUhlenbeck:
         return result
 
 
-    def apply_mc_step(self, x: np.ndarray, t0: float, t1: float, rnd: np.ndarray, inplace: bool = True, slv: np.ndarray= None):
+    def apply_mc_step(self, x: np.ndarray, 
+                        t0: float, t1: float, 
+                        rnd: np.ndarray, 
+                        inplace: bool = True, 
+                        slv: np.ndarray= None):
         if not inplace:
             x_ = x.copy()
         else:
             x_ = x
         dt = t1-t0
         sqrt_dt = np.sqrt(dt)
-        x_[:,0] = (1.0  - self._speed_of_mean_reversion[i]*dt)*result[i,:] + self._volatility[i]*sqr_dt*rnd[:,i]    
+        try:
+            mu = self.speed_of_mean_reversion(t0)
+        except:
+            mu = self.speed_of_mean_reversion
+        try:
+            sigma = self.volatility(t0)
+        except:
+            sigma = self.volatility
+        x_ = (1.0  - mu*dt)*x + sigma*sqrt_dt*rnd   
+        return x_
+        
+    def conditional_probability_density(self, X_delta_t, delta_t, X0, 
+                                        volatility=None, 
+                                        speed_of_mean_reversion=None, 
+                                        mean_reversion_level = 0):
+        if volatility is None:
+            volatility = self.volatility
+        if speed_of_mean_reversion is None:
+            speed_of_mean_reversion = self.speed_of_mean_reversion
+        volatility_2_ = volatility**2*(1.0-np.exp(-2.0*speed_of_mean_reversion*delta_t))/(2.0*speed_of_mean_reversion)
+        result = 1.0/(2.0*np.pi*volatility_2_)*np.exp(
+                        -(X_delta_t-X0*np.exp(-speed_of_mean_reversion*delta_t)
+                        -mean_reversion_level*(1.0-np.exp(-speed_of_mean_reversion*delta_t)))
+                    /(2.0*volatility_2_))
+        return result
+
+    

@@ -1,5 +1,5 @@
 import numpy as np
-from rivapy.models.residual_demand_model import SolarProfile, SolarModel, WindPowerModel, SupplyFunction, ResidualDemandModel, LoadModel
+from rivapy.models.residual_demand_model import SolarProfile, SolarPowerModel, WindPowerModel, SupplyFunction, ResidualDemandModel, LoadModel
 from rivapy.models import OrnsteinUhlenbeck
 
 
@@ -32,7 +32,7 @@ class WagnerModel:
 				return a1*np.cos(2.0*np.pi*t.timegrid + b1)+a2*np.cos(4.0*np.pi*t.timegrid + b2)+c
 			return _mean_level
 		daily_model = OrnsteinUhlenbeck(speed_of_mean_reversion = 261.817, volatility=16.087)
-		return SolarModel(daily_model, profile, mean_level(-1.23,0.476,-0.614,0.093,-0.798))
+		return SolarPowerModel(daily_model, profile, mean_level(-1.23,0.476,-0.614,0.093,-0.798))
 
 	@staticmethod
 	def wind():

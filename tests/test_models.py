@@ -207,5 +207,19 @@ class HestonLocalVolModelTest(unittest.TestCase):
 					'Vol from calibrated model ('+str(vol_sim)+') is not close enough to reference vol('+str(vol)+') for strike/expiry: '
 					 + str(x_strikes[k])+'/'+str(time_grid[t]))
 
+
+class OrnsteinUhlenbeckTest(unittest.TestCase):
+	def test_calibration(self):
+		"""Simple test for calibration: Simulate a path of a model with fixed params and calibrate new model. Test if parameters are equal (up to MC error).
+		"""
+		np.random.seed(42)
+		timegrid = np.arange(0.0,30.0,1.0/365.0) # simulate on daily timegrid over 30 yrs horizon
+		ou_model = models.OrnsteinUhlenbeck(speed_of_mean_reversion = 5.0, volatility=0.1)
+		sim = ou_model.simulate(timegrid, start_value=0.2,rnd=np.random.normal(size=(1, timegrid.shape[0])))
+		ou_model.calibrate(sim.reshape((-1)),dt=1.0/365.0, method = 'minimum_least_square')
+		self.assertAlmostEqual(0.1, ou_model.volatility, places=3)
+		self.assertAlmostEqual(0.0, ou_model.mean_reversion_level, places=2)
+		self.assertAlmostEqual(5.0, ou_model.speed_of_mean_reversion, delta=0.5)
+
 if __name__ == '__main__':
     unittest.main()

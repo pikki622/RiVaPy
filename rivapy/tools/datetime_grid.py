@@ -4,6 +4,7 @@ import abc
 import pandas as pd
 import numpy as np
 from scipy.optimize import curve_fit as curve_fit
+from scipy.interpolate import interp1d
 
 
 class DateTimeGrid:
@@ -21,6 +22,8 @@ class DateTimeGrid:
         else:
             self.dates = datetime_grid
         if self.dates is not None:
+            if start is None:
+                start = self.dates[0]
             self.timegrid = np.array([(d-start).total_seconds()/pd.Timedelta(days=365).total_seconds() for d in self.dates])
             self.shape = self.timegrid.shape
             self.df = pd.DataFrame({'dates': self.dates, 'tg': self.timegrid})
@@ -192,3 +195,16 @@ class PeriodicFunction(_TimeGridFunction):
         pass
 
         
+class InterpolatedFunction(_TimeGridFunction):
+    def __init__(self, datetime_grid: pd.DatetimeIndex, values: np.ndarray, kind: str='linear', bounds_error=False):
+        self._values = values
+        self._tg = DateTimeGrid(datetime_grid)
+        self.kind = kind
+        self._f = interp1d(self._tg.timegrid, self._values, kind=self.kind, fill_value=(values[0], values[-1]), bounds_error=bounds_error)
+
+    def _compute(self, d: dt.datetime)->float:
+        raise NotImplemented()
+    
+    def compute(self, datetime_grid: pd.DatetimeIndex=None)->np.ndarray:
+        x = (datetime_grid-self._tg.dates[0]).total_seconds()/pd.Timedelta(days=365).total_seconds()
+        return self._f(x)

@@ -1,6 +1,8 @@
 from typing import Union, Callable
 import numpy as np
+
 class OrnsteinUhlenbeck:
+
     def _eval_grid(f, timegrid):
         try:
             return f(timegrid)
@@ -12,7 +14,7 @@ class OrnsteinUhlenbeck:
                     volatility: Union[float, Callable], 
                     mean_reversion_level: Union[float, Callable] = 0):
         self.speed_of_mean_reversion = speed_of_mean_reversion
-        self.mean_reversion_level = mean_reversion_level,
+        self.mean_reversion_level = mean_reversion_level
         self.volatility = volatility
         self._timegrid = None
 

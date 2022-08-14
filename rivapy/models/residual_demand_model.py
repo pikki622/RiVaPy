@@ -1,8 +1,10 @@
 import numpy as np
+import pandas as pd
 import datetime as dt
 import matplotlib.pyplot as plt
+import warnings
 from typing import Union, Callable
-from  rivapy.tools.datetime_grid import DateTimeGrid
+from  rivapy.tools.datetime_grid import DateTimeGrid, InterpolatedFunction, PeriodicFunction
 
 def _logit(x):
     return np.log(x/(1-x))
@@ -10,6 +12,13 @@ def _logit(x):
 def _inv_logit(x):
     return 1.0/(1+np.exp(-x))
 
+class CosinusSeasonality:
+    def __init__(self, x: np.ndarray = np.array([0,1,0,1,0])):
+        self.x = x
+        
+    def __call__(self, x):
+        return self.x[0]*np.cos(2*np.pi*x+self.x[1]) + self.x[2]*np.cos(4*np.pi*x+self.x[3]) + self.x[4]
+        
 
 class SolarProfile:
     def __init__(self, profile:Callable):
@@ -57,6 +66,7 @@ class SolarPowerModel:
         return result
 
 class WindPowerModel:
+    
     def _eval_grid(f, timegrid):
         try:
             return f(timegrid)
@@ -88,6 +98,21 @@ class WindPowerModel:
         start_value_ = _logit(start_value) - mean[0,0]
         deviation = self.deviation_process.simulate(timegrid.timegrid, start_value_, rnd)
         return _inv_logit(mean + deviation)
+    
+    @staticmethod
+    def calibrate(deviation_model, capacities:pd.DataFrame, data: pd.DataFrame, seasonality_function, min_efficiency=0.001, max_efficiency=0.99, **kwargs):
+        if capacities is not None:
+            if 'efficiency' in  data.columns:
+                warnings.warn('Capacities are defined but the data already contains a column efficiency with productions transformed by capacity!')
+            capacities_interp = InterpolatedFunction(capacities.index, capacities['capacity'])
+            data['efficiency'] = data['production']/capacities_interp.compute(data.index)
+        data['logit_efficiency'] = _logit(np.minimum(np.maximum(data['efficiency'], min_efficiency), max_efficiency)) 
+        f = CosinusSeasonality(x=np.array([1.0, 1, 0.9, 1.1, 0.5, -1.0]))
+        pf_target = PeriodicFunction(f, frequency='Y', granularity=pd.infer_freq(data.index), ignore_leap_day=True)
+        pf_target.calibrate(data.index, data['logit_efficiency'].values)
+        data['des_logit_efficiency'] = data['logit_efficiency']-pf_target.compute(DateTimeGrid(data.index))
+        deviation_model.calibrate(data['des_logit_efficiency'].values,dt=1.0/(24.0*365.0),**kwargs)
+        return WindPowerModel(deviation_model, pf_target)
 
 class SupplyFunction:
     def __init__(self, floor:tuple, cap:tuple, peak:tuple, offpeak:tuple, peak_hours: set):

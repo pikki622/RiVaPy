@@ -64,10 +64,8 @@ class WindPowerModel:
             result = np.full(timegrid.shape, f)
             return result
 
-    def __init__(self, 
-                    speed_of_mean_reversion: Union[float, Callable], 
-                    volatility: Union[float, Callable], 
-                    mean_level: Union[float, Callable], 
+    def __init__(self, deviation_process: object, 
+                    seasonal_function: object,
                     name:str = 'Wind_Germany'):
         """Wind Power Model to model the efficiency of wind power production.
 
@@ -76,37 +74,21 @@ class WindPowerModel:
             volatility (Union[float, Callable]): _description_
             mean_level (Union[float, Callable]): _description_
         """
-        self.speed_of_mean_reversion = speed_of_mean_reversion
-        self.volatility = volatility
-        self.mean_level = mean_level
+        self.deviation_process = deviation_process
+        self.seasonal_function = seasonal_function
+        # self.speed_of_mean_reversion = speed_of_mean_reversion
+        # self.volatility = volatility
+        # self.mean_level = mean_level
         self.name = name
         self._timegrid = None
 
-    def _set_timegrid(self, timegrid):
-        self._timegrid = np.copy(timegrid)
-        self._delta_t = self._timegrid[1:]-self._timegrid[:-1]
-        self._sqrt_delta_t = np.sqrt(self._delta_t)
-
-        self._speed_of_mean_reversion = WindPowerModel._eval_grid(self.speed_of_mean_reversion, timegrid)
-        self._volatility = WindPowerModel._eval_grid(self.volatility, timegrid)
-        self._mean_level = WindPowerModel._eval_grid(self.mean_level, timegrid)
-
+    
     def simulate(self, timegrid, start_value, rnd):
-        self._set_timegrid(timegrid.timegrid)
-        start_value_ = _logit(start_value) - self._mean_level[0]
-        return self._compute_efficiency(self._simulate_deseasonalized_logit(start_value_, rnd))
+        mean = self.seasonal_function.compute(timegrid)[:, np.newaxis]
+        start_value_ = _logit(start_value) - mean[0,0]
+        deviation = self.deviation_process.simulate(timegrid.timegrid, start_value_, rnd)
+        return _inv_logit(mean + deviation)
 
-    #region private
-    def _simulate_deseasonalized_logit(self, start_value, rnd):
-        result = np.empty((self._timegrid.shape[0], rnd.shape[0]))
-        result[0,:] = start_value
-        for i in range(self._timegrid.shape[0]-1):
-            result[i+1,:] = (1.0  - self._speed_of_mean_reversion[i]*self._delta_t[i])*result[i,:] + self._volatility[i]*self._sqrt_delta_t[i]*rnd[:,i]
-        return result
-
-    def _compute_efficiency(self, deseasonalized_logit_efficiency):
-        return  _inv_logit(self._mean_level[:,np.newaxis] + deseasonalized_logit_efficiency)
-  
 class SupplyFunction:
     def __init__(self, floor:tuple, cap:tuple, peak:tuple, offpeak:tuple, peak_hours: set):
         self.floor = floor

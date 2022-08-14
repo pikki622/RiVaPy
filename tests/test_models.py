@@ -215,7 +215,7 @@ class OrnsteinUhlenbeckTest(unittest.TestCase):
 		np.random.seed(42)
 		timegrid = np.arange(0.0,30.0,1.0/365.0) # simulate on daily timegrid over 30 yrs horizon
 		ou_model = models.OrnsteinUhlenbeck(speed_of_mean_reversion = 5.0, volatility=0.1)
-		sim = ou_model.simulate(timegrid, start_value=0.2,rnd=np.random.normal(size=(1, timegrid.shape[0])))
+		sim = ou_model.simulate(timegrid, start_value=0.2,rnd=np.random.normal(size=(timegrid.shape[0],1)))
 		ou_model.calibrate(sim.reshape((-1)),dt=1.0/365.0, method = 'minimum_least_square')
 		self.assertAlmostEqual(0.1, ou_model.volatility, places=3)
 		self.assertAlmostEqual(0.0, ou_model.mean_reversion_level, places=2)

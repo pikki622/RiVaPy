@@ -3,3 +3,4 @@
 docs/build/*
 *checkpoint.ipy*
 .vscode/settings.json
+notebooks/test_data/*

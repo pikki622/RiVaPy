@@ -27,13 +27,13 @@ class OrnsteinUhlenbeck:
         
     def simulate(self, timegrid, start_value, rnd):
         self._set_timegrid(timegrid)
-        result = np.empty((self._timegrid.shape[0], rnd.shape[0]))
+        result = np.empty((self._timegrid.shape[0], rnd.shape[1]))
         result[0,:] = start_value
 
         for i in range(self._timegrid.shape[0]-1):
             result[i+1,:] = (result[i, :] * np.exp(-self._speed_of_mean_reversion[i]*self._delta_t[i])
                         + self._mean_reversion_level[i]* (1 - np.exp(-self._speed_of_mean_reversion[i]*self._delta_t[i])) 
-                        + self._volatility[i]* np.sqrt((1 - np.exp(-2*self._speed_of_mean_reversion[i]*self._delta_t[i])) / (2*self._speed_of_mean_reversion[i])) * rnd[:,i]
+                        + self._volatility[i]* np.sqrt((1 - np.exp(-2*self._speed_of_mean_reversion[i]*self._delta_t[i])) / (2*self._speed_of_mean_reversion[i])) * rnd[i,:]
                         )
         return result
 
@@ -90,7 +90,7 @@ class OrnsteinUhlenbeck:
         Sxx = (data[:-1]**2).sum()
         Syy = (data[1:]**2).sum()
         Sxy = (data[:-1] * data[1:]).sum()
-        n = data[:-1].shape[0] 
+        n = data[:-1].shape[0]
         if method == 'maximum_likelihood':        
             mu = (Sy*Sxx - Sx*Sxy) / (n*(Sxx-Sxy) - (Sx**2-Sx*Sy))
             if ((Sxy-mu*(Sx+Sy-n*mu))/(Sxx-2*mu*Sx+n*mu**2)) <= 0:

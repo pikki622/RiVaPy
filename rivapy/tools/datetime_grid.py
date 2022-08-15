@@ -35,12 +35,13 @@ class DateTimeGrid:
 
         
     def get_daily_subgrid(self):
-        df = self.df.groupby(by=['dates_']).min()
+        df = self.df.groupby(by=['dates']).min()
         df = df.reset_index()
         result = DateTimeGrid(None, None, freq='1D')
         result.dates=np.array([d.to_pydatetime() for d in df['dates']])
         result.timegrid = df['tg'].values
         result.shape = result.timegrid.shape
+        result.df = pd.DataFrame({'dates': result.dates, 'tg': result.timegrid})
         return result
 
     # def get_grid_indices(self, dates):

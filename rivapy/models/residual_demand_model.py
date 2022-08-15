@@ -30,8 +30,21 @@ class SolarProfile:
             result[i] = self._profile(timegrid.dates[i])
         return result
 
+class MonthlySolarProfile(SolarProfile):
+    def __init__(self, monthly_profiles: np.ndarray):
+        self._monthly_profiles = monthly_profiles
+        super().__init__(self.__monthly_solar_profile)
+        if monthly_profiles is not None:
+            if monthly_profiles.shape != (12,24):
+                raise ValueError('Monthly profiles must have shape (12,24)')
+
+    def __monthly_solar_profile(self, d):
+        return self._monthly_profiles[d.month-1, d.hour]
+        
+
 class SolarPowerModel:
     def _eval_grid(f, timegrid):
+        return f(timegrid)
         try:
             return f(timegrid)
         except:
@@ -51,18 +64,18 @@ class SolarPowerModel:
     def simulate(self, timegrid: DateTimeGrid, start_value: float, rnd):
         # daily timegrid for daily maximum simulation
         tg_ = timegrid.get_daily_subgrid()
-        ml = SolarPowerModel._eval_grid(self.mean_level, tg_)
-        start_value_ = _logit(start_value) - ml[0]
+        ml = self.mean_level.compute(timegrid)[:, np.newaxis]
+        start_value_ = _logit(start_value) - ml[0,0]
         daily_maximum = self._daily_maximum_process.simulate(tg_.timegrid, start_value_, rnd)
         profile = self._profile.get_profile(timegrid)
-        result = np.empty((timegrid.shape[0], rnd.shape[0]))
+        result = np.empty((timegrid.shape[0], rnd.shape[1]))
         day = 0
         d = tg_.dates[0].date()
         for i in range(timegrid.timegrid.shape[0]):
             if d != timegrid.dates[i].date():
                 day += 1
                 d = timegrid.dates[i].date()
-            result[i,:] = _inv_logit(daily_maximum[day,:] + ml[day])* profile[i] 
+            result[i,:] = _inv_logit(daily_maximum[day,:] + ml[i,0])* profile[i] 
         return result
 
 class WindPowerModel:

@@ -190,10 +190,7 @@ class PeriodicFunction(_TimeGridFunction):
         popt, pcov = curve_fit(f, tg,values,self.f.x)
         f.x = popt
         
-    def to_json(self):
-        pass
-    def from_json(self):
-        pass
+    
 
         
 class InterpolatedFunction(_TimeGridFunction):

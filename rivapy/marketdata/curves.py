@@ -8,15 +8,14 @@ from typing import List
 import scipy.optimize
 import pandas as pd
 
-
-from pyvacon.finance.marketdata import EquityForwardCurve as _EquityForwardCurve
-
 from rivapy.enums import DayCounterType, InterpolationType, ExtrapolationType
-from pyvacon.finance.marketdata import SurvivalCurve as _SurvivalCurve
 
-
-from pyvacon.finance.marketdata import DiscountCurve as _DiscountCurve
-import pyvacon as _pyvacon
+from rivapy import _pyvacon_available
+if _pyvacon_available:
+    from pyvacon.finance.marketdata import EquityForwardCurve as _EquityForwardCurve
+    from pyvacon.finance.marketdata import SurvivalCurve as _SurvivalCurve
+    from pyvacon.finance.marketdata import DiscountCurve as _DiscountCurve
+    import pyvacon as _pyvacon
 
 class DiscountCurve:
 

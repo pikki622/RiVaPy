@@ -3,19 +3,22 @@ import numpy as np
 # from pyvacon.pyvacon_swig import EquityOptionQuoteTable
 from rivapy import enums
 from typing import List, Union, Tuple
+from rivapy import _pyvacon_available
+from scipy.optimize import least_squares
 from rivapy.marketdata.curves import *
 
-import pyvacon.finance.marketdata as _mkt_data
-import pyvacon.finance.utils as _utils
-import pyvacon.finance.pricing as _pricing
 
-from scipy.optimize import least_squares
+if _pyvacon_available:
+    import pyvacon.finance.marketdata as _mkt_data
+    InflationIndexForwardCurve = _mkt_data.InflationIndexForwardCurve
+    SurvivalCurve = _mkt_data.SurvivalCurve
+    DatedCurve = _mkt_data.DatedCurve
+    EquityOptionQuoteTable = _mkt_data.EquityOptionQuoteTable
+    import pyvacon.finance.marketdata as _mkt_data
+    import pyvacon.finance.utils as _utils
+    import pyvacon.finance.pricing as _pricing
+    #DividendTable = _mkt_data.DividendTable
 
-InflationIndexForwardCurve = _mkt_data.InflationIndexForwardCurve
-SurvivalCurve = _mkt_data.SurvivalCurve
-DatedCurve = _mkt_data.DatedCurve
-EquityOptionQuoteTable = _mkt_data.EquityOptionQuoteTable
-# DividendTable = _mkt_data.DividendTable
 
 class DividendTable:
     def __init__(self, id: str,

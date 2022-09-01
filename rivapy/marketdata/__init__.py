@@ -87,7 +87,7 @@ class _VolatilityParametrizationExpiry:
         if i == 0 or i == self.expiries.shape[0]:
             if i == self.expiries.shape[0]:
                 i -= 1
-            return np.sqrt(self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i),ttm,strike)/ttm)
+            return np.sqrt(self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i),ttm,strike))
         w0 = self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i-1),self.expiries[i-1],strike)
         w1 = self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i),self.expiries[i],strike)
         #linear n total variance

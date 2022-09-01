@@ -66,18 +66,18 @@ class StochasticLocalVol:
 			slv = w1*self._stoch_local_variance[t0_index] + w2*self._stoch_local_variance[t0_index-1]
 		slv = np.interp(x[:,0], self._x_strikes, slv)
 		return self._stoch_vol_model.apply_mc_step(x, t0, t1, rnd, inplace, slv)
-		if False:
-			rnd_S = rnd[:,0]
-			rnd_V = rnd[:,1]
-			rnd_corr_S = np.sqrt(1.0-self._stoch_vol_model._correlation**2)*rnd_S + self._stoch_vol_model._correlation*rnd_V
-			S = x_[:,0]
-			v = x_[:,1]
-			dt = t1-t0
-			sqrt_dt = np.sqrt(dt)
-			S *= np.exp(-0.5*v*slv*dt + np.sqrt(v*slv)*rnd_corr_S*sqrt_dt)
-			v += self._stoch_vol_model._mean_reversion_speed*(self._stoch_vol_model._long_run_variance-v)*dt + self._stoch_vol_model._vol_of_vol*np.sqrt(v)*rnd_V*sqrt_dt
-			x_[:,1] = np.maximum(v,0)
-			return x_
+		# if False:
+		# 	rnd_S = rnd[:,0]
+		# 	rnd_V = rnd[:,1]
+		# 	rnd_corr_S = np.sqrt(1.0-self._stoch_vol_model._correlation**2)*rnd_S + self._stoch_vol_model._correlation*rnd_V
+		# 	S = x_[:,0]
+		# 	v = x_[:,1]
+		# 	dt = t1-t0
+		# 	sqrt_dt = np.sqrt(dt)
+		# 	S *= np.exp(-0.5*v*slv*dt + np.sqrt(v*slv)*rnd_corr_S*sqrt_dt)
+		# 	v += self._stoch_vol_model._mean_reversion_speed*(self._stoch_vol_model._long_run_variance-v)*dt + self._stoch_vol_model._vol_of_vol*np.sqrt(v)*rnd_V*sqrt_dt
+		# 	x_[:,1] = np.maximum(v,0)
+		# 	return x_
 	def get_initial_value(self)->np.ndarray:
 		"""Return the initial value (x0, v0)
 

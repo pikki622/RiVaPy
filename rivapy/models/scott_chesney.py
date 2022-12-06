@@ -57,10 +57,6 @@ class ScottChesneyModel:
 
 		S += np.sqrt(slv)*np.exp(y) * S * rnd_corr_S * sqrt_dt
 		y += self.kappa * (self.theta - y) * dt + self.alpha * rnd_V * sqrt_dt
-		
-		S *= np.exp(- 0.5*v*dt + np.sqrt(v*slv)*rnd_corr_S*sqrt_dt)
-		v += self._mean_reversion_speed*(self._long_run_variance-v)*dt + self._vol_of_vol*np.sqrt(v)*rnd_V*sqrt_dt
-		x_[:,1] = np.maximum(v,0)
 		return x_
 
 

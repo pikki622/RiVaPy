@@ -1,33 +1,37 @@
 import numpy as np
-import datetime as dt
 
-    
 class GasStorageSpecification:
-    def __init__(self, timegrid, # wie heißt das bei Zafir?
-                min_volume: float, max_volume: float, 
-                start_volume: float, end_volume: float, 
-                max_withdrawal: float, max_injection: float,
-                withdrawal_cost: float = 0.0, 
-                injection_cost: float = 0.0
+    def __init__(self, 
+                timegrid: np.array, # wie heißt das bei Zafir? -> objID, startP & endP
+                storageCapacity: float, 
+                withdrawalRate: float, 
+                injectionRate: float, 
+                withdrawalCost: float, 
+                injectionCost: float,
+                minLevel: float = 0.0,
+                startLevel: float = 0.0, #additional (storageLevel?)
+                endLevel: float = 0.0  #additional (payoff?)
                 ):
-        """_summary_
+        """Constructor for gas storage specification
 
         Args:
-            timegrid (_type_): _description_
-            max_volume (float): _description_
-            start_volume (float): _description_
-            end_volume (float): _description_
-            max_withdrawal (float): _description_
-            max_injection (float): _description_
-            withdrawal_cost (float, optional): _description_. Defaults to 0.0.
-            injection_cost (float, optional): _description_. Defaults to 0.0.
+            timegrid (np.array): Array of timesteps (between 0 and 1).
+            storageCapacity (float): Maximum possible level for the gas storage.
+            withdrawalRate (float): Maximum withdrawal rate.
+            injectionRate (float): Maximum injection rate.
+            withdrawalCost (float): Relative cost of withdrawal.
+            injectionCost (float): Relative cost of injection.
+            minLevel (float, optional): Minimum level for the gas storage. Defaults to 0.0.
+            startLevel (float, optional): Start level for the gas storage. Defaults to 0.0.
+            endLevel (float, optional): End level for gas storage. Defaults to 0.0.
         """
+        
         self.timegrid = timegrid
-        self.min_volume = min_volume
-        self.max_volume = max_volume
-        self.start_volume = start_volume
-        self.end_volume = end_volume
-        self.max_withdrawal = max_withdrawal
-        self.max_injection = max_injection
-        self.withdrawal_cost = withdrawal_cost
-        self.injection_cost = injection_cost
+        self.minLevel = minLevel
+        self.storageCapacity = storageCapacity
+        self.startLevel = startLevel
+        self.endLevel = endLevel
+        self.withdrawalRate = withdrawalRate
+        self.injectionRate = injectionRate
+        self.withdrawalCost = withdrawalCost
+        self.injectionCost = injectionCost

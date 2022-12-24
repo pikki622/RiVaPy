@@ -14,9 +14,7 @@ Welcome to rivapy's documentation!
    rivapy.models
    rivapy.instruments
    rivapy.pricing
-   rivapy.marketdata
-   rivapy.models
-
+   rivapy.interfaces
 
 Indices and tables
 ==================

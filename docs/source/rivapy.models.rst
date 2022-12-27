@@ -49,6 +49,14 @@ ResidualDemandModel
    :undoc-members:
    :show-inheritance:
 
+
+SimpleRenewableModel
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. autoclass:: rivapy.models.SimpleRenewableModel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 WindPowerModel
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. autoclass:: rivapy.models.WindPowerModel

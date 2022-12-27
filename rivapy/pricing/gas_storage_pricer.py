@@ -11,8 +11,6 @@ class PricingParameter:
         self.n_vol_levels = n_vol_levels
         self.regression = regression
 
-
-
 def _payoff_func(S, delta_v, a1=0, a2=0, b1=0, b2=0, action=1):
     #payoff function h (with bid-ask spread & transaction cost)
     # -c*delta_v     inject         c=(1+a1)S +b1
@@ -203,7 +201,6 @@ if __name__ == '__main__':
             R = X0 * np.cumprod(Y) 
             return np.insert(R, 0, X0) #add start value X0
 
-
     ## Setting the parameters
     nomination = 1 #daily nomination
     #n = 365 # one year to maturity
@@ -212,13 +209,14 @@ if __name__ == '__main__':
     #kappa = 0.05
     sigma = 0.0945
     mu = 0.2
-    n_vol_levels = 101
-    min_volume = 0
-    max_volume = 250_000
-    start_volume = 100_000
-    end_volume = 100_000
-    max_withdrawal = -7500
-    max_injection = 2500
+    
+    n_vol_levels = 11 #101
+    min_volume = 0.0
+    max_volume = 10.0 #1_000
+    start_volume = 0.0 #100_000
+    end_volume = 0.0 #100_000
+    max_withdrawal = -1.0 #-7500
+    max_injection = 1.0 #2500
 
     startdate = dt.datetime.fromisoformat('2021-01-01')
     enddate = dt.datetime.fromisoformat('2021-12-31')
@@ -236,8 +234,8 @@ if __name__ == '__main__':
 
     n_time_steps = 0
     n_actions = 0
-    params = gas.PricingParameter(n_time_steps, n_actions, n_vol_levels, regression=_PolynomialRegressionFunction)
-    gas_cashflows = gas.pricing(gbm, M, penalty_func=penalty_end_0, pricing_parameters=params)
+    params = PricingParameter(n_time_steps, n_actions, n_vol_levels, regression = _PolynomialRegressionFunction)
+    gas_cashflows = gas.pricing(gbm, M, penalty_func=_penalty_func, pricing_parameters=params)
     #avg_gas_cashflow = np.average(gas_cashflows, axis=2)
 
     if True:
@@ -250,7 +248,5 @@ if __name__ == '__main__':
             plt.figure(figsize=(12,8))
             plt.plot(gas_cashflows[:,i,:])
             plt.show()
-            if i==2:
-                break
-
-        
+            if i==1:
+                break        

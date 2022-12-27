@@ -2,36 +2,36 @@ import numpy as np
 
 class GasStorageSpecification:
     def __init__(self, 
-                timegrid: np.array, # wie heißt das bei Zafir? -> objID, startP & endP
-                storageCapacity: float, 
-                withdrawalRate: float, 
-                injectionRate: float, 
-                withdrawalCost: float, 
-                injectionCost: float,
-                minLevel: float = 0.0,
-                startLevel: float = 0.0, #additional (storageLevel?)
-                endLevel: float = 0.0  #additional (payoff?)
+                timegrid: np.array, #TODO: instead of timegrid array, datetime array with startP & endP
+                storage_capacity: float, 
+                withdrawal_rate: float, 
+                injection_rate: float, 
+                withdrawal_cost: float = 0.0, 
+                injection_cost: float = 0.0,
+                min_level: float = 0.0,
+                start_level: float = 0.0,
+                end_level: float = 0.0 
                 ):
         """Constructor for gas storage specification
 
         Args:
             timegrid (np.array): Array of timesteps (between 0 and 1).
-            storageCapacity (float): Maximum possible level for the gas storage.
-            withdrawalRate (float): Maximum withdrawal rate.
-            injectionRate (float): Maximum injection rate.
-            withdrawalCost (float): Relative cost of withdrawal.
-            injectionCost (float): Relative cost of injection.
-            minLevel (float, optional): Minimum level for the gas storage. Defaults to 0.0.
-            startLevel (float, optional): Start level for the gas storage. Defaults to 0.0.
-            endLevel (float, optional): End level for gas storage. Defaults to 0.0.
+            storage_capacity (float): Maximum possible level for the gas storage.
+            withdrawal_rate (float): Maximum withdrawal rate.
+            injection_rate (float): Maximum injection rate.
+            withdrawal_cost (float): Relative cost of withdrawal.
+            injection_cost (float): Relative cost of injection.
+            min_level (float, optional): Minimum level for the gas storage. Defaults to 0.0.
+            start_level (float, optional): Start level for the gas storage. Defaults to 0.0.
+            end_level (float, optional): End level for gas storage. Defaults to 0.0.
         """
         
         self.timegrid = timegrid
-        self.minLevel = minLevel
-        self.storageCapacity = storageCapacity
-        self.startLevel = startLevel
-        self.endLevel = endLevel
-        self.withdrawalRate = withdrawalRate
-        self.injectionRate = injectionRate
-        self.withdrawalCost = withdrawalCost
-        self.injectionCost = injectionCost
+        self.min_level = min_level
+        self.storage_capacity = storage_capacity
+        self.start_level = start_level
+        self.end_level = end_level
+        self.withdrawal_rate = withdrawal_rate
+        self.injection_rate = injection_rate
+        self.withdrawal_cost = withdrawal_cost
+        self.injection_cost = injection_cost

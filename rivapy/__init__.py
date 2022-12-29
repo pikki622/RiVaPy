@@ -13,7 +13,7 @@ if _pyvacon_available:
         warnings.warn('Imported pyvacon is just beta version.')
 
 
-from rivapy import enums
+from rivapy.tools import enums
 import rivapy.instruments as instruments
 import rivapy.pricing as pricing
 import rivapy.marketdata as marketdata

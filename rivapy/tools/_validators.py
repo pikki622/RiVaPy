@@ -1,24 +1,33 @@
 # -*- coding: utf-8 -*-
 
-
-from typing import \
-    List as _List, \
-    Tuple as _Tuple, \
-    Union as _Union
-from datetime import date
-from holidays import \
-    HolidayBase as _HolidayBase, \
-    CountryHoliday as _CountryHoliday
+from datetime import datetime, date
+from typing import List as _List, Tuple as _Tuple, Union as _Union
+from holidays import  HolidayBase as _HolidayBase, CountryHoliday as _CountryHoliday
 from holidays.utils import list_supported_countries as _list_supported_countries
-from RiVaPy.tools.enums import \
-    DayCounter, \
-    RollConvention, \
-    SecuritizationLevel
-from iso4217parse import \
-    by_alpha3 as _iso4217_by_alpha3, \
-    by_code_num as _iso4217_by_code_num, \
-    Currency as _Currency
+from rivapy.tools.enums import DayCounter, RollConvention, SecuritizationLevel
 
+# from iso4217parse import \
+#     by_alpha3 as _iso4217_by_alpha3, \
+#     by_code_num as _iso4217_by_code_num, \
+#     Currency as _Currency
+
+def _datetime_to_date(date_time: _Union[datetime, date]
+                      ) -> date:
+    """
+    Converts type of date from datetime to date or leaves it unchanged if it is already of type date.
+
+    Args:
+        date_time (_Union[datetime, date]): Date(time) to be converted.
+
+    Returns:
+        date: (Potentially) Converted date(time).
+    """
+    if isinstance(date_time, datetime):
+        return date_time.date()
+    elif isinstance(date_time, date):
+        return date_time
+    else:
+        raise TypeError("'" + str(date_time) + "' must be of type datetime or date!")
 
 def _check_positivity(value: float
                       ) -> float:
@@ -101,6 +110,26 @@ def _is_start_before_end(start: date,
         print("WARNING: '" + str(start) + "' must be earlier than '" + str(end) + "'!")
         return False
 
+def _check_start_before_end(start: _Union[date, datetime],
+                           end: _Union[date, datetime]
+                           ) -> _Tuple[date, date]:
+    """
+    Converts the two input dates from datetime to date format it necessary and checks if the first date is earlier
+    than the second one.
+
+    Args:
+        start (_Union[date, datetime]): Start date
+        end (_Union[date, datetime]): End date
+
+    Returns:
+        Tuple[date, date]: start date, end date
+    """
+    start_date = _datetime_to_date(start)
+    end_date = _datetime_to_date(end)
+    if start_date < end_date:
+        return start_date, end_date
+    else:
+        raise Exception("'" + str(start) + "' must be earlier than '" + str(end) + "'!")
 
 def _is_chronological(start_date: date,
                       end_date: date,
@@ -145,9 +174,67 @@ def _is_chronological(start_date: date,
 
         return True
 
+def check_start_before_end(start: _Union[date, datetime],
+                           end: _Union[date, datetime]
+                           ) -> _Tuple[date, date]:
+    """
+    Converts the two input dates from datetime to date format it necessary and checks if the first date is earlier
+    than the second one.
 
-def _currency_to_string(currency: _Union[str, int, _Currency]
-                        ) -> str:
+    Args:
+        start (_Union[date, datetime]): Start date
+        end (_Union[date, datetime]): End date
+
+    Returns:
+        Tuple[date, date]: start date, end date
+    """
+    start_date = _datetime_to_date(start)
+    end_date = _datetime_to_date(end)
+    if start_date < end_date:
+        return start_date, end_date
+    else:
+        raise Exception("'" + str(start) + "' must be earlier than '" + str(end) + "'!")
+
+def _is_ascending_date_list(start_date: date,
+                           dates: _List[date],
+                           end_date: date,
+                           exclude_start: bool = True,
+                           exclude_end: bool = False
+                           ) -> bool:
+    """
+    Checks if all specified dates, e.g. coupon payment dates, fall between start date and end date. Start and end date
+    are excluded dependent on the corresponding boolean flags. Moreover, the dates are verified to be ascending.
+
+    Args:
+        start_date (date): First day of the interval the dates shall foll in.
+        dates (List[date]): List of dates to be tested if they are ascending and between start and end date.
+        end_date (date): Last day of the interval the dates shall foll in.
+        exclude_start (bool, optional): True, if start date does not belong to the interval. False, otherwise.
+                                        Defaults to True.
+        exclude_end (bool, optional): True, if end date does not belong to the interval. False, otherwise.
+                                      Defaults to False.
+
+    Returns:
+        bool: True, if dates are ascending and fall between the interval given by start and end date. False, otherwise.
+    """
+    if dates[0] < start_date:
+        return False
+    elif exclude_start & (dates[0] == start_date):
+        return False
+
+    for i in range(1, len(dates)):
+        if dates[i] <= dates[i-1]:
+            return False
+
+    if dates[-1] > end_date:
+        return False
+    elif exclude_end & (dates[-1] == end_date):
+        return False
+
+    return True
+
+
+def _currency_to_string(currency: str) -> str:
     """
     Checks if currency provided as ISO4217 three letter or numeric code, respectively, is known and converts it if
     necessary into the three letter ISO4217 currency code.
@@ -158,6 +245,7 @@ def _currency_to_string(currency: _Union[str, int, _Currency]
     Returns:
         str: Three letter ISO4217 currency code.
     """
+    return currency
     if isinstance(currency, str):
         if _iso4217_by_alpha3(currency) is not None:
             return currency

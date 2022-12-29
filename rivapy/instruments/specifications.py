@@ -2,35 +2,15 @@
 
 
 
-from abc import \
-    abstractmethod as _abstractmethod
-from typing import \
-    List as _List, \
-    Union as _Union
+from abc import  abstractmethod as _abstractmethod
+from typing import List as _List, Union as _Union
 from datetime import datetime, date
-from iso4217parse import Currency
-from holidays import \
-    HolidayBase as _HolidayBase, \
-    ECB as _ECB
-from RiVaPy.basics.base import BaseObject
-from RiVaPy.tools.datetools import \
-    Period, \
-    Schedule, \
-    _datetime_to_date, \
-    _datetime_to_date_list, \
-    _term_to_period
-from RiVaPy.tools.enums import \
-    DayCounter, \
-    RollConvention, \
-    SecuritizationLevel
-from RiVaPy.tools._validators import \
-    _check_positivity, \
-    _is_chronological, \
-    _currency_to_string, \
-    _day_count_convention_to_string, \
-    _roll_convention_to_string, \
-    _securitisation_level_to_string, \
-    _string_to_calendar
+#from iso4217parse import Currency
+from holidays import HolidayBase as _HolidayBase, ECB as _ECB
+from rivapy.basics.base import BaseObject
+from rivapy.tools.datetools import Period, Schedule, _datetime_to_date, _datetime_to_date_list, _term_to_period
+from rivapy.tools.enums import DayCounter, RollConvention, SecuritizationLevel, Currency
+from rivapy.tools._validators import _check_positivity, _check_start_before_end,  _currency_to_string, _day_count_convention_to_string, _roll_convention_to_string, _securitisation_level_to_string, _string_to_calendar, _is_ascending_date_list
 
 
 class IssuedInstrument(BaseObject):
@@ -87,11 +67,11 @@ class IssuedInstrument(BaseObject):
 
     @securitisation_level.setter
     def securitisation_level(self, securitisation_level:  _Union[SecuritizationLevel, str]):
-        self.__securitisation_level = securitisation_level_to_string(securitisation_level)
+        self.__securitisation_level = _securitisation_level_to_string(securitisation_level)
 
-    @_abstractmethod
-    def _validate_derived_issued_instrument(self):
-        pass
+    #@_abstractmethod
+    #def _validate_derived_issued_instrument(self):
+    #    pass
 
 
 class Bond(IssuedInstrument):
@@ -99,7 +79,7 @@ class Bond(IssuedInstrument):
                  obj_id: str,
                  issue_date: _Union[date, datetime],
                  maturity_date: _Union[date, datetime],
-                 currency: _Union[str, int, Currency] = 'EUR',
+                 currency: str = 'EUR',
                  notional: float = 100.0,
                  issuer: str = None,
                  securitisation_level: _Union[SecuritizationLevel, str] = None):
@@ -110,10 +90,7 @@ class Bond(IssuedInstrument):
             obj_id (str): (Preferably) Unique label of the bond, e.g. ISIN.
             issue_date (Union[date, datetime]): Date of bond issuance.
             maturity_date (Union[date, datetime]): Bond's maturity/expiry date. Must lie after the issue_date.
-            currency (Union[str, int, Currency], optional): Currency as alphabetic or numeric code according to iso
-                                                            currency code ISO 4217
-                                                            (cf. https://www.iso.org/iso-4217-currency-codes.html).
-                                                            Defaults to 'EUR'.
+            currency (str, optional): Currency as alphabetic, Defaults to 'EUR'.
             notional (float, optional): Bond's notional/face value. Must be positive. Defaults to 100.0.
         """
         super().__init__(obj_id, issuer, securitisation_level)
@@ -178,8 +155,8 @@ class Bond(IssuedInstrument):
         return self.__currency
 
     @currency.setter
-    def currency(self,currency: _Union[str, int, Currency]):
-        self.__currency = currency_to_string(currency)
+    def currency(self,currency:str):
+        self.__currency = _currency_to_string(currency)
 
     @property
     def notional(self) -> float:
@@ -193,11 +170,9 @@ class Bond(IssuedInstrument):
 
     @notional.setter
     def notional(self, notional):
-        self.__notional = check_positivity(notional)
+        self.__notional = _check_positivity(notional)
 
-    @_abstractmethod
-    def _validate_derived_bond(self):
-        pass
+ 
 
 
 class ZeroCouponBond(Bond):
@@ -205,7 +180,7 @@ class ZeroCouponBond(Bond):
                  obj_id: str,
                  issue_date: _Union[date, datetime],
                  maturity_date: _Union[date, datetime],
-                 currency: _Union[str, int, Currency] = 'EUR',
+                 currency: str = 'EUR',
                  notional: float = 100.0,
                  issuer: str = None,
                  securitisation_level: _Union[SecuritizationLevel, str] = None):
@@ -223,6 +198,9 @@ class ZeroCouponBond(Bond):
     def _validate_derived_bond(self):
         pass
 
+    def _validate_derived_issued_instrument(self):
+        pass
+
 
 class FixedRateBond(Bond):
     def __init__(self,
@@ -231,7 +209,7 @@ class FixedRateBond(Bond):
                  maturity_date: _Union[date, datetime],
                  coupon_payment_dates: _List[_Union[date, datetime]],
                  coupons: _List[float],
-                 currency: _Union[str, int, Currency] = 'EUR',
+                 currency: str = 'EUR',
                  notional: float = 100.0,
                  issuer: str = None,
                  securitisation_level: _Union[SecuritizationLevel, str] = None):
@@ -272,6 +250,9 @@ class FixedRateBond(Bond):
         if len(self.__coupon_payment_dates) != len(self.__coupons):
             raise Exception('Number of coupons ' + str(self.__coupons) +
                             ' is not equal to number of coupon payment dates ' + str(self.__coupon_payment_dates))
+    
+    def _validate_derived_issued_instrument(self):
+        pass
 
     @classmethod
     def from_master_data(cls,
@@ -284,7 +265,7 @@ class FixedRateBond(Bond):
                          stub: bool = False,
                          business_day_convention: _Union[RollConvention, str] = RollConvention.FOLLOWING,
                          calendar: _Union[_HolidayBase, str] = None,
-                         currency: _Union[str, int, Currency] = 'EUR',
+                         currency: str = 'EUR',
                          notional: float = 100.0,
                          issuer: str = None,
                          securitisation_level: _Union[SecuritizationLevel, str] = None):
@@ -316,7 +297,7 @@ class FixedRateBond(Bond):
                                                            Defaults (through constructor) to holidays.ECB
                                                            (= Target2 calendar) between start_day and end_day.
             # TODO: How can we avoid repeating ourselves here?
-            currency (Union[str, int, Currency], optional): Currency as alphabetic or numeric code according to iso
+            currency (str, optional): Currency as alphabetic  according to iso
                                                             currency code ISO 4217
                                                             (cf. https://www.iso.org/iso-4217-currency-codes.html).
                                                             Defaults to 'EUR'.
@@ -328,17 +309,17 @@ class FixedRateBond(Bond):
         Returns:
             FixedRateBond: Corresponding fixed rate bond with already generated schedule for coupon payments.
         """
-        coupon = check_positivity(coupon)
-        tenor = _tenor_to_period(tenor)
-        business_day_convention = roll_convention_to_string(business_day_convention)
+        coupon = _check_positivity(coupon)
+        tenor = _term_to_period(tenor)
+        business_day_convention = _roll_convention_to_string(business_day_convention)
         if calendar is None:
             calendar = _ECB(years=range(issue_date.year, maturity_date.year + 1))
         else:
-            calendar = string_to_calendar(calendar)
+            calendar = _string_to_calendar(calendar)
         schedule = Schedule(issue_date, maturity_date, tenor, backwards, stub, business_day_convention, calendar)
         coupon_payment_dates = schedule.generate_dates(True)
         coupons = [coupon] * len(coupon_payment_dates)
-        securitisation_level = securitisation_level_to_string(securitisation_level)
+        securitisation_level = _securitisation_level_to_string(securitisation_level)
         return FixedRateBond(obj_id, issue_date, maturity_date, coupon_payment_dates, coupons, currency, notional,
                              issuer, securitisation_level)
 
@@ -372,7 +353,7 @@ class FloatingRateNote(Bond):
                  day_count_convention: _Union[DayCounter, str] = DayCounter.ThirtyU360,
                  spreads: _List[float] = None,
                  reference_index: str = 'dummy_curve',
-                 currency: _Union[str, int, Currency] = 'EUR',
+                 currency: str = 'EUR',
                  notional: float = 100.0,
                  issuer: str = None,
                  securitisation_level: _Union[SecuritizationLevel, str] = None):
@@ -391,7 +372,7 @@ class FloatingRateNote(Bond):
                                              rate coupon amounts. Defaults to 'dummy_curve'.
                                              Note: A reference curve could also be provided later at the pricing stage.
         """
-        # super().__init__(obj_id, issue_date, maturity_date, currency, notional, issuer, securitisation_level)
+        #super().__init__(obj_id, issue_date, maturity_date, currency, notional, issuer, securitisation_level)
         Bond.__init__(self, obj_id, issue_date, maturity_date, currency, notional, issuer, securitisation_level)
         self.__coupon_period_dates = _datetime_to_date_list(coupon_period_dates)
         # validation of dates' consistency
@@ -400,7 +381,7 @@ class FloatingRateNote(Bond):
                             + "', payment dates '" + str(coupon_period_dates)
                             + "', and maturity date '" + str(maturity_date) + "'.")
             # TODO: Clarify if inconsistency should be shown explicitly.
-        self.__day_count_convention = day_count_convention_to_string(day_count_convention)
+        self.__day_count_convention = _day_count_convention_to_string(day_count_convention)
         if spreads is None:
             self.__spreads = [0.0] * (len(coupon_period_dates) - 1)
         elif len(spreads) == len(coupon_period_dates) - 1:
@@ -427,7 +408,7 @@ class FloatingRateNote(Bond):
                          day_count_convention: _Union[DayCounter, str] = DayCounter.ThirtyU360,
                          spread: float = 0.0,
                          reference_index: str = 'dummy_curve',
-                         currency: _Union[str, int, Currency] = 'EUR',
+                         currency: str = 'EUR',
                          notional: float = 100.0,
                          issuer: str = None,
                          securitisation_level: _Union[SecuritizationLevel, str] = None):
@@ -464,7 +445,7 @@ class FloatingRateNote(Bond):
             reference_index (str, optional): Floating rate note underlying reference curve used for fixing the floating
                                              rate coupon amounts. Defaults to 'dummy_curve'.
                                              Note: A reference curve could also be provided later at the pricing stage.
-            currency (Union[str, int, Currency], optional): Currency as alphabetic or numeric code according to iso
+            currency (str, optional): Currency as alphabetic code according to iso
                                                             currency code ISO 4217
                                                             (cf. https://www.iso.org/iso-4217-currency-codes.html).
                                                             Defaults to 'EUR'.
@@ -475,12 +456,12 @@ class FloatingRateNote(Bond):
         Returns:
             FloatingRateNote: Corresponding floating rate note with already generated schedule for coupon payments.
         """
-        tenor = _tenor_to_period(tenor)
-        business_day_convention = roll_convention_to_string(business_day_convention)
+        tenor = _term_to_period(tenor)
+        business_day_convention = _roll_convention_to_string(business_day_convention)
         if calendar is None:
             calendar = _ECB(years=range(issue_date.year, maturity_date.year + 1))
         else:
-            calendar = string_to_calendar(calendar)
+            calendar = _string_to_calendar(calendar)
         schedule = Schedule(issue_date, maturity_date, tenor, backwards, stub, business_day_convention, calendar)
         coupon_period_dates = schedule.generate_dates(False)
         spreads = [spread] * (len(coupon_period_dates) - 1)
@@ -539,7 +520,7 @@ class FixedToFloatingRateNote(FixedRateBond, FloatingRateNote):
                  day_count_convention: _Union[DayCounter, str] = DayCounter.ThirtyU360,
                  spreads: _List[float] = None,
                  reference_index: str = 'dummy_curve',
-                 currency: _Union[str, int, Currency] = 'EUR',
+                 currency: str = 'EUR',
                  notional: float = 100.0,
                  issuer: str = None,
                  securitisation_level: _Union[SecuritizationLevel, str] = None):
@@ -547,6 +528,8 @@ class FixedToFloatingRateNote(FixedRateBond, FloatingRateNote):
         Fixed-to-floating rate note specification by providing fixed rate coupons and fixed rate coupon payment dates
         as well as floating rate coupon periods directly.
         """
+        # TODO FIX THIS CLASS!!!!!!!!!!!!!!!!
+        raise Exception('Not working properly, @Stefan: Please fix me!!!!')
         FixedRateBond.__init__(self, obj_id, issue_date, maturity_date, coupon_payment_dates, coupons,
                                currency, notional, issuer, securitisation_level)
 
@@ -631,7 +614,7 @@ class FixedToFloatingRateNote(FixedRateBond, FloatingRateNote):
             reference_index (str, optional): Floating rate note underlying reference curve used for fixing the floating
                                              rate coupon amounts. Defaults to 'dummy_curve'.
                                              Note: A reference curve could also be provided later at the pricing stage.
-            currency (_Union[str, int], optional): Currency as alphabetic or numeric code according to iso currency code
+            currency (str, optional): Currency as alphabeticcode according to iso currency code
                                                    ISO 4217 (cf. https://www.iso.org/iso-4217-currency-codes.html).
                                                    Defaults to 'EUR'.
             notional (float, optional): Bond's notional/face value. Must be positive. Defaults to 100.0.
@@ -656,6 +639,7 @@ class FixedToFloatingRateNote(FixedRateBond, FloatingRateNote):
                                        fixed_rate_part.coupons, floating_rate_part.coupon_period_dates,
                                        day_count_convention, floating_rate_part.spreads, reference_index, currency,
                                        notional, issuer, securitisation_level)
+        
 
 #from datetime import datetime as _datetime
 #from rivapy.enums import SecuritizationLevel
@@ -716,7 +700,7 @@ class EuropeanVanillaSpecification:
     def __init__(self, 
                  id: str,
                  type: str,
-                 expiry: _datetime,
+                 expiry: datetime,
                  strike: float,
                  issuer: str = '',
                  sec_lvl: str = SecuritizationLevel.COLLATERALIZED,
@@ -778,7 +762,7 @@ class AmericanVanillaSpecification:
     def __init__(self
                  ,id: str
                  ,type: str
-                 ,expiry: _datetime
+                 ,expiry: datetime
                  ,strike: float
                  ,issuer: str = ''
                  ,sec_lvl: str = SecuritizationLevel.COLLATERALIZED

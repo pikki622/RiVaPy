@@ -9,8 +9,8 @@ from typing import \
 from holidays import \
     HolidayBase as _HolidayBase, \
     ECB as _ECB
-from RiVaPy.tools.enums import RollConvention
-from RiVaPy.tools._validators import \
+from rivapy.tools.enums import RollConvention
+from rivapy.tools._validators import \
     _is_start_before_end, \
     _roll_convention_to_string, \
     _string_to_calendar
@@ -369,67 +369,6 @@ def _datetime_to_date_list(date_times: _Union[_List[datetime], _List[date]]
         raise TypeError("'" + str(date_times) + "' must be a list of type datetime or date!")
 
 
-# def check_start_before_end(start: _Union[date, datetime],
-#                            end: _Union[date, datetime]
-#                            ) -> _Tuple[date, date]:
-#     """
-#     Converts the two input dates from datetime to date format it necessary and checks if the first date is earlier
-#     than the second one.
-#
-#     Args:
-#         start (_Union[date, datetime]): Start date
-#         end (_Union[date, datetime]): End date
-#
-#     Returns:
-#         Tuple[date, date]: start date, end date
-#     """
-#     start_date = datetime_to_date(start)
-#     end_date = datetime_to_date(end)
-#     if start_date < end_date:
-#         return start_date, end_date
-#     else:
-#         raise Exception("'" + str(start) + "' must be earlier than '" + str(end) + "'!")
-
-
-# def is_ascending_date_list(start_date: date,
-#                            dates: _List[date],
-#                            end_date: date,
-#                            exclude_start: bool = True,
-#                            exclude_end: bool = False
-#                            ) -> bool:
-#     """
-#     Checks if all specified dates, e.g. coupon payment dates, fall between start date and end date. Start and end date
-#     are excluded dependent on the corresponding boolean flags. Moreover, the dates are verified to be ascending.
-#
-#     Args:
-#         start_date (date): First day of the interval the dates shall foll in.
-#         dates (List[date]): List of dates to be tested if they are ascending and between start and end date.
-#         end_date (date): Last day of the interval the dates shall foll in.
-#         exclude_start (bool, optional): True, if start date does not belong to the interval. False, otherwise.
-#                                         Defaults to True.
-#         exclude_end (bool, optional): True, if end date does not belong to the interval. False, otherwise.
-#                                       Defaults to False.
-#
-#     Returns:
-#         bool: True, if dates are ascending and fall between the interval given by start and end date. False, otherwise.
-#     """
-#     if dates[0] < start_date:
-#         return False
-#     elif exclude_start & (dates[0] == start_date):
-#         return False
-#
-#     for i in range(1, len(dates)):
-#         if dates[i] <= dates[i-1]:
-#             return False
-#
-#     if dates[-1] > end_date:
-#         return False
-#     elif exclude_end & (dates[-1] == end_date):
-#         return False
-#
-#     return True
-
-
 def _string_to_period(term: str
                       ) -> Period:
     """
@@ -471,7 +410,7 @@ def _term_to_period(term: _Union[Period, str]
     if isinstance(term, Period):
         return term
     elif isinstance(term, str):
-        return _term_to_period(term)
+        return _string_to_period(term)
     else:
         raise TypeError("The term '" + str(term) + "' must be provided as Period or string!")
 

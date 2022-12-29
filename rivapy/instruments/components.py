@@ -1,20 +1,11 @@
 # -*- coding: utf-8 -*-
-
-
-from typing import \
-    Union as _Union
+from typing import Union as _Union
 from datetime import datetime, date
-from pycountry import countries
-from RiVaPy.tools.datetools import \
-    _check_start_before_end, \
-    datetime_to_date, \
-    _is_ascending_date_list
-from RiVaPy.tools._validators import \
-    _day_count_convention_to_string as _day_count_convention_to_string, \
-    _check_positivity, \
-    _check_relation, \
-    _is_chronological
-from RiVaPy.tools.enums import \
+from rivapy.tools.datetools import datetime_to_date, _is_ascending_date_list
+from rivapy.tools._validators import \
+    _day_count_convention_to_string as _day_count_convention_to_string, _check_start_before_end, _check_positivity, \
+    _check_relation,_is_chronological
+from rivapy.tools.enums import \
     DayCounter, \
     Rating, \
     Sector

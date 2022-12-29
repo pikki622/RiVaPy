@@ -11,14 +11,13 @@ from typing import \
     Union as _Union
 from datetime import datetime as _datetime, date as _date
 from numpy import empty as _empty, array as _array, ndarray as _ndarray
-from pyvacon.analytics import \
-    ptime as _ptime,\
-    CouponDescription as _CouponDescription, \
-    vectorCouponDescription as _vectorCouponDescription, \
-    BaseObject as _BaseObject, \
-    vectorVectorDouble as _vectorVectorDouble, \
-    vectorDouble as _vectorDouble
+from rivapy import _pyvacon_available
 
+if _pyvacon_available:
+    from pyvacon.pyvacon_swig import ptime as _ptime, CouponDescription as _CouponDescription, vectorCouponDescription as _vectorCouponDescription, BaseObject as _BaseObject, \
+        vectorVectorDouble as _vectorVectorDouble, vectorDouble as _vectorDouble
+else:
+    raise Exception('Cannot use _converter.py without pyvacon installed.')
 
 def create_ptime(date: _Union[_date, _datetime, _ptime]) -> _ptime:
     """

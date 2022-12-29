@@ -7,21 +7,21 @@ from rivapy import _pyvacon_available
 if _pyvacon_available:
     import pyvacon as _pyvacon
 
-import rivapy
-from rivapy.instruments import CDSSpecification
 
 from rivapy.instruments import CDSSpecification
 
-import pyvacon.analytics as _analytics
-from rivapy.marketdata import BaseDatedCurve, DiscountCurve, SurvivalCurve 
+from rivapy.instruments import CDSSpecification
+
+
+
+from rivapy.marketdata import DiscountCurve, SurvivalCurve 
+from rivapy.tools.interfaces import BaseDatedCurve
 from typing import Union as _Union
 from datetime import date, datetime
 from rivapy.instruments.specifications import Bond
 from rivapy.tools._converter import _add_converter
-from rivapy.tools.datetools import datetime_to_date
-from rivapy.pricing.pricing_request import \
-    PricingRequest, \
-    BondPricingRequest
+from rivapy.tools.datetools import _datetime_to_date
+from rivapy.pricing.pricing_request import PricingRequest, BondPricingRequest
 
 
 
@@ -40,6 +40,7 @@ class CDSPricingData:
         pass
 
 if _pyvacon_available:
+    import pyvacon.pyvacon_swig as _analytics
     BondPricingParameter = _add_converter(_analytics.BondPricingParameter)
     # getPricingData = _converter(_analytics.getPricingData)
 else:
@@ -121,7 +122,7 @@ class BondPricingData(BasePricingData):
 
     @valuation_date.setter
     def valuation_date(self, valuation_date: _Union[date, datetime]):
-        self.__valuation_date = datetime_to_date(valuation_date)
+        self.__valuation_date = _datetime_to_date(valuation_date)
 
     @property
     def discount_curve(self):

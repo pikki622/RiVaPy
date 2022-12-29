@@ -1,92 +1,43 @@
 # -*- coding: utf-8 -*-
-
-
-from enum import \
-    Enum as _Enum, \
-    unique as _unique
+from enum import Enum as _Enum, unique as _unique
+from rivapy import _pyvacon_available
 """
+
 The following Enum sub-classes replace to corresponding former classes one-on-one. The main reason for this replacement
 is the more comfortable iterations over the enumeration class members. Moreover, the Enum class provides potentially
 useful functionalities like comparisons, pickling, ... Finally, the decorator @unique ensures unique enumeration values.
 """
-
-
 class _MyEnum(_Enum):
     @classmethod
     def has_value(cls, value):
         return value in cls._value2member_map_
 
 
-# class DBUdl(_MyEnum):
-#     DAX = '13021'
-#     STOXX50E = '3343'
-#     DOWJOWNS = '27930'
-#     SPX = '3383'
-#     NASDAX = '11227'
-#
-#     APPLE = '460'
-#     EXXON = '0'
-#     COMMERZBANK = '5'
-#     DB11 = '156'  # Deutsche Börse
-#     LUFTHANSA = '9'
-#     PRO_SIEBEN = '10'
-#     THYSSEN = '6'
-#     # Dax
-#     ADS = '269'  # Adidas
-#     ALV = '184'  # Allianz
-#     BASF = '51'
-#     BAYER = '58'
-#     BEIERSDORF = '97'
-#     BMW = '59'
-#     CONTINENTAL = '92'
-#     CONVESTRO = '37'
-#     DAIMLER = '42'
-#     DBK = '8'  # Deutsche Bank
-#     DEUTSCHE_BOERSE = '156'
-#     DEUTSCHE_POST = '38'
-#     DTE = '15'  # Deutsche Telekom
-#     DEUTSCHE_WOHNEN = '44'
-#     EON = '10'
-#     FRESENIUS_MEDICAL_CARE = '73'
-#     FRESENIUS = '39'
-#     HEIDELBER_CEMENT = '52'
-#     HENKEL = '86'
-#     INFINEON = '22'
-#     LINDE = '211'
-#     MERCK = '116'
-#     MTU = '154'
-#     MUV = '237'
-#     RWE = '129'
-#     SAP = '34'
-#     SIEMENS = '118'
-#     VW = '139'
-#     VONOVIA = '59'
-#     WIRECARD = '1'
-#     DAX_list = {'DAX': DAX, 'ADS': ADS, 'ALV': ALV, 'BASF': BASF, 'BAYER': BAYER, 'BEIERSDORF': BEIERSDORF, 'BMW': BMW,
-#                 'CONTINENTAL': CONTINENTAL, 'CONVESTRO': CONVESTRO, 'DAIMLER': DAIMLER, 'DBK': DBK,
-#                 'DEUTSCHE_BOERSE': DEUTSCHE_BOERSE, 'DEUTSCHE_POST': DEUTSCHE_POST, 'DTE': DTE,
-#                 'DEUTSCHE_WOHNEN': DEUTSCHE_WOHNEN, 'EON': EON, 'FRESENIUS_MEDICAL_CARE': FRESENIUS_MEDICAL_CARE,
-#                 'FRESENIUS': FRESENIUS, 'HEIDELBER_CEMENT': HEIDELBER_CEMENT, 'HENKEL': HENKEL, 'INFINEON': INFINEON,
-#                 'LINDE': LINDE, 'MERCK': MERCK, 'MTU': MTU, 'MUV': MUV, 'RWE': RWE, 'SAP': SAP, 'SIEMENS': SIEMENS,
-#                 'VW': VW, 'VONOVIA': VONOVIA, 'WIRECARD': WIRECARD}
+
+if _pyvacon_available:
+    from pyvacon.finance.definition import DayCounter as _DayCounter
+    DayCounterType = _DayCounter.Type
+
+    from pyvacon.numerics.interpolation import InterpolationType
+    from pyvacon.numerics.extrapolation import ExtrapolationType
+else:
+    @_unique
+    class InterpolationType(_MyEnum):
+        CONSTANT = 'CONSTANT'
+        LINEAR = 'LINEAR'
+        LINEAR_LOG = 'LINEARLOG'
+        CONSTRAINED_SPLINE = 'CONSTRAINED_SPLINE'
+        HAGAN = 'HAGAN'
+        HAGAN_DF = 'HAGAN_DF'
 
 
-# @_unique
-# class InterpolationType(_MyEnum):
-#     CONSTANT = 'CONSTANT'
-#     LINEAR = 'LINEAR'
-#     LINEAR_LOG = 'LINEARLOG'
-#     CONSTRAINED_SPLINE = 'CONSTRAINED_SPLINE'
-#     HAGAN = 'HAGAN'
-#     HAGAN_DF = 'HAGAN_DF'
-
-
-# @_unique
-# class ExtrapolationType(_MyEnum):
-#     NONE = 'NONE'
-#     CONSTANT = 'CONSTANT'
-#     LINEAR = 'LINEAR'
-#     LINEAR_LOG = 'LINEARLOG'
+    @_unique
+    class ExtrapolationType(_MyEnum):
+        NONE = 'NONE'
+        CONSTANT = 'CONSTANT'
+        LINEAR = 'LINEAR'
+        LINEAR_LOG = 'LINEARLOG'
+        
 
 
 @_unique
@@ -101,6 +52,14 @@ class SecuritizationLevel(_MyEnum):
     PREFERRED_SENIOR = 'PREFERRED_SENIOR'
     NON_PREFERRED_SENIOR = 'NON_PREFERRED_SENIOR'
 
+# class SecuritizationLevel:
+#     NONE = 'NONE'
+#     COLLATERALIZED = 'COLLATERALIZED' #,,,'','SUBORDINATED','MEZZANINE','EQUITY']
+#     SENIOR_SECURED = 'SENIOR_SECURED'
+#     SENIOR_UNSECURED = 'SENIOR_UNSECURED'
+#     SUBORDINATED = 'SUBORDINATED'
+#     MEZZANINE = 'MEZZANINE'
+#     EQUITY = 'EQUITY'
 
 # @_unique
 # class ProductType(_MyEnum):
@@ -116,17 +75,26 @@ class SecuritizationLevel(_MyEnum):
 #     COMBO = 'COMBO'
 
 
-# @_unique
-# class Model(_MyEnum):
+@_unique
+class Model(_MyEnum):
+    BLACK76 = 'BLACK76'
+    CIR = 'CIR'
+    HULL_WHITE = 'HULL_WHITE'
+    HESTON = 'HESTON'
+    LV = 'LV'
+    GBM = 'GBM'
+    G2PP = 'G2PP'
+    VASICEK = 'VASICEK'
+
+# class Model:
 #     BLACK76 = 'BLACK76'
-#     CIR = 'CIR'
+#     CIR ='CIR'
 #     HULL_WHITE = 'HULL_WHITE'
 #     HESTON = 'HESTON'
 #     LV = 'LV'
 #     GBM = 'GBM'
 #     G2PP = 'G2PP'
 #     VASICEK = 'VASICEK'
-
 
 @_unique
 class Period(_MyEnum):
@@ -136,6 +104,13 @@ class Period(_MyEnum):
     M = 'M'
     D = 'D'
 
+    
+# class Period:
+#     A = 'A'
+#     SA = 'SA'
+#     Q = 'Q'
+#     M = 'M'
+#     D = 'D'
 
 @_unique
 class RollConvention(_MyEnum):
@@ -148,7 +123,13 @@ class RollConvention(_MyEnum):
     NEAREST = 'Nearest'
     UNADJUSTED = 'Unadjusted'
 
-
+# class RollConvention:
+#     FOLLOWING = 'Following'
+#     MODIFIED_FOLLOWING = 'ModifiedFollowing'
+#     MODIFIED_FOLLOWING_EOM = 'ModifiedFollowingEOM'
+#     PRECEDING = 'Preceding'
+#     MODIFIED_PRECEDING = 'ModifiedPreceding'
+#     UNADJUSTED = 'Unadjusted'
 @_unique
 class DayCounter(_MyEnum):
     ACT_ACT = 'ActAct'
@@ -157,23 +138,12 @@ class DayCounter(_MyEnum):
     ThirtyU360 = '30U360'
     ThirtyE360 = '30E360'
     ACT252 = 'Act252'
-
-
-# @_unique
-# class VolatilityStickyness(_MyEnum):
-#     NONE = 'NONE'
-#     Sticky_Strike = 'StickyStrike'
-#     Sticky_X_Strike = 'StickyXStrike'
-#     Sticky_Fwd_Moneyness = 'StickyFwdMoneyness'
-
-
-# @_unique
-# class InflationInterpolation(_MyEnum):
-#     UNDEFINED = 'UNDEFINED'
-#     GERMAN = 'GERMAN'
-#     JAPAN = 'JAPAN'
-#     CONSTANT = 'CONSTANT'
-
+@_unique
+class InflationInterpolation(_MyEnum):
+    UNDEFINED = 'UNDEFINED'
+    GERMAN = 'GERMAN'
+    JAPAN = 'JAPAN'
+    CONSTANT = 'CONSTANT'
 
 @_unique
 class Sector(_MyEnum):
@@ -202,7 +172,7 @@ class Sector(_MyEnum):
 
 
 @_unique
-class Rating:
+class Rating(_Enum):
     # cf. https://www.moneyland.ch/de/vergleich-rating-agenturen
     AAA = 'AAA'
     AA_PLUS = 'AA+'
@@ -226,3 +196,200 @@ class Rating:
     CC = 'CC'
     C = 'C'
     D = 'D'
+
+class ProductType:
+       BOND = 'BOND'
+       CALLABLE_BOND = 'CALLABLE_BOND'   
+
+class PricerType:
+    ANALYTIC = 'ANALYTIC'
+    PDE = 'PDE'
+    MONTE_CARLO = 'MONTE_CARLO'
+    COMBO = 'COMBO'
+    
+       
+    
+class VolatilityStickyness:
+    NONE = 'NONE'
+    StickyStrike = 'StickyStrike'
+    StickyXStrike = 'StickyXStrike'
+    StickyFwdMoneyness = 'StickyFwdMoneyness'
+
+class Currency:
+    AED =  'AED'
+    AFN =  'AFN'
+    ALL =  'ALL'
+    AMD =  'AMD'
+    ANG =  'ANG'
+    AOA =  'AOA'
+    ARS =  'ARS'
+    AUD =  'AUD'
+    AWG =  'AWG'
+    AZN =  'AZN'
+    BAM =  'BAM'
+    BBD =  'BBD'
+    BDT =  'BDT'
+    BGN =  'BGN'
+    BHD =  'BHD'
+    BIF =  'BIF'
+    BMD =  'BMD'
+    BND =  'BND'
+    BOB =  'BOB'
+    BRL =  'BRL'
+    BSD =  'BSD'
+    BTN =  'BTN'
+    BWP =  'BWP'
+    BYR =  'BYR'
+    BZD =  'BZD'
+    CAD =  'CAD'
+    CDF =  'CDF'
+    CHF =  'CHF'
+    CLP =  'CLP'
+    CNH =  'CNH'
+    CNY =  'CNY'
+    COP =  'COP'
+    CRC =  'CRC'
+    CUC =  'CUC'
+    CUP =  'CUP'
+    CVE =  'CVE'
+    CZK =  'CZK'
+    DJF =  'DJF'
+    DKK =  'DKK'
+    DOP =  'DOP'
+    DZD =  'DZD'
+    EGP =  'EGP'
+    ERN =  'ERN'
+    ETB =  'ETB'
+    EUR =  'EUR'
+    FJD =  'FJD'
+    FKP =  'FKP'
+    GBP =  'GBP'
+    GEL =  'GEL'
+    GGP =  'GGP'
+    GHS =  'GHS'
+    GIP =  'GIP'
+    GMD =  'GMD'
+    GNF =  'GNF'
+    GTQ =  'GTQ'
+    GYD =  'GYD'
+    HKD =  'HKD'
+    HNL =  'HNL'
+    HRK =  'HRK'
+    HTG =  'HTG'
+    HUF =  'HUF'
+    IDR =  'IDR'
+    ILS =  'ILS'
+    IMP =  'IMP'
+    INR =  'INR'
+    IQD =  'IQD'
+    IRR =  'IRR'
+    ISK =  'ISK'
+    JEP =  'JEP'
+    JMD =  'JMD'
+    JOD =  'JOD'
+    JPY =  'JPY'
+    KES =  'KES'
+    KGS =  'KGS'
+    KHR =  'KHR'
+    KMF =  'KMF'
+    KPW =  'KPW'
+    KRW =  'KRW'
+    KWD =  'KWD'
+    KYD =  'KYD'
+    KZT =  'KZT'
+    LAK =  'LAK'
+    LBP =  'LBP'
+    LKR =  'LKR'
+    LRD =  'LRD'
+    LSL =  'LSL'
+    LTL =  'LTL'
+    LVL =  'LVL'
+    LYD =  'LYD'
+    MAD =  'MAD'
+    MDL =  'MDL'
+    MGA =  'MGA'
+    MKD =  'MKD'
+    MMK =  'MMK'
+    MNT =  'MNT'
+    MOP =  'MOP'
+    MRO =  'MRO'
+    MUR =  'MUR'
+    MVR =  'MVR'
+    MWK =  'MWK'
+    MXN =  'MXN'
+    MYR =  'MYR'
+    MZN =  'MZN'
+    NAD =  'NAD'
+    NGN =  'NGN'
+    NIO =  'NIO'
+    NOK =  'NOK'
+    NPR =  'NPR'
+    NZD =  'NZD'
+    OMR =  'OMR'
+    PAB =  'PAB'
+    PEN =  'PEN'
+    PGK =  'PGK'
+    PHP =  'PHP'
+    PKR =  'PKR'
+    PLN =  'PLN'
+    PYG =  'PYG'
+    QAR =  'QAR'
+    RON =  'RON'
+    RSD =  'RSD'
+    RUB =  'RUB'
+    RWF =  'RWF'
+    SAR =  'SAR'
+    SBD =  'SBD'
+    SCR =  'SCR'
+    SDG =  'SDG'
+    SEK =  'SEK'
+    SGD =  'SGD'
+    SHP =  'SHP'
+    SLL =  'SLL'
+    SOS =  'SOS'
+    SPL =  'SPL'
+    SRD =  'SRD'
+    STD =  'STD'
+    SVC =  'SVC'
+    SYP =  'SYP'
+    SZL =  'SZL'
+    THB =  'THB'
+    TJS =  'TJS'
+    TMT =  'TMT'
+    TND =  'TND'
+    TOP =  'TOP'
+    TRY =  'TRY'
+    TTD =  'TTD'
+    TVD =  'TVD'
+    TWD =  'TWD'
+    TZS =  'TZS'
+    UAH =  'UAH'
+    UGX =  'UGX'
+    USD =  'USD'
+    UYU =  'UYU'
+    UZS =  'UZS'
+    VEF =  'VEF'
+    VND =  'VND'
+    VUV =  'VUV'
+    WST =  'WST'
+    XAF =  'XAF'
+    XAG =  'XAG'
+    XAU =  'XAU'
+    XPD =  'XPD'
+    XPT =  'XPT'
+    XCD =  'XCD'
+    XDR =  'XDR'
+    XOF =  'XOF'
+    XPF =  'XPF'
+    YER =  'YER'
+    ZAR =  'ZAR'
+    ZMW =  'ZMW'
+    ZWD =  'ZWD'
+
+class ProductType:
+       BOND = 'BOND'
+       CALLABLE_BOND = 'CALLABLE_BOND'
+       
+       
+
+    

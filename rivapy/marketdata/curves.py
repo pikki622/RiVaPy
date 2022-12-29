@@ -8,7 +8,7 @@ from typing import List
 import scipy.optimize
 import pandas as pd
 
-from rivapy.enums import DayCounterType, InterpolationType, ExtrapolationType
+from rivapy.tools.enums import DayCounterType, InterpolationType, ExtrapolationType
 
 from rivapy import _pyvacon_available
 if _pyvacon_available:

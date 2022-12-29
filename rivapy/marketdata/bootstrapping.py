@@ -4,15 +4,15 @@
 from datetime import datetime, date
 from pandas import DataFrame, Series
 from typing import Union as _Union
-from RiVaPy.tools.datetools import \
+from rivapy.tools.datetools import \
     Period, \
     Schedule, \
     calc_end_day, \
     calc_start_day, \
     term_to_period, \
     datetime_to_date
-from RiVaPy.tools.enums import SecuritizationLevel
-from RiVaPy.tools._converter import \
+from rivapy.tools.enums import SecuritizationLevel
+from rivapy.tools._converter import \
     converter as _converter, \
     create_ptime as _create_ptime
 from pyvacon.instruments.analytics_classes import \

@@ -6,7 +6,7 @@ from rivapy.tools._validators import \
     _day_count_convention_to_string as _day_count_convention_to_string, _check_start_before_end, _check_positivity, \
     _check_relation,_is_chronological
 from rivapy.tools.enums import \
-    DayCounter, \
+    DayCounterType, \
     Rating, \
     Sector
 
@@ -16,7 +16,7 @@ class Coupon:
                  accrual_start: _Union[date, datetime],
                  accrual_end: _Union[date, datetime],
                  payment_date: _Union[date, datetime],
-                 day_count_convention: _Union[DayCounter, str],
+                 day_count_convention: _Union[DayCounterType, str],
                  annualised_fixed_coupon: float,
                  fixing_date: _Union[date, datetime],
                  floating_period_start: _Union[date, datetime],

@@ -23,7 +23,10 @@ if _pyvacon_available:
     import pyvacon.finance.utils as _utils
     import pyvacon.finance.pricing as _pricing
     #DividendTable = _mkt_data.DividendTable
-
+else:
+    class SurvivalCurve:
+        def __init__(self):
+            raise Exception('Up to now only implemented in pyvacon that has not been installed.')
 
 class DividendTable:
     def __init__(self, id: str,

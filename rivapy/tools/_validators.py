@@ -4,7 +4,7 @@ from datetime import datetime, date
 from typing import List as _List, Tuple as _Tuple, Union as _Union
 from holidays import  HolidayBase as _HolidayBase, CountryHoliday as _CountryHoliday
 from holidays.utils import list_supported_countries as _list_supported_countries
-from rivapy.tools.enums import DayCounter, RollConvention, SecuritizationLevel
+from rivapy.tools.enums import DayCounterType, RollConvention, SecuritizationLevel
 
 # from iso4217parse import \
 #     by_alpha3 as _iso4217_by_alpha3, \
@@ -249,7 +249,7 @@ def _currency_to_string(currency: str) -> str:
    
 
 
-def _day_count_convention_to_string(day_count_convention: _Union[DayCounter, str]
+def _day_count_convention_to_string(day_count_convention: _Union[DayCounterType, str]
                                     ) -> str:
     """
     Checks if day count convention is known, i.e. part of the enums list, and converts it if necessary into a sting.
@@ -260,14 +260,14 @@ def _day_count_convention_to_string(day_count_convention: _Union[DayCounter, str
     Returns:
         str: Day count convention as string.
     """
-    if isinstance(day_count_convention, DayCounter):
+    if isinstance(day_count_convention, DayCounterType):
         try:
             return day_count_convention.value
         except AttributeError:
             # TODO: Clarify why this is not triggered.
             raise Exception("Unknown day count convention '" + str(day_count_convention) + "'!")
     elif isinstance(day_count_convention, str):
-        if DayCounter.has_value(day_count_convention):
+        if DayCounterType.has_value(day_count_convention):
             return day_count_convention
         else:
             raise Exception("Unknown day count convention '" + day_count_convention + "'!")

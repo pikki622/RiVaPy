@@ -3,9 +3,11 @@ import abc
 import numpy as np
 import pandas as pd
 import datetime as dt
+import rivapy.tools.interfaces as interfaces
+from rivapy.instruments.factory import create as _create
 
 
-class SimpleSchedule:
+class SimpleSchedule(interfaces.FactoryObject):
 	def __init__(self, start: dt.datetime, end:dt.datetime, 
 					freq: str='1H', weekdays: Set[int] = None, 
 					hours: Set[int] = None, tz: str=None ):
@@ -50,6 +52,13 @@ class SimpleSchedule:
 		self.tz = tz
 		self._df = None
 
+	def _to_dict(self)->dict:
+		return {
+					'start': self.start, 'end':self.end, 
+					'freq': self.freq, 'weekdays': self.weekdays, 
+					'hours': self.hours, 'tz': self.tz
+		}
+ 
 	def get_schedule(self, refdate: dt.datetime = None)->List[dt.datetime]:
 		"""Return list of datetime values belonging to the schedule.
 
@@ -81,7 +90,7 @@ class SimpleSchedule:
 		"""
 		return {'start': self.start, 'end': self.end, 'freq': self.freq, 'weekdays': self.weekdays, 'hours': self.hours, 'tz': self.tz}
 
-class PPASpecification:
+class PPASpecification(interfaces.FactoryObject):
 	def __init__(self, 
 				amount: Union[float, np.ndarray], 
 				schedule: Union[SimpleSchedule, List[dt.datetime]],
@@ -99,11 +108,30 @@ class PPASpecification:
 		if id is None:
 			self.id = type(self).__name__+'/'+str(dt.datetime.now())
 		self.amount = amount
-		self.schedule = schedule
+		if isinstance(schedule, dict): #if schedule is a dict we try to create it from factory
+			self.schedule = _create(schedule)
+		else:
+			self.schedule = schedule
 		self.fixed_price = fixed_price
-		self._schedule_df = schedule.get_df().set_index(['dates']).sort_index()
+		if isinstance(schedule, list):
+			self._schedule_df = pd.DataFrame({'dates': self.schedule}).reset_index()
+		else:
+			self._schedule_df = self.schedule.get_df().set_index(['dates']).sort_index()
 		self._schedule_df['amount'] = amount
 		self._schedule_df['flow'] = None
+
+	def _to_dict(self)->dict:
+		if isinstance(self.schedule, interfaces.FactoryObject):
+			schedule = self.schedule.to_dict()
+		else:
+			schedule = self.schedule
+		return {
+			'id': self.id,
+			'amount': self.amount,
+			'schedule': schedule,
+			'fixed_price': self.fixed_price
+		}
+
 
 	def set_amount(self, amount):
 		self.amount = amount
@@ -123,6 +151,12 @@ class GreenPPASpecification(PPASpecification):
 				id:str = None):
 		super().__init__(None, schedule, fixed_price, id)
 		self.technology = technology
+
+	def _to_dict(self)->dict:
+		result = super()._to_dict()
+		del result['amount']
+		result['technology'] = self.technology
+		return result
 
 	def compute_flows(self, refdate: dt.datetime, pfc, forecast_amount: np.ndarray, result: pd.DataFrame=None, result_col = None)->pd.DataFrame:
 		self.set_amount(forecast_amount)

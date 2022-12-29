@@ -9,7 +9,7 @@ from datetime import datetime, date
 from holidays import HolidayBase as _HolidayBase, ECB as _ECB
 from rivapy.basics.base import BaseObject
 from rivapy.tools.datetools import Period, Schedule, _datetime_to_date, _datetime_to_date_list, _term_to_period
-from rivapy.tools.enums import DayCounter, RollConvention, SecuritizationLevel, Currency
+from rivapy.tools.enums import DayCounterType, RollConvention, SecuritizationLevel, Currency
 from rivapy.tools._validators import _check_positivity, _check_start_before_end,  _currency_to_string, _day_count_convention_to_string, _roll_convention_to_string, _securitisation_level_to_string, _string_to_calendar, _is_ascending_date_list
 
 
@@ -350,7 +350,7 @@ class FloatingRateNote(Bond):
                  issue_date: _Union[date, datetime],
                  maturity_date: _Union[date, datetime],
                  coupon_period_dates: _List[_Union[date, datetime]],
-                 day_count_convention: _Union[DayCounter, str] = DayCounter.ThirtyU360,
+                 day_count_convention: _Union[DayCounterType, str] = DayCounterType.ThirtyU360,
                  spreads: _List[float] = None,
                  reference_index: str = 'dummy_curve',
                  currency: str = 'EUR',
@@ -405,7 +405,7 @@ class FloatingRateNote(Bond):
                          stub: bool = False,
                          business_day_convention: _Union[RollConvention, str] = RollConvention.FOLLOWING,
                          calendar: _Union[_HolidayBase, str] = None,
-                         day_count_convention: _Union[DayCounter, str] = DayCounter.ThirtyU360,
+                         day_count_convention: _Union[DayCounterType, str] = DayCounterType.ThirtyU360,
                          spread: float = 0.0,
                          reference_index: str = 'dummy_curve',
                          currency: str = 'EUR',
@@ -517,7 +517,7 @@ class FixedToFloatingRateNote(FixedRateBond, FloatingRateNote):
                  coupon_payment_dates: _List[_Union[date, datetime]],
                  coupons: _List[float],
                  coupon_period_dates: _List[_Union[date, datetime]],
-                 day_count_convention: _Union[DayCounter, str] = DayCounter.ThirtyU360,
+                 day_count_convention: _Union[DayCounterType, str] = DayCounterType.ThirtyU360,
                  spreads: _List[float] = None,
                  reference_index: str = 'dummy_curve',
                  currency: str = 'EUR',
@@ -553,7 +553,7 @@ class FixedToFloatingRateNote(FixedRateBond, FloatingRateNote):
                          business_day_convention_float: _Union[RollConvention, str] = RollConvention.FOLLOWING,
                          calendar_fixed: _Union[_HolidayBase, str] = None,
                          calendar_float: _Union[_HolidayBase, str] = None,
-                         day_count_convention: _Union[DayCounter, str] = DayCounter.ThirtyU360,
+                         day_count_convention: _Union[DayCounterType, str] = DayCounterType.ThirtyU360,
                          spread: float = 0.0,
                          reference_index: str = 'dummy_curve',
                          currency: _Union[str, int] = 'EUR',
@@ -839,7 +839,7 @@ class AmericanVanillaSpecification:
 #     Returns:
 #         BondSpecification: [description]
 #     """
-#     return BondSpecification(obj_id, issuer, sec_level, curr, expiry, issue_date, notional, 'ACT365FIXED', [], [], '', [], [])
+#     return BondSpecification(obj_id, issuer, sec_level, curr, expiry, issue_date, notional, 'Act365Fixed', [], [], '', [], [])
 
 
 

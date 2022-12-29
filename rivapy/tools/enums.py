@@ -131,9 +131,9 @@ class RollConvention(_MyEnum):
 #     MODIFIED_PRECEDING = 'ModifiedPreceding'
 #     UNADJUSTED = 'Unadjusted'
 @_unique
-class DayCounter(_MyEnum):
+class DayCounterType(_MyEnum):
     ACT_ACT = 'ActAct'
-    ACT365_FIXED = 'ACT365FIXED'
+    Act365Fixed = 'Act365Fixed'
     ACT360 = 'Act360'
     ThirtyU360 = '30U360'
     ThirtyE360 = '30E360'

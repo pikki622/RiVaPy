@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import warnings
 from typing import Union, Callable
 from  rivapy.tools.datetime_grid import DateTimeGrid, InterpolatedFunction, PeriodicFunction
-import rivapy.interfaces as interfaces
+import rivapy.tools.interfaces as interfaces
 
 def _logit(x):
     return np.log(x/(1-x))

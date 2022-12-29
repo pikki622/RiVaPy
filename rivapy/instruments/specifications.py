@@ -219,7 +219,7 @@ class FixedRateBond(Bond):
                  issue_date: _Union[date, datetime],
                  maturity_date: _Union[date, datetime],
                  coupon_payment_dates: _List[_Union[date, datetime]],
-                 coupons: _List[float],
+                 coupons: _Union[_List[float],
                  currency: str = 'EUR',
                  notional: float = 100.0,
                  issuer: str = None,
@@ -232,8 +232,6 @@ class FixedRateBond(Bond):
             coupons (List[float]): List of annualised coupon amounts as fraction of notional.
         """
         super().__init__(obj_id, issue_date, maturity_date, currency, notional, issuer, securitisation_level)
-        self.__issue_date = issue_date
-        self.__maturity_date = maturity_date
         self.__coupon_payment_dates = coupon_payment_dates
         self.__coupons = coupons
 
@@ -264,6 +262,15 @@ class FixedRateBond(Bond):
     
     def _validate_derived_issued_instrument(self):
         pass
+
+    
+    def _to_dict(self)->dict:
+        result = {
+            'coupon_payment_dates': self.__coupon_payment_dates,
+            'coupons' : self.__coupons 
+            }
+        result.update(super()._to_dict())
+        return result
 
     @classmethod
     def from_master_data(cls,

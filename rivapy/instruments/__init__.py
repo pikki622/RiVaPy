@@ -15,5 +15,7 @@ def _add_to_factory(cls):
 _add_to_factory(SimpleSchedule)
 _add_to_factory(PPASpecification)
 _add_to_factory(GreenPPASpecification)
+_add_to_factory(ZeroCouponBond)
+_add_to_factory(FixedRateBond)
 
 

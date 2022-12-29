@@ -44,9 +44,14 @@ class FactoryObject(abc.ABC):
         tmp = json.loads(json_str, cls=_JSONDecoder)
         return cls.from_dict(tmp)
 
-    def hash(self):
-        return hashlib.sha1(self.to_json()).hexdigest()
+    @staticmethod
+    def hash_for_dict(data: dict):
+        return hashlib.sha1(json.dumps(data, cls=_JSONEncoder).encode()).hexdigest()
     
+
+    def hash(self):
+        return FactoryObject.hash_for_dict(self.to_dict())
+        
     @abc.abstractmethod
     def _to_dict(self)->dict:
         pass

@@ -7,13 +7,13 @@ from typing import List as _List, Union as _Union
 from datetime import datetime, date
 #from iso4217parse import Currency
 from holidays import HolidayBase as _HolidayBase, ECB as _ECB
-from rivapy.basics.base import BaseObject
 from rivapy.tools.datetools import Period, Schedule, _datetime_to_date, _datetime_to_date_list, _term_to_period
 from rivapy.tools.enums import DayCounterType, RollConvention, SecuritizationLevel, Currency
 from rivapy.tools._validators import _check_positivity, _check_start_before_end,  _currency_to_string, _day_count_convention_to_string, _roll_convention_to_string, _securitisation_level_to_string, _string_to_calendar, _is_ascending_date_list
+import rivapy.tools.interfaces as interfaces
 
 
-class IssuedInstrument(BaseObject):
+class IssuedInstrument(interfaces.FactoryObject):
     def __init__(self,
                  obj_id: str,
                  issuer: str = None,
@@ -26,14 +26,17 @@ class IssuedInstrument(BaseObject):
             securitisation_level (Union[SecuritizationLevel, str], optional): Securitisation level of the instrument.
                                                                              Defaults to None.
         """
-        super().__init__(obj_id)
+        self.obj_id = obj_id
         if issuer is not None:
             self.issuer = issuer
         if securitisation_level is not None:
             self.securitisation_level = securitisation_level
 
-    def _validate_derived_base_object(self):
-        pass
+    def _to_dict(self)->dict:
+        return {
+                'obj_id': self.obj_id, 'issuer':self.issuer, 
+                'securitisation_level': self.securitisation_level,
+        }
 
     @property
     def issuer(self) -> str:
@@ -103,6 +106,14 @@ class Bond(IssuedInstrument):
 
     def _validate_derived_issued_instrument(self):
         self.__issue_date, self.__maturity_date = _check_start_before_end(self.__issue_date, self.__maturity_date)
+
+    def _to_dict(self)->dict:
+        result = {
+            'issue_date': self.issue_date, 'maturity_date':self.maturity_date, 
+            'currency': self.currency, 'notional': self.notional, 
+        }
+        result.update(super()._to_dict())
+        return result
 
     @property
     def issue_date(self) -> date:

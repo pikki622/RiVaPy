@@ -5,7 +5,7 @@ import datetime as dt
 import rivapy.models as models
 import rivapy.marketdata as mktdata
 import rivapy.pricing.analytics as analytics
-import rivapy.enums as enums
+import rivapy.tools.enums as enums
 
 class LocalVolModelTest(unittest.TestCase):
 	

@@ -27,8 +27,8 @@ class GasStorageSpecification:
         """
         
         self.timegrid = timegrid
-        self.min_level = min_level
         self.storage_capacity = storage_capacity
+        self.min_level = min_level
         self.start_level = start_level
         self.end_level = end_level
         self.withdrawal_rate = withdrawal_rate

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import warnings
 from typing import Union, Callable
 from  rivapy.tools.datetime_grid import DateTimeGrid, InterpolatedFunction, PeriodicFunction
-import rivapy.tools.interfaces as interfaces
+from rivapy.tools.interfaces import DateTimeFunction
 
 def _logit(x):
     return np.log(x/(1-x))
@@ -265,7 +265,7 @@ class ResidualDemandModel:
 class SimpleRenewableModel:
     def __init__(self, wind_model_onshore: object, 
                     capacity_wind_onhore: float, 
-                    target_wind_onhore: interfaces.DateTimeFunction, 
+                    target_wind_onhore: DateTimeFunction, 
                     wind_model_offshore: object, 
                     capacity_wind_offore: float, 
                     target_wind_offhore: float, 

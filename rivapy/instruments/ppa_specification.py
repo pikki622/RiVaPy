@@ -121,9 +121,9 @@ class PPASpecification(interfaces.FactoryObject):
 		self._schedule_df['flow'] = None
 
 	def _to_dict(self)->dict:
-		if isinstance(self.schedule, interfaces.FactoryObject):
+		try: # if isinstance(self.schedule, interfaces.FactoryObject):
 			schedule = self.schedule.to_dict()
-		else:
+		except  Exception as e:
 			schedule = self.schedule
 		return {
 			'id': self.id,

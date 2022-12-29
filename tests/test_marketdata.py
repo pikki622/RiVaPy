@@ -105,11 +105,7 @@ class PowerPriceForwardCurveTest(unittest.TestCase):
         # schedule ends after last date of forward curve
         simple_schedule = SimpleSchedule(dt.datetime(2022,11,30), dt.datetime(2023,12,1,4,0,0), freq='1H')
         self.assertRaises(Exception, lambda: hpfc.value(dt.datetime(2022,1,1), simple_schedule))
-        # hpfc where  number of values 
-        values = np.ones((len(simple_schedule.get_schedule()),)).cumsum()
-        hpfc = PowerPriceForwardCurve(dt.datetime(2022,12,1), dt.datetime(2022,12,1), dt.datetime(2023,11,1,4,0,0), freq='1H', values = values[:-1])
-        simple_schedule = SimpleSchedule(dt.datetime(2022,12,1), dt.datetime(2022,12,1,4,0,0), freq='1H', hours=[2])
-        self.assertRaises(Exception, lambda: hpfc.value(dt.datetime(2022,1,1), simple_schedule))
+      
         
         
 

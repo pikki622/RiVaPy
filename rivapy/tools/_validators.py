@@ -246,23 +246,7 @@ def _currency_to_string(currency: str) -> str:
         str: Three letter ISO4217 currency code.
     """
     return currency
-    if isinstance(currency, str):
-        if _iso4217_by_alpha3(currency) is not None:
-            return currency
-        else:
-            raise Exception("Unknown currency '" + str(currency) + "'!")
-    elif isinstance(currency, int):
-        if _iso4217_by_code_num(currency) is not None:
-            return _iso4217_by_code_num(currency)[0]
-        else:
-            raise Exception("Unknown currency '" + str(currency) + "'!")
-    elif isinstance(currency, _Currency):
-        if currency[0] is not None:
-            return currency[0]
-        else:
-            raise Exception("Unknown currency '" + str(currency) + "'!")
-    else:
-        raise TypeError("The currency '" + str(currency) + "' must be provided as string or integer!")
+   
 
 
 def _day_count_convention_to_string(day_count_convention: _Union[DayCounter, str]

@@ -58,7 +58,7 @@ class Issuer:
                  issuer_id: str,
                  issuer_name: str,
                  issuer_rating: Rating,
-                 issuer_country: Country,
+                 issuer_country: str,
                  issuer_sector: Sector):
         self.__issuer_id = issuer_id
         self.__issuer_name = issuer_name
@@ -107,7 +107,7 @@ class Issuer:
         self.__issuer_rating = rating
 
     @property
-    def issuer_country(self) -> Country:
+    def issuer_country(self) -> str:
         """
         Getter for issuer's country.
 

@@ -21,5 +21,6 @@ dependencies:
     - jupyter-dash
     - pyvacon
     - holidays
+    - sphinxcontrib-bibtex
     #- --index-url https://test.pypi.org/simple/ pyvacon_depp
     #- jupyter-contrib-nbextensions==0.5.1

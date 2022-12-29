@@ -1,0 +1,24 @@
+# generate from notebook: !conda env export > environment.yml
+name: rivapy
+
+channel:
+    - conda-forge
+    - defaults
+
+dependencies:
+  - python=3.8
+  - pip
+  - ipywidgets
+  - matplotlib
+  - numpy
+  - pandas
+  - scipy
+  - sphinx
+  - scikit-learn
+  - pip:
+    - python-dateutil
+    - sphinx-rtd-theme
+    - jupyter-dash
+    - pyvacon
+    #- --index-url https://test.pypi.org/simple/ pyvacon_depp
+    #- jupyter-contrib-nbextensions==0.5.1

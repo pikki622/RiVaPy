@@ -59,22 +59,22 @@ def pricing_lsmc(storage: GasStorageSpecification,
 
     Returns:
         np.ndarray: the accumulated cash flows
-        np.ndarray: the optimal volume level
+        np.ndarray: the optimal volume levels
     """
-            
+    
     #discretization of possible volume levels
     v = np.linspace(storage.min_level, storage.storage_capacity, pricing_parameters.n_vol_levels) 
     
     # Assign a value to the contract at maturity according to the final condition
-    acc_cashflows = np.empty((len(storage.timegrid)+1, len(v), nb_sims)) #For t=T+1: final condition
-    #t = self.timegrid[-1]+dt.timedelta(days=1)
+    acc_cashflows = np.empty((len(storage.timegrid)+1, len(v), nb_sims))
 
+    # For t=T+1: final condition
     for i in range(nb_sims):    
         acc_cashflows[-1,:,i] = penalty_func(prices[-1,i], v) #size v
     
-    regression = pricing_parameters.regression(deg=2)
     # Apply backward induction for t=T...1 
     # For each t, step over N allowed volume levels v(t,n) 
+    regression = pricing_parameters.regression(deg=2)
     total_vol_levels = np.empty((len(storage.timegrid), len(v), nb_sims))
     for t in range(len(storage.timegrid),1,-1):
         for vol_t in range(len(v)):
@@ -82,8 +82,8 @@ def pricing_lsmc(storage: GasStorageSpecification,
             for vol_tplus1 in range(len(v)): #for all volumes by themselves
                 # - Run an OLS regression to find an approx. of the continuation value
                 cont_val = acc_cashflows[t,vol_tplus1,:] # assumed cont. value for t+1, no disc. factor
-                cv_fit = regression.fit(prices[t-1,:], cont_val) #regression = np.polyfit(S[:,t-1], cont_val, deg=5)
-                cv_pred = regression.predict(cv_fit, prices[t-1,:]) #cv_pred = np.polyval(regression, S[:,t-1])
+                cv_fit = regression.fit(prices[t-1,:], cont_val)
+                cv_pred = regression.predict(cv_fit, prices[t-1,:])
 
                 # - Combine the cont. values C into a decision rule for each volume level
                 max_withdraw = max(storage.withdrawal_rate, -(v[vol_t]-storage.min_level))
@@ -99,24 +99,23 @@ def pricing_lsmc(storage: GasStorageSpecification,
 
             #argmax for decision rule for specified volume level at time step t+1
             ind = np.argmax(dec_func, axis=0)
-            #vol_t_max = v[ind] #size nb_sims
-            #print(vol_t_max)
+            #dv_max = v[vol_t]*np.ones(nb_sims) - v[ind] #size nb_sims
             total_vol_levels[t-1, vol_t,:] = ind
-            #dv_max = v[vol_t]*np.ones(nb_sims) - vol_t_max
-            # - Calculate the accumulated future cash flows Y^b
-            acc_cashflows[t-1,vol_t,:] = np.max(dec_func, axis=0)#_payoff_func(S[t-1,:], dv_max) + cv_pred#dec_func[:,ind] #acc_cashflows[t, vol_t, :] #no disc. factor
 
-    # "exterpolate" to first level
+            # - Calculate the accumulated future cash flows Y^b
+            acc_cashflows[t-1,vol_t,:] = np.max(dec_func, axis=0) #no disc. factor
+
+    # "extrapolate" to first level
     acc_cashflows[0,:,:] = acc_cashflows[1,:,:]
     total_vol_levels[0,:,:] = total_vol_levels[1,:,:]
     
     #forward sweep for optimal path
     ind_level = np.empty((len(storage.timegrid), nb_sims))
     total_volume = np.empty((len(storage.timegrid), nb_sims))
-    ind_level[0,:] = 0 #on the grid, startLevel = 0, index = 0
+    ind_level[0,:] = 0 #on the grid, index of startLevel = 0
     for t in range(1,len(storage.timegrid)):
         for m in range(nb_sims):
-            ind_level[t,m] = total_vol_levels[t-1,int(ind_level[t-1,m]),m] #t or t-1
+            ind_level[t,m] = total_vol_levels[t-1,int(ind_level[t-1,m]),m]
             total_volume[t,m] = v[int(ind_level[t,m])]
 
     return acc_cashflows, total_volume
@@ -196,18 +195,17 @@ if __name__ == '__main__':
     
     #avg_gas_cashflow = np.average(gas_cashflows, axis=2)
 
-    if False: 
-        
+    if True: 
         plt.figure()
         plt.plot(gbm)
         plt.show()
 
         plt.figure(figsize=(12,8))
-        plt.plot(vol_levels[:-20,0])
+        plt.plot(vol_levels)
         plt.show()
         
         for i in range(n_vol_levels):
             plt.figure(figsize=(12,8))
-            plt.plot(gas_cashflows[:-20,i,0])
+            plt.plot(gas_cashflows[:-10,i,:])
             plt.show()
 

@@ -22,7 +22,7 @@ class Unit_Tests(TestCase):
         self.assertEqual(zero_coupon_bond.currency, 'USD')
         self.assertEqual(zero_coupon_bond.notional, 1000)
         self.assertEqual(zero_coupon_bond.issuer, 'KfW')
-        self.assertEqual(zero_coupon_bond.securitisation_level, 'SENIOR_UNSECURED')
+        self.assertEqual(zero_coupon_bond.securitization_level, 'SENIOR_UNSECURED')
         # fixed rate bond
         fixed_rate_bond = FixedRateBond.from_master_data('DE000CZ40NT7', date(2019, 3, 11), date(2024, 9, 11), 0.0125,
                                                          '1Y', True, True, RollConvention.FOLLOWING, 'DE', 'EUR',
@@ -52,7 +52,7 @@ class Unit_Tests(TestCase):
         self.assertEqual(fixed_rate_bond.currency, 'EUR')
         self.assertEqual(fixed_rate_bond.notional, 100000)
         self.assertEqual(fixed_rate_bond.issuer, 'Commerzbank')
-        self.assertEqual(fixed_rate_bond.securitisation_level, 'NON_PREFERRED_SENIOR')
+        self.assertEqual(fixed_rate_bond.securitization_level, 'NON_PREFERRED_SENIOR')
 
         # floating rate bond
         floating_rate_note = FloatingRateNote.from_master_data('DE000HLB3DU1', date(2016, 6, 23), date(2024, 6, 27),

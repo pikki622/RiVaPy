@@ -29,6 +29,7 @@ class _JSONEncoder(json.JSONEncoder):
         if isinstance(obj, (dt.date, dt.datetime)):#, pd.Timestamp)):
             return obj.isoformat()
         return json.JSONEncoder.default(obj)
+        
 class FactoryObject(abc.ABC):
 
     def to_dict(self):

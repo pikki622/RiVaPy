@@ -4,7 +4,7 @@ from datetime import datetime, date
 from holidays import HolidayBase as _HolidayBase, ECB as _ECB
 from rivapy.tools.datetools import Period, Schedule, _datetime_to_date, _datetime_to_date_list, _term_to_period
 from rivapy.tools.enums import DayCounterType, RollConvention, SecuritizationLevel, Currency
-from rivapy.tools._validators import _check_positivity, _check_start_before_end,  _roll_convention_to_string, _securitisation_level_to_string, _string_to_calendar, _is_ascending_date_list
+from rivapy.tools._validators import _check_positivity, _check_start_before_end,  _roll_convention_to_string, _string_to_calendar, _is_ascending_date_list
 from rivapy.tools._validators import _enum_to_string
 import rivapy.tools.interfaces as interfaces
 
@@ -18,7 +18,7 @@ class BondBaseSpecification(interfaces.FactoryObject):
                  currency: _Union[Currency, str] = 'EUR',
                  notional: float = 100.0,
                  issuer: str = None,
-                 securitization_level: _Union[SecuritizationLevel, str] = None):
+                 securitization_level: _Union[SecuritizationLevel, str] = SecuritizationLevel.NONE):
         """Base bond specification.
 
         Args:
@@ -352,7 +352,7 @@ class FixedRateBond(BondBaseSpecification):
         schedule = Schedule(issue_date, maturity_date, tenor, backwards, stub, business_day_convention, calendar)
         coupon_payment_dates = schedule.generate_dates(True)
         coupons = [coupon] * len(coupon_payment_dates)
-        securitisation_level = _securitisation_level_to_string(securitisation_level)
+        securitisation_level = _enum_to_string(SecuritizationLevel, securitisation_level)
         return FixedRateBond(obj_id, issue_date, maturity_date, coupon_payment_dates, coupons, currency, notional,
                              issuer, securitisation_level)
 

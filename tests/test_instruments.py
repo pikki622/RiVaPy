@@ -4,11 +4,17 @@ from dateutil import relativedelta
 from datetime import datetime, timedelta
 
 import rivapy
-from rivapy.marketdata import DiscountCurve, DatedCurve, SurvivalCurve
+from rivapy.marketdata import DiscountCurve, SurvivalCurve
 from rivapy import enums
 from rivapy.instruments import SimpleSchedule
+from rivapy import _pyvacon_available
+
+if _pyvacon_available:
+    from rivapy.marketdata import DatedCurve
 
 class CDSTest(unittest.TestCase):
+    """Test simple CDS pricing using ISDA model.
+    """
     def test_pricing(self):
         """Test simple CDS pricing using ISDA model.
         """

@@ -251,7 +251,7 @@ def _enum_to_string(enum_class: Enum, value)->str:
         return value
     if isinstance(value, enum_class):
         return value.value
-    raise Exception('Given value ' + str(value) + ' does not belong to enum' + enum_class.__name__)
+    raise Exception('Given value ' + str(value) + ' does not belong to enum ' + enum_class.__name__)
 
 def _roll_convention_to_string(business_day_convention: _Union[RollConvention, str]
                                ) -> str:
@@ -275,28 +275,6 @@ def _roll_convention_to_string(business_day_convention: _Union[RollConvention, s
         raise TypeError("The business day convention '" + str(business_day_convention)
                         + "' must be provided as RollConvention or string!")
 
-
-def _securitisation_level_to_string(securitisation_level: _Union[SecuritizationLevel, str]
-                                    ) -> str:
-    """
-    Checks if securitisation level is known, i.e. part of the enums list, and converts it if necessary into a sting.
-
-    Args:
-        securitisation_level (_Union[SecuritizationLevel, str]): Securitisation level as SecuritizationLevel or string.
-
-    Returns:
-        str: Securitisation level as string.
-    """
-    if isinstance(securitisation_level, SecuritizationLevel):
-        return securitisation_level.value
-    elif isinstance(securitisation_level, str):
-        if SecuritizationLevel.has_value(securitisation_level):
-            return securitisation_level
-        else:
-            raise Exception("Unknown securitisation level '" + str(securitisation_level) + "'!")
-    else:
-        raise TypeError("The securitisation level '" + str(securitisation_level)
-                        + "' must be provided as SecuritizationLevel or string!")
 
 
 def _string_to_calendar(calendar: _Union[_HolidayBase, str]

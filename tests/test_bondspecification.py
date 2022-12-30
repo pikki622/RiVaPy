@@ -1,12 +1,6 @@
 from unittest import main, TestCase
-from rivapy.instruments.specifications import \
-    IssuedInstrument, \
-    Bond, \
-    ZeroCouponBond, \
-    FixedRateBond, \
-    FloatingRateNote, \
-    FixedToFloatingRateNote
-from rivapy.tools.enums import DayCounter, RollConvention, SecuritizationLevel
+from rivapy.instruments import ZeroCouponBondSpecification, FixedRateBond
+from rivapy.tools.enums import RollConvention, SecuritizationLevel
 from datetime import date
 
 
@@ -14,7 +8,7 @@ class Unit_Tests(TestCase):
 
     def test_bond_specification(self):
         # zero coupon bond
-        zero_coupon_bond = ZeroCouponBond('US500769CH58', date(2007, 6, 29), date(2037, 6, 29), 'USD', 1000, 'KfW',
+        zero_coupon_bond = ZeroCouponBondSpecification('US500769CH58', date(2007, 6, 29), date(2037, 6, 29), 'USD', 1000, 'KfW',
                                           SecuritizationLevel.SENIOR_UNSECURED)
         self.assertEqual(zero_coupon_bond.obj_id, 'US500769CH58')
         self.assertEqual(zero_coupon_bond.issue_date, date(2007, 6, 29))

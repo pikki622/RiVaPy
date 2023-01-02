@@ -7,6 +7,7 @@ from rivapy.tools.enums import DayCounterType, RollConvention, SecuritizationLev
 from rivapy.tools._validators import _check_positivity, _check_start_before_end,  _roll_convention_to_string, _string_to_calendar, _is_ascending_date_list
 from rivapy.tools._validators import _enum_to_string
 import rivapy.tools.interfaces as interfaces
+from rivapy.instruments.ppa_specification import SimpleSchedule
 
 
 class BondBaseSpecification(interfaces.FactoryObject):
@@ -194,6 +195,9 @@ class ZeroCouponBondSpecification(BondBaseSpecification):
     def _validate_derived_issued_instrument(self):
         pass
 
+    def expected_cashflows(self):
+        return [(self.maturity_date, self.notional)]
+
 class PlainVanillaCouponBond(BondBaseSpecification):
     def __init__(self,
                  obj_id: str,
@@ -227,6 +231,28 @@ class PlainVanillaCouponBond(BondBaseSpecification):
                          notional,
                          issuer,
                          securitization_level)
+
+        self.first_coupondate = first_coupondate
+        self.coupon_freq = coupon_freq
+        self.coupon = coupon
+
+    def expected_cashflows(self):
+        if self.coupon_freq != 'Y':
+            raise Exception('Cannot calc cashflows for other than yearly coupons. Missing transformation from yearly coupon to .... ')
+        schedule = SimpleSchedule(self.first_coupondate, self.maturity_date, freq = self.coupon_freq).get_schedule()
+        result = [(d, self.coupon) for d in schedule]
+        result.append((self.maturity_date, self.notional))
+        return result
+
+    def _to_dict(self) -> dict:
+        result = {
+            'first_coupondate': self.first_coupondate,
+            'coupon_freq' : self.coupon_freq,
+            'coupon' : self.coupon,
+            }
+        result.update(super(PlainVanillaCouponBond, self)._to_dict())
+        return result
+    
 
 class FixedRateBond(BondBaseSpecification):
     def __init__(self,
@@ -284,7 +310,7 @@ class FixedRateBond(BondBaseSpecification):
             'coupon_payment_dates': self.__coupon_payment_dates,
             'coupons' : self.__coupons 
             }
-        result.update(super()._to_dict())
+        result.update(super(FixedRateBond, self)._to_dict())
         return result
 
     @classmethod

@@ -6,6 +6,10 @@ Bonds
 .. autoclass:: rivapy.instruments.bond_specifications.ZeroCouponBondSpecification
     :members:
     :undoc-members:
+
+.. autoclass:: rivapy.instruments.bond_specifications.PlainVanillaCouponBondSpecification
+    :members:
+    :undoc-members:
    
 Credit Default Swaps
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

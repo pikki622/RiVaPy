@@ -1,10 +1,9 @@
 from rivapy.instruments.factory import _factory 
-
 from rivapy.instruments.specifications import *
 from rivapy.instruments.cds_specification import CDSSpecification
 from rivapy.instruments.ppa_specification import SimpleSchedule
 from rivapy.instruments.ppa_specification import PPASpecification, GreenPPASpecification
-from rivapy.instruments.bond_specifications import ZeroCouponBondSpecification, FixedRateBond, PlainVanillaCouponBond
+from rivapy.instruments.bond_specifications import ZeroCouponBondSpecification, FixedRateBond, PlainVanillaCouponBond, FloatingRateNoteSpecification, FixedToFloatingRateNoteSpecification
 
 
 

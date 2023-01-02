@@ -39,6 +39,25 @@ class Period:
         self.months = months
         self.days = days
 
+    @staticmethod
+    def from_string(period: str):
+        """Creates a Period from a string.
+
+        Args:
+            period (str): The string defining the period. The string must be defined by the number of days/months/years followed by one of the letters 'Y'/'M'/'D', i.e. '6M' means 6 months.
+
+        Returns:
+            Period: The resulting period
+        """
+        period_length = int(period[:-1])
+        period_type = period[1]
+        if period_type == 'Y':
+            return Period(years=period_length)
+        elif period_type == 'M':
+            return Period(months = period_length)
+        elif period_type == 'D':
+            return Period(days=period_length)
+        raise Exception(period + ' is not a valid period string. See documentation of tools.datetools.Period for deocumentation of valid strings.')
     @property
     def years(self) -> int:
         """

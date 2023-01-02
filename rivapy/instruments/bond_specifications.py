@@ -1,5 +1,5 @@
 from abc import  abstractmethod as _abstractmethod
-from typing import List as _List, Union as _Union
+from typing import List as _List, Union as _Union, Tuple
 from datetime import datetime, date
 from holidays import HolidayBase as _HolidayBase, ECB as _ECB
 from rivapy.tools.datetools import Period, Schedule, _datetime_to_date, _datetime_to_date_list, _term_to_period
@@ -7,7 +7,7 @@ from rivapy.tools.enums import DayCounterType, RollConvention, SecuritizationLev
 from rivapy.tools._validators import _check_positivity, _check_start_before_end,  _roll_convention_to_string, _string_to_calendar, _is_ascending_date_list
 from rivapy.tools._validators import _enum_to_string
 import rivapy.tools.interfaces as interfaces
-from rivapy.instruments.ppa_specification import SimpleSchedule
+from rivapy.tools.datetools import Period, Schedule
 
 
 class BondBaseSpecification(interfaces.FactoryObject):
@@ -203,14 +203,15 @@ class PlainVanillaCouponBond(BondBaseSpecification):
                  obj_id: str,
                  issue_date: _Union[date, datetime],
                  maturity_date: _Union[date, datetime],
-                 first_coupondate: _Union[date, datetime],
+                 accrual_start: _Union[date, datetime],
                  coupon_freq: str,
                  coupon: float,
                  currency: str = 'EUR',
                  notional: float = 100.0,
                  issuer: str = None,
-                  securitization_level: _Union[SecuritizationLevel, str] = None):
-        """Zero coupon bond specification.
+                  securitization_level: _Union[SecuritizationLevel, str] = None,
+                  stub: bool = True):
+        """PlainVanillaCouponBond specification.
 
         Args:
             obj_id (str): (Preferably) Unique label of the bond, e.g. ISIN.
@@ -232,21 +233,24 @@ class PlainVanillaCouponBond(BondBaseSpecification):
                          issuer,
                          securitization_level)
 
-        self.first_coupondate = first_coupondate
+        self.accrual_start = accrual_start
         self.coupon_freq = coupon_freq
         self.coupon = coupon
+        self.stub = stub
 
-    def expected_cashflows(self):
-        if self.coupon_freq != 'Y':
-            raise Exception('Cannot calc cashflows for other than yearly coupons. Missing transformation from yearly coupon to .... ')
-        schedule = SimpleSchedule(self.first_coupondate, self.maturity_date, freq = self.coupon_freq).get_schedule()
+    def expected_cashflows(self)->_List[Tuple[datetime, float]]:
+        #if self.coupon_freq != 'Y':
+        #    raise Exception('Cannot calc cashflows for other than yearly coupons. Missing transformation from yearly coupon to .... ')
+        period = Period.from_string(self.coupon_freq)
+
+        schedule = Schedule(self.accrual_start, self.maturity_date, period, stub=self.stub).generate_dates(ends_only=True)
         result = [(d, self.coupon) for d in schedule]
         result.append((self.maturity_date, self.notional))
         return result
 
     def _to_dict(self) -> dict:
         result = {
-            'first_coupondate': self.first_coupondate,
+            'accrual_start': self.accrual_start,
             'coupon_freq' : self.coupon_freq,
             'coupon' : self.coupon,
             }
@@ -402,7 +406,7 @@ class FixedRateBond(BondBaseSpecification):
         """
         return self.__coupons
 
-class FloatingRateNote(BondBaseSpecification):
+class FloatingRateNoteSpecification(BondBaseSpecification):
     def __init__(self, 
                  obj_id: str,
                  issue_date: _Union[date, datetime],
@@ -439,7 +443,7 @@ class FloatingRateNote(BondBaseSpecification):
                             + "', payment dates '" + str(coupon_period_dates)
                             + "', and maturity date '" + str(maturity_date) + "'.")
             # TODO: Clarify if inconsistency should be shown explicitly.
-        self.__day_count_convention = _day_count_convention_to_string(day_count_convention)
+        self.__day_count_convention = _enum_to_string(DayCounterType, day_count_convention)
         if spreads is None:
             self.__spreads = [0.0] * (len(coupon_period_dates) - 1)
         elif len(spreads) == len(coupon_period_dates) - 1:
@@ -523,7 +527,7 @@ class FloatingRateNote(BondBaseSpecification):
         schedule = Schedule(issue_date, maturity_date, tenor, backwards, stub, business_day_convention, calendar)
         coupon_period_dates = schedule.generate_dates(False)
         spreads = [spread] * (len(coupon_period_dates) - 1)
-        return FloatingRateNote(obj_id, issue_date, maturity_date, coupon_period_dates, day_count_convention, spreads,
+        return FloatingRateNoteSpecification(obj_id, issue_date, maturity_date, coupon_period_dates, day_count_convention, spreads,
                                 reference_index, currency, notional, issuer, securitisation_level)
 
     @property
@@ -571,7 +575,7 @@ class FloatingRateNote(BondBaseSpecification):
         return self.__reference_index
 
 
-class FixedToFloatingRateNote(FixedRateBond, FloatingRateNote):
+class FixedToFloatingRateNoteSpecification(FixedRateBond, FloatingRateNoteSpecification):
     def __init__(self,
                  obj_id: str,
                  issue_date: _Union[date, datetime],
@@ -592,10 +596,10 @@ class FixedToFloatingRateNote(FixedRateBond, FloatingRateNote):
         """
         # TODO FIX THIS CLASS!!!!!!!!!!!!!!!!
         raise Exception('Not working properly, @Stefan: Please fix me!!!!')
-        FixedRateBond.__init__(self, obj_id, issue_date, maturity_date, coupon_payment_dates, coupons,
+        FixedRateBondSpecification.__init__(self, obj_id, issue_date, maturity_date, coupon_payment_dates, coupons,
                                currency, notional, issuer, securitisation_level)
 
-        FloatingRateNote.__init__(self, obj_id, issue_date, maturity_date, coupon_period_dates,
+        FloatingRateNoteSpecification.__init__(self, obj_id, issue_date, maturity_date, coupon_period_dates,
                                   day_count_convention, spreads, reference_index, currency, notional, issuer,
                                   securitisation_level)
 
@@ -692,12 +696,12 @@ class FixedToFloatingRateNote(FixedRateBond, FloatingRateNote):
                                                          backwards_fixed, stub_fixed, business_day_convention_fixed,
                                                          calendar_fixed, currency, notional, issuer,
                                                          securitisation_level)
-        floating_rate_part = FloatingRateNote.from_master_data(obj_id, fixed_to_float_date, maturity_date, tenor_float,
+        floating_rate_part = FloatingRateNoteSpecification.from_master_data(obj_id, fixed_to_float_date, maturity_date, tenor_float,
                                                                backwards_float, stub_float,
                                                                business_day_convention_float, calendar_float,
                                                                day_count_convention, spread, reference_index, currency,
                                                                notional, issuer, securitisation_level)
-        return FixedToFloatingRateNote(obj_id, issue_date, maturity_date, fixed_rate_part.coupon_payment_dates,
+        return FixedToFloatingRateNoteSpecification(obj_id, issue_date, maturity_date, fixed_rate_part.coupon_payment_dates,
                                        fixed_rate_part.coupons, floating_rate_part.coupon_period_dates,
                                        day_count_convention, floating_rate_part.spreads, reference_index, currency,
                                        notional, issuer, securitisation_level)

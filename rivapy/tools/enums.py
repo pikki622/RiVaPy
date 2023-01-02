@@ -197,9 +197,9 @@ class Rating(_Enum):
     C = 'C'
     D = 'D'
 
-class ProductType:
-       BOND = 'BOND'
-       CALLABLE_BOND = 'CALLABLE_BOND'   
+# class ProductType:
+#        BOND = 'BOND'
+#        CALLABLE_BOND = 'CALLABLE_BOND'   
 
 class PricerType:
     ANALYTIC = 'ANALYTIC'
@@ -387,9 +387,7 @@ class Currency(_Enum):
     ZMW =  'ZMW'
     ZWD =  'ZWD'
 
-class ProductType:
-       BOND = 'BOND'
-       CALLABLE_BOND = 'CALLABLE_BOND'
+
        
        
 

@@ -1,7 +1,7 @@
 Interfaces
 ===========================
 
-.. autoclass:: rivapy.interfaces.DateTimeFunction
+.. autoclass:: rivapy.tools.interfaces.DateTimeFunction
    :members:
    :undoc-members:
    :show-inheritance:

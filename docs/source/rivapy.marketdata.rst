@@ -1,13 +1,45 @@
 Marketdata
 ===========================
 
+Rates and Discount Curves
+------------------------------------
+
+.. autoclass:: rivapy.marketdata.DiscountCurve
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: rivapy.marketdata.DiscountCurveParametrized
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: rivapy.marketdata.NelsonSiegel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: rivapy.marketdata.NelsonSiegelSvensson
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+
 Equity
 -------------------------------
 
+Dividends
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. autoclass:: rivapy.marketdata.DividendTable
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Curves
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-.. automodule:: rivapy.marketdata.curves
+
+.. autoclass:: rivapy.marketdata.EquityForwardCurve
    :members:
    :undoc-members:
    :show-inheritance:
@@ -47,6 +79,14 @@ Volatility Parametrizations
    :show-inheritance:
 
 .. autoclass:: rivapy.marketdata.VolatilityGridParametrization
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Power
+--------------------------------------
+
+.. autoclass:: rivapy.marketdata.PowerPriceForwardCurve
    :members:
    :undoc-members:
    :show-inheritance:

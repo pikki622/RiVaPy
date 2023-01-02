@@ -41,13 +41,19 @@ class Period:
 
     @staticmethod
     def from_string(period: str):
-        """Creates a Period from a string.
+        """Creates a Period from a string
 
         Args:
             period (str): The string defining the period. The string must be defined by the number of days/months/years followed by one of the letters 'Y'/'M'/'D', i.e. '6M' means 6 months.
 
         Returns:
             Period: The resulting period
+
+        Examples:
+            .. code-block:: python
+
+                >>> p = Period('6M')  # period of 6 months
+                >>> p = Period('1Y') #period of 1 year
         """
         period_length = int(period[:-1])
         period_type = period[1]
@@ -154,6 +160,15 @@ class Schedule:
                                                           Saturdays and Sundays).
                                                           Defaults (through constructor) to holidays.ECB
                                                           (= Target2 calendar) between start_day and end_day.
+
+        Examples:
+
+            .. code-block:: python
+            
+                >>> from datetime import date
+                >>> from rivapy.tools import schedule
+                >>> schedule = Schedule(date(2020, 8, 21), date(2021, 8, 21), Period(0, 3, 0), True, False, RollConvention.UNADJUSTED, holidays_de).generate_dates(False),
+                       [date(2020, 8, 21), date(2020, 11, 21), date(2021, 2, 21), date(2021, 5, 21), date(2021, 8, 21)])
         """
         self.start_day = start_day
         self.end_day = end_day

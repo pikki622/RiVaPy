@@ -195,10 +195,15 @@ class ZeroCouponBondSpecification(BondBaseSpecification):
     def _validate_derived_issued_instrument(self):
         pass
 
-    def expected_cashflows(self):
+    def expected_cashflows(self)->_List[Tuple[datetime, float]]:
+        """Return a list of all expected cashflows (here only the final notional) together with their payment date.
+
+        Returns:
+            _List[Tuple[datetime, float]]: The resulting list of all cashflows.
+        """
         return [(self.maturity_date, self.notional)]
 
-class PlainVanillaCouponBond(BondBaseSpecification):
+class PlainVanillaCouponBondSpecification(BondBaseSpecification):
     def __init__(self,
                  obj_id: str,
                  issue_date: _Union[date, datetime],
@@ -218,7 +223,7 @@ class PlainVanillaCouponBond(BondBaseSpecification):
             issue_date (_Union[date, datetime]): Date of bond issuance.
             maturity_date (_Union[date, datetime]): Bond's maturity/expiry date. Must lie after the issue_date.
             first_coupondate (_Union[date, datetime]): The first coupon date.
-            coupon_freq (str): Frequency of coupons. Defaults to 'Y' for yearly. See documentation for pandas.date_range for further details on freq.     
+            coupon_freq (str): Frequency of coupons. Defaults to '1Y' for yearly. Internally, the method :func:`rivapy.tools.Period.from_string` is used, see the definition of valid strings there.     
             coupon (float): Coupon as relative number (multiplied internaly by notional to get absolute cashflow).
             currency (str, optional): Currency as alphabetic, Defaults to 'EUR'.
             notional (float, optional): Bond's notional/face value. Must be positive. Defaults to 100.0.
@@ -239,12 +244,23 @@ class PlainVanillaCouponBond(BondBaseSpecification):
         self.stub = stub
 
     def expected_cashflows(self)->_List[Tuple[datetime, float]]:
+        """Return a list of all expected cashflows (final notional and coupons) together with their payment date.
+
+        Returns:
+            _List[Tuple[datetime, float]]: The resulting list of all cashflows.
+        """
         #if self.coupon_freq != 'Y':
         #    raise Exception('Cannot calc cashflows for other than yearly coupons. Missing transformation from yearly coupon to .... ')
         period = Period.from_string(self.coupon_freq)
-
+        coupon_multiplier = 1.0
+        if period.years > 0:
+            coupon_multiplier = period.years
+        elif period.months > 0:
+            coupon_multiplier = period.months/12.0
+        elif period.days > 0:
+            coupon_multiplier = period.days/365.0
         schedule = Schedule(self.accrual_start, self.maturity_date, period, stub=self.stub).generate_dates(ends_only=True)
-        result = [(d, self.coupon) for d in schedule]
+        result = [(d, self.coupon*coupon_multiplier) for d in schedule]
         result.append((self.maturity_date, self.notional))
         return result
 
@@ -254,11 +270,11 @@ class PlainVanillaCouponBond(BondBaseSpecification):
             'coupon_freq' : self.coupon_freq,
             'coupon' : self.coupon,
             }
-        result.update(super(PlainVanillaCouponBond, self)._to_dict())
+        result.update(super(PlainVanillaCouponBondSpecification, self)._to_dict())
         return result
     
 
-class FixedRateBond(BondBaseSpecification):
+class FixedRateBondSpecification(BondBaseSpecification):
     def __init__(self,
                  obj_id: str,
                  issue_date: _Union[date, datetime],
@@ -314,7 +330,7 @@ class FixedRateBond(BondBaseSpecification):
             'coupon_payment_dates': self.__coupon_payment_dates,
             'coupons' : self.__coupons 
             }
-        result.update(super(FixedRateBond, self)._to_dict())
+        result.update(super(FixedRateBondSpecification, self)._to_dict())
         return result
 
     @classmethod
@@ -383,7 +399,7 @@ class FixedRateBond(BondBaseSpecification):
         coupon_payment_dates = schedule.generate_dates(True)
         coupons = [coupon] * len(coupon_payment_dates)
         securitisation_level = _enum_to_string(SecuritizationLevel, securitisation_level)
-        return FixedRateBond(obj_id, issue_date, maturity_date, coupon_payment_dates, coupons, currency, notional,
+        return FixedRateBondSpecification(obj_id, issue_date, maturity_date, coupon_payment_dates, coupons, currency, notional,
                              issuer, securitisation_level)
 
     @property
@@ -575,7 +591,7 @@ class FloatingRateNoteSpecification(BondBaseSpecification):
         return self.__reference_index
 
 
-class FixedToFloatingRateNoteSpecification(FixedRateBond, FloatingRateNoteSpecification):
+class FixedToFloatingRateNoteSpecification(FixedRateBondSpecification, FloatingRateNoteSpecification):
     def __init__(self,
                  obj_id: str,
                  issue_date: _Union[date, datetime],
@@ -692,7 +708,7 @@ class FixedToFloatingRateNoteSpecification(FixedRateBond, FloatingRateNoteSpecif
             FixedToFloatingRateNote: Corresponding fixed-to-floating rate note with already generated schedules for
                                      fixed rate and floating rate coupon payments.
         """
-        fixed_rate_part = FixedRateBond.from_master_data(obj_id, issue_date, fixed_to_float_date, coupon, tenor_fixed,
+        fixed_rate_part = FixedRateBondSpecification.from_master_data(obj_id, issue_date, fixed_to_float_date, coupon, tenor_fixed,
                                                          backwards_fixed, stub_fixed, business_day_convention_fixed,
                                                          calendar_fixed, currency, notional, issuer,
                                                          securitisation_level)

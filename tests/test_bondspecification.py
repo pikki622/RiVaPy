@@ -1,5 +1,5 @@
 from unittest import main, TestCase
-from rivapy.instruments import ZeroCouponBondSpecification, FixedRateBond, FloatingRateNoteSpecification
+from rivapy.instruments import ZeroCouponBondSpecification, FixedRateBondSpecification, FloatingRateNoteSpecification
 from rivapy.tools.enums import RollConvention, SecuritizationLevel, DayCounterType
 from datetime import date
 
@@ -18,7 +18,7 @@ class Unit_Tests(TestCase):
         self.assertEqual(zero_coupon_bond.issuer, 'KfW')
         self.assertEqual(zero_coupon_bond.securitization_level, 'SENIOR_UNSECURED')
         # fixed rate bond
-        fixed_rate_bond = FixedRateBond.from_master_data('DE000CZ40NT7', date(2019, 3, 11), date(2024, 9, 11), 0.0125,
+        fixed_rate_bond = FixedRateBondSpecification.from_master_data('DE000CZ40NT7', date(2019, 3, 11), date(2024, 9, 11), 0.0125,
                                                          '1Y', True, True, RollConvention.FOLLOWING, 'DE', 'EUR',
                                                          100000, 'Commerzbank',
                                                          SecuritizationLevel.NON_PREFERRED_SENIOR)
@@ -33,7 +33,7 @@ class Unit_Tests(TestCase):
         self.assertEqual(fixed_rate_bond.notional, 100000)
         self.assertEqual(fixed_rate_bond.issuer, 'Commerzbank')
         self.assertEqual(fixed_rate_bond.securitization_level, 'NON_PREFERRED_SENIOR')
-        fixed_rate_bond = FixedRateBond('DE000CZ40NT7', date(2019, 3, 11), date(2024, 9, 11),
+        fixed_rate_bond = FixedRateBondSpecification('DE000CZ40NT7', date(2019, 3, 11), date(2024, 9, 11),
                                         fixed_rate_bond.coupon_payment_dates, fixed_rate_bond.coupons, 'EUR', 100000,
                                         'Commerzbank', SecuritizationLevel.NON_PREFERRED_SENIOR)
         self.assertEqual(fixed_rate_bond.obj_id, 'DE000CZ40NT7')

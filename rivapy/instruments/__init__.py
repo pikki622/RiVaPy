@@ -3,7 +3,7 @@ from rivapy.instruments.specifications import *
 from rivapy.instruments.cds_specification import CDSSpecification
 from rivapy.instruments.ppa_specification import SimpleSchedule
 from rivapy.instruments.ppa_specification import PPASpecification, GreenPPASpecification
-from rivapy.instruments.bond_specifications import ZeroCouponBondSpecification, FixedRateBond, PlainVanillaCouponBond, FloatingRateNoteSpecification, FixedToFloatingRateNoteSpecification
+from rivapy.instruments.bond_specifications import ZeroCouponBondSpecification, FixedRateBondSpecification, PlainVanillaCouponBondSpecification, FloatingRateNoteSpecification, FixedToFloatingRateNoteSpecification
 
 
 
@@ -16,7 +16,7 @@ _add_to_factory(SimpleSchedule)
 _add_to_factory(PPASpecification)
 _add_to_factory(GreenPPASpecification)
 _add_to_factory(ZeroCouponBondSpecification)
-_add_to_factory(FixedRateBond)
-_add_to_factory(PlainVanillaCouponBond)
+_add_to_factory(FixedRateBondSpecification)
+_add_to_factory(PlainVanillaCouponBondSpecification)
 
 

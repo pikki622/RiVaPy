@@ -6,7 +6,7 @@ from rivapy.instruments.specifications import \
     FixedRateBond, \
     FloatingRateNote, \
     FixedToFloatingRateNote
-from rivapy.tools.enums import DayCounter, RollConvention, SecuritizationLevel
+from rivapy.tools.enums import DayCounterType, RollConvention, SecuritizationLevel
 from datetime import date
 
 
@@ -57,7 +57,7 @@ class Unit_Tests(TestCase):
         # floating rate bond
         floating_rate_note = FloatingRateNote.from_master_data('DE000HLB3DU1', date(2016, 6, 23), date(2024, 6, 27),
                                                                '3M', True, False, RollConvention.FOLLOWING, 'DE',
-                                                               DayCounter.ThirtyU360, 0.0, 'EURIBOR_3M', 'EUR', 1000,
+                                                               DayCounterType.ThirtyU360, 0.0, 'EURIBOR_3M', 'EUR', 1000,
                                                                'Helaba', SecuritizationLevel.NON_PREFERRED_SENIOR)
         self.assertEqual(floating_rate_note.obj_id, 'DE000HLB3DU1')
         self.assertEqual(floating_rate_note.issue_date, date(2016, 6, 23))
@@ -89,7 +89,7 @@ class Unit_Tests(TestCase):
         self.assertEqual(floating_rate_note.issuer, 'Helaba')
         self.assertEqual(floating_rate_note.securitisation_level, 'NON_PREFERRED_SENIOR')
         floating_rate_note = FloatingRateNote('DE000HLB3DU1', date(2016, 6, 23), date(2024, 6, 27),
-                                              floating_rate_note.coupon_period_dates, DayCounter.ThirtyU360,
+                                              floating_rate_note.coupon_period_dates, DayCounterType.ThirtyU360,
                                               floating_rate_note.spreads, 'EURIBOR_3M', 'EUR', 1000, 'Helaba',
                                               SecuritizationLevel.NON_PREFERRED_SENIOR)
         self.assertEqual(floating_rate_note.obj_id, 'DE000HLB3DU1')
@@ -130,7 +130,7 @@ class Unit_Tests(TestCase):
                                                                                 0.04247, '6M', '3M', True, True, True,
                                                                                 False, RollConvention.MODIFIED_FOLLOWING,
                                                                                 RollConvention.MODIFIED_FOLLOWING, 'DE',
-                                                                                'DE', DayCounter.ThirtyU360, 0.0115,
+                                                                                'DE', DayCounterType.ThirtyU360, 0.0115,
                                                                                 'US_LIBOR_3M', 'USD', 1000000,
                                                                                 'Standard Chartered PLC',
                                                                                 SecuritizationLevel.SENIOR_SECURED)

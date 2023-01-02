@@ -1,15 +1,19 @@
 from typing import List, Union, Tuple
+from collections.abc import Callable
 from enum import Enum
 from datetime import datetime, date, timedelta
 import matplotlib.pyplot as plt
 import math
 import dateutil.relativedelta as relativedelta
 from typing import List
+import rivapy.tools.interfaces as interfaces
 import scipy.optimize
 import pandas as pd
 import numpy as np
 
 from rivapy.tools.enums import DayCounterType, InterpolationType, ExtrapolationType
+from rivapy.tools._validators import _enum_to_string
+from rivapy.marketdata.factory import create as _create
 
 from rivapy import _pyvacon_available
 if _pyvacon_available:
@@ -39,12 +43,6 @@ class DiscountCurve:
             extrapolation (enums.ExtrapolationType, optional): Defaults to ExtrapolationType.NONE which does not allow to compute a discount factor for a date past all given dates given to this constructor.
             daycounter (enums.DayCounterType, optional): Daycounter used within the interpolation formula to compute a discount factor between two dates from the dates-list above. Defaults to DayCounterType.Act365Fixed.
 
-        Raises:
-            Exception: [description]
-            Exception: [description]
-            Exception: [description]
-            Exception: [description]
-            Exception: [description]
         """
         if len(dates) < 1:
             raise Exception('Please specify at least one date and discount factor')
@@ -145,6 +143,105 @@ class DiscountCurve:
                 values[i] = -math.log(values[i])/dt
         values[0] = values[1]
         plt.plot(dates_new, values, label=self.id, **kwargs)
+
+class NelsonSiegel(interfaces.FactoryObject):
+    def __init__(self, beta0: float, beta1: float, 
+                            beta2: float, tau: float):
+        self.beta0 = beta0
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.tau = tau
+
+    def _to_dict(self) -> dict:
+        return {'beta0': self.beta0, 'beta1': self.beta1, 
+                'beta2': self.beta2, 'tau': self.tau}
+
+    def __call__(self, t: float):
+        return NelsonSiegel.compute(self.beta0, self.beta1, self.beta2, self.tau, t)
+
+    @staticmethod
+    def compute(beta0: float, beta1: float, 
+                            beta2: float, tau: float, T: float)->float:
+        """_summary_
+
+        Args:
+            beta0 (float): longrun
+            beta1 (float): beta0 + beta1 = shortrun
+            beta2 (float): hump or through
+            tau (float):locaton of hump
+            T (float): _description_
+
+        Returns:
+            float: _description_
+        """
+        t = np.maximum(T, 1e-4)/tau
+        return beta0 + beta1*(1.0-np.exp(-t))/t + beta2*((1-np.exp(-t))/t - np.exp(-(t)))
+
+class NelsonSiegelSvensson(NelsonSiegel):
+    def __init__(self, beta0: float, beta1: float, 
+                            beta2: float, beta3: float, tau: float):
+        super().__init__(beta0, beta1, beta2, tau)
+        self.beta3 = beta3
+
+    def _to_dict(self) -> dict:
+        tmp = super()._to_dict()
+        tmp.update({'beta3': self.beta3})
+        return tmp
+
+    def __call__(self, t: float):
+        return NelsonSiegelSvensson.compute(self.beta0, self.beta1, self.beta2, self.beta3, self.tau, t)
+
+    @staticmethod
+    def compute(beta0, beta1, beta2, beta3, tau, tau2, T):
+        t = np.maximum(T, 1e-4)/tau2
+        return NelsonSiegel.compute(beta0, beta1, beta2, tau, T) + beta3*((1-np.exp(-t))/t - np.exp(-(t)))
+    
+
+class DiscountCurveParametrized(interfaces.FactoryObject):
+    def __init__(self, 
+                obj_id: str,
+                refdate: Union[datetime, date], 
+                rate_parametrization: Callable[[float], float],
+                daycounter: Union[DayCounterType, str] = DayCounterType.Act365Fixed):
+        if isinstance(refdate, datetime):
+            self.refdate = refdate
+        else:
+            self.refdate = datetime(refdate,0,0,0)
+        
+        if not isinstance(daycounter, DayCounterType):
+            raise TypeError('Daycounter is not of type enums.DaycounterType')
+        self.daycounter = _enum_to_string(DayCounterType, daycounter)
+        self.obj_id = obj_id
+        if isinstance(rate_parametrization, dict): #if schedule is a dict we try to create it from factory
+            self.rate_parametrization = _create(rate_parametrization)
+        else:
+            self.rate_parametrization = rate_parametrization
+        
+    def _to_dict(self) -> dict:
+        try:
+            parametrization = self.rate_parametrization.to_dict()
+        except Exception as e:
+            raise Exception('Missing implementation of to_dict() in parametrization of type ' + type(self.rate_parametrization).__name__)
+        return {'obj_id': self.obj_id, 'refdate': self.refdate, 'rate_parametrization': self.rate_parametrization}
+
+    def value(self, refdate: Union[date, datetime], d: Union[date, datetime])->float:
+        """Return discount factor for a given date
+
+        Args:
+            refdate (Union[date, datetime]): The reference date. If the reference date is in the future (compared to the curves reference date), the forward discount factor will be returned.
+            d (Union[date, datetime]): The date for which the discount factor will be returned
+
+        Returns:
+            float: discount factor
+        """
+        if not isinstance(refdate, datetime):
+            refdate = datetime(refdate,0,0,0)
+        if not isinstance(d, datetime):
+            d = datetime(d,0,0,0)
+        if refdate < self.refdate:
+            raise Exception('The given reference date is before the curves reference date.')
+        yf = (d-self.refdate).total_seconds()/(365.0*24.0*60.0*60.0)
+        return self.rate_parametrization(yf)    
             
 
 class EquityForwardCurve:

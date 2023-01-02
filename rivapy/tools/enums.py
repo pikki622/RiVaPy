@@ -208,14 +208,15 @@ class PricerType:
     COMBO = 'COMBO'
     
        
-    
-class VolatilityStickyness:
+@_unique
+class VolatilityStickyness(_Enum):
     NONE = 'NONE'
     StickyStrike = 'StickyStrike'
     StickyXStrike = 'StickyXStrike'
     StickyFwdMoneyness = 'StickyFwdMoneyness'
 
-class Currency:
+@_unique
+class Currency(_Enum):
     AED =  'AED'
     AFN =  'AFN'
     ALL =  'ALL'

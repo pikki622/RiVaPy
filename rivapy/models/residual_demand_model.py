@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import warnings
 from typing import Union, Callable
 from  rivapy.tools.datetime_grid import DateTimeGrid, InterpolatedFunction, PeriodicFunction
-import rivapy.tools.interfaces as interfaces
+from rivapy.tools.interfaces import DateTimeFunction
 
 def _logit(x):
     return np.log(x/(1-x))
@@ -106,8 +106,7 @@ class WindPowerModel:
         self.name = name
         self._timegrid = None
 
-    
-    def simulate(self, timegrid, start_value, rnd):
+    def simulate(self, timegrid: DateTimeGrid, start_value, rnd):
         mean = self.seasonal_function.compute(timegrid)[:, np.newaxis]
         start_value_ = _logit(start_value) - mean[0,0]
         deviation = self.deviation_process.simulate(timegrid.timegrid, start_value_, rnd)
@@ -262,55 +261,55 @@ class ResidualDemandModel:
         return result
 
 
-class SimpleRenewableModel:
-    def __init__(self, wind_model_onshore: object, 
-                    capacity_wind_onhore: float, 
-                    target_wind_onhore: interfaces.DateTimeFunction, 
-                    wind_model_offshore: object, 
-                    capacity_wind_offore: float, 
-                    target_wind_offhore: float, 
-                    solar_model: object, 
-                    capacity_solar: float,
-                    target_solar: object,
-                    power_model: object ):
-        """Simple model to simulate power prices together with renewables
+# class SimpleRenewableModel:
+#     def __init__(self, wind_model_onshore: object, 
+#                     capacity_wind_onhore: float, 
+#                     target_wind_onhore: DateTimeFunction, 
+#                     wind_model_offshore: object, 
+#                     capacity_wind_offore: float, 
+#                     target_wind_offhore: float, 
+#                     solar_model: object, 
+#                     capacity_solar: float,
+#                     target_solar: object,
+#                     power_model: object ):
+#         """Simple model to simulate power prices together with renewables
 
-        This model is inspried by the paper by :footcite:t:`BieglerKoenig2022` and models power (spot) prices together with renewables
+#         This model is inspried by the paper by :footcite:t:`BieglerKoenig2022` and models power (spot) prices together with renewables
             
 
-        Args:
-            capacity_wind (interfaces.DateTimeFunction): The capacity of wind power. This is multiplied with the simulated efficiency to obtain the simulated absolute amount of wind.
-            solar_model (object): Model for solar efficiency (needs to implement a method simulate in order to work with this model). 
-                        See :func:`rivapy.models.SolarPowerModel` as an example for a solar model.
-            capacity_solar (object): The capacity of solar power. This is multiplied with the simulated efficiency to obtain the simulated absolute amount of solar.
-            power_model (object): The total demand, see :func:`rivapy.models.SupplyFunction` for an example.
-        """
-        pass
+#         Args:
+#             capacity_wind (interfaces.DateTimeFunction): The capacity of wind power. This is multiplied with the simulated efficiency to obtain the simulated absolute amount of wind.
+#             solar_model (object): Model for solar efficiency (needs to implement a method simulate in order to work with this model). 
+#                         See :func:`rivapy.models.SolarPowerModel` as an example for a solar model.
+#             capacity_solar (object): The capacity of solar power. This is multiplied with the simulated efficiency to obtain the simulated absolute amount of solar.
+#             power_model (object): The total demand, see :func:`rivapy.models.SupplyFunction` for an example.
+#         """
+#         pass
         
-    def simulate(self, timegrid: DateTimeGrid, 
-                    start_value_wind: float, 
-                    start_value_solar: float, 
-                    start_value_load: float,
-                    n_sims: int,
-                    rnd_wind: np.ndarray=None,
-                    rnd_solar: np.ndarray=None,
-                    rnd_load: float=None,
-                    rnd_state = None):
-        """Simulate the residual demand model on a given datetimegrid.
+#     def simulate(self, timegrid: DateTimeGrid, 
+#                     start_value_wind: float, 
+#                     start_value_solar: float, 
+#                     start_value_load: float,
+#                     n_sims: int,
+#                     rnd_wind: np.ndarray=None,
+#                     rnd_solar: np.ndarray=None,
+#                     rnd_load: float=None,
+#                     rnd_state = None):
+#         """Simulate the residual demand model on a given datetimegrid.
 
-        Args:
-            timegrid (DateTimeGrid): _description_
-            start_value_wind (float): _description_
-            start_value_solar (float): _description_
-            start_value_load (float): _description_
-            n_sims (int): _description_
-            rnd_wind (np.ndarray, optional): _description_. Defaults to None.
-            rnd_solar (np.ndarray, optional): _description_. Defaults to None.
-            rnd_load (float, optional): _description_. Defaults to None.
-            rnd_state (_type_, optional): _description_. Defaults to None.
+#         Args:
+#             timegrid (DateTimeGrid): _description_
+#             start_value_wind (float): _description_
+#             start_value_solar (float): _description_
+#             start_value_load (float): _description_
+#             n_sims (int): _description_
+#             rnd_wind (np.ndarray, optional): _description_. Defaults to None.
+#             rnd_solar (np.ndarray, optional): _description_. Defaults to None.
+#             rnd_load (float, optional): _description_. Defaults to None.
+#             rnd_state (_type_, optional): _description_. Defaults to None.
 
-        Returns:
-            _type_: _description_
-        """
-        pass
+#         Returns:
+#             _type_: _description_
+#         """
+#         pass
 

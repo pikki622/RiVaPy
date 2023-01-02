@@ -52,7 +52,7 @@ ResidualDemandModel
 
 SimpleRenewableModel
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-.. autoclass:: rivapy.models.SimpleRenewableModel
+.. autoclass:: rivapy.models.ResidualDemandForwardModel
    :members:
    :undoc-members:
    :show-inheritance:

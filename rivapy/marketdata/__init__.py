@@ -11,7 +11,7 @@ from typing import List, Union, Tuple
 from rivapy import _pyvacon_available
 from scipy.optimize import least_squares
 from rivapy.marketdata.curves import *
-
+from rivapy.marketdata.factory import _factory
 
 if _pyvacon_available:
     import pyvacon.finance.marketdata as _mkt_data
@@ -454,6 +454,14 @@ class VolatilitySurface:
             _pricing.GlobalSettings.setVolatilitySurfaceFwdStickyness(_pricing.VolatilitySurfaceFwdStickyness.Type.NONE)
         else:
             raise Exception ('Error')
+
+def _add_to_factory(cls):
+    factory_entries = _factory()
+    factory_entries[cls.__name__] = cls
+
+_add_to_factory(NelsonSiegel)
+_add_to_factory(NelsonSiegelSvensson)
+_add_to_factory(DiscountCurveParametrized)
 
 if __name__=='__main__':
     svi = VolatilityParametrizationSVI(expiries=np.array([1.0/365.0, 1.0]), svi_params=[

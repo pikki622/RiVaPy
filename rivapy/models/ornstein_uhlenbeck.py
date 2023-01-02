@@ -23,9 +23,9 @@ class OrnsteinUhlenbeck:
         self._delta_t = self._timegrid[1:]-self._timegrid[:-1]
         self._sqrt_delta_t = np.sqrt(self._delta_t)
 
-        self._speed_of_mean_reversion = OrnsteinUhlenbeck._eval_grid(self.speed_of_mean_reversion, timegrid)
-        self._volatility = OrnsteinUhlenbeck._eval_grid(self.volatility, timegrid)
-        self._mean_reversion_level = OrnsteinUhlenbeck._eval_grid(self.mean_reversion_level, timegrid)
+        self._speed_of_mean_reversion_grid = OrnsteinUhlenbeck._eval_grid(self.speed_of_mean_reversion, timegrid)
+        self._volatility_grid = OrnsteinUhlenbeck._eval_grid(self.volatility, timegrid)
+        self._mean_reversion_level_grid = OrnsteinUhlenbeck._eval_grid(self.mean_reversion_level, timegrid)
         
     def simulate(self, timegrid, start_value, rnd):
         self._set_timegrid(timegrid)
@@ -33,12 +33,14 @@ class OrnsteinUhlenbeck:
         result[0,:] = start_value
 
         for i in range(self._timegrid.shape[0]-1):
-            result[i+1,:] = (result[i, :] * np.exp(-self._speed_of_mean_reversion[i]*self._delta_t[i])
-                        + self._mean_reversion_level[i]* (1 - np.exp(-self._speed_of_mean_reversion[i]*self._delta_t[i])) 
-                        + self._volatility[i]* np.sqrt((1 - np.exp(-2*self._speed_of_mean_reversion[i]*self._delta_t[i])) / (2*self._speed_of_mean_reversion[i])) * rnd[i,:]
+            result[i+1,:] = (result[i, :] * np.exp(-self._speed_of_mean_reversion_grid[i]*self._delta_t[i])
+                        + self._mean_reversion_level_grid[i]* (1 - np.exp(-self._speed_of_mean_reversion_grid[i]*self._delta_t[i])) 
+                        + self._volatility_grid[i]* np.sqrt((1 - np.exp(-2*self._speed_of_mean_reversion_grid[i]*self._delta_t[i])) / (2*self._speed_of_mean_reversion_grid[i])) * rnd[i,:]
                         )
         return result
 
+    def compute_expected_value(self, x0: Union[float, np.ndarray], T: float):
+        return x0*np.exp(-self.speed_of_mean_reversion*T) + self.mean_reversion_level*(1.0-np.exp(-self.speed_of_mean_reversion*T))
 
     def apply_mc_step(self, x: np.ndarray, 
                         t0: float, t1: float, 
@@ -113,4 +115,3 @@ class OrnsteinUhlenbeck:
         self.speed_of_mean_reversion = speed_mr
         self.volatility = sigma
         self.mean_reversion_level = mu
-#

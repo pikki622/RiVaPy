@@ -1,6 +1,6 @@
 from unittest import main, TestCase
-from rivapy.instruments import ZeroCouponBondSpecification, FixedRateBond
-from rivapy.tools.enums import RollConvention, SecuritizationLevel
+from rivapy.instruments import ZeroCouponBondSpecification, FixedRateBond, FloatingRateNoteSpecification
+from rivapy.tools.enums import RollConvention, SecuritizationLevel, DayCounterType
 from datetime import date
 
 
@@ -32,7 +32,7 @@ class Unit_Tests(TestCase):
         self.assertEqual(fixed_rate_bond.currency, 'EUR')
         self.assertEqual(fixed_rate_bond.notional, 100000)
         self.assertEqual(fixed_rate_bond.issuer, 'Commerzbank')
-        self.assertEqual(fixed_rate_bond.securitisation_level, 'NON_PREFERRED_SENIOR')
+        self.assertEqual(fixed_rate_bond.securitization_level, 'NON_PREFERRED_SENIOR')
         fixed_rate_bond = FixedRateBond('DE000CZ40NT7', date(2019, 3, 11), date(2024, 9, 11),
                                         fixed_rate_bond.coupon_payment_dates, fixed_rate_bond.coupons, 'EUR', 100000,
                                         'Commerzbank', SecuritizationLevel.NON_PREFERRED_SENIOR)
@@ -49,7 +49,7 @@ class Unit_Tests(TestCase):
         self.assertEqual(fixed_rate_bond.securitization_level, 'NON_PREFERRED_SENIOR')
 
         # floating rate bond
-        floating_rate_note = FloatingRateNote.from_master_data('DE000HLB3DU1', date(2016, 6, 23), date(2024, 6, 27),
+        floating_rate_note = FloatingRateNoteSpecification.from_master_data('DE000HLB3DU1', date(2016, 6, 23), date(2024, 6, 27),
                                                                '3M', True, False, RollConvention.FOLLOWING, 'DE',
                                                                DayCounterType.ThirtyU360, 0.0, 'EURIBOR_3M', 'EUR', 1000,
                                                                'Helaba', SecuritizationLevel.NON_PREFERRED_SENIOR)
@@ -73,7 +73,7 @@ class Unit_Tests(TestCase):
                                                                   date(2023, 6, 27), date(2023, 9, 27),
                                                                   date(2023, 12, 27), date(2024, 3, 27),
                                                                   date(2024, 6, 27)])
-        self.assertEqual(floating_rate_note.day_count_convention, '30U360')
+        self.assertEqual(floating_rate_note.daycount_convention, '30U360')
         self.assertEqual(floating_rate_note.spreads, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
@@ -81,8 +81,8 @@ class Unit_Tests(TestCase):
         self.assertEqual(floating_rate_note.currency, 'EUR')
         self.assertEqual(floating_rate_note.notional, 1000)
         self.assertEqual(floating_rate_note.issuer, 'Helaba')
-        self.assertEqual(floating_rate_note.securitisation_level, 'NON_PREFERRED_SENIOR')
-        floating_rate_note = FloatingRateNote('DE000HLB3DU1', date(2016, 6, 23), date(2024, 6, 27),
+        self.assertEqual(floating_rate_note.securitization_level, 'NON_PREFERRED_SENIOR')
+        floating_rate_note = FloatingRateNoteSpecification('DE000HLB3DU1', date(2016, 6, 23), date(2024, 6, 27),
                                               floating_rate_note.coupon_period_dates, DayCounterType.ThirtyU360,
                                               floating_rate_note.spreads, 'EURIBOR_3M', 'EUR', 1000, 'Helaba',
                                               SecuritizationLevel.NON_PREFERRED_SENIOR)
@@ -106,7 +106,7 @@ class Unit_Tests(TestCase):
                                                                   date(2023, 6, 27), date(2023, 9, 27),
                                                                   date(2023, 12, 27), date(2024, 3, 27),
                                                                   date(2024, 6, 27)])
-        self.assertEqual(floating_rate_note.day_count_convention, '30U360')
+        self.assertEqual(floating_rate_note.daycount_convention, '30U360')
         self.assertEqual(floating_rate_note.spreads, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                                       0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
@@ -114,7 +114,7 @@ class Unit_Tests(TestCase):
         self.assertEqual(floating_rate_note.currency, 'EUR')
         self.assertEqual(floating_rate_note.notional, 1000)
         self.assertEqual(floating_rate_note.issuer, 'Helaba')
-        self.assertEqual(floating_rate_note.securitisation_level, 'NON_PREFERRED_SENIOR')
+        self.assertEqual(floating_rate_note.securitization_level, 'NON_PREFERRED_SENIOR')
 
         # fixed-to-floating rate note
         if False:
@@ -145,7 +145,7 @@ class Unit_Tests(TestCase):
             self.assertEqual(fixed_to_floating_rate_note.currency, 'USD')
             self.assertEqual(fixed_to_floating_rate_note.notional, 1000000)
             self.assertEqual(fixed_to_floating_rate_note.issuer, 'Standard Chartered PLC')
-            self.assertEqual(fixed_to_floating_rate_note.securitisation_level, 'SENIOR_SECURED')
+            self.assertEqual(fixed_to_floating_rate_note.securitization_level, 'SENIOR_SECURED')
 
 
 if __name__ == '__main__':

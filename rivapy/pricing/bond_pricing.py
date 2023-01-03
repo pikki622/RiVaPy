@@ -21,4 +21,4 @@ class SimpleCashflowPricer:
         def target_function(r: float)->float:
             dc = DiscountCurveParametrized('', val_date, ConstantRate(r))
             return SimpleCashflowPricer.pv_cashflows(val_date, specification, dc)-target_dirty_price
-        brentq(target_function, -0.2, 0.2, full_output = False)
+        return brentq(target_function, -0.2, 0.2, full_output = False)

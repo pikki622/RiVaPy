@@ -1,5 +1,6 @@
 
 import abc
+from typing import List, Tuple
 import datetime as dt
 import numpy as np
 import json
@@ -63,5 +64,11 @@ class FactoryObject(abc.ABC):
 
 class BaseDatedCurve(abc.ABC):
     @abc.abstractmethod
-    def compute(self, ref_date: dt.datetime)->np.ndarray:#, dt_grid: DateTimeGrid)->np.ndarray:
+    def value(self, ref_date: dt.datetime, d: dt.datetime)->np.ndarray:#, dt_grid: DateTimeGrid)->np.ndarray:
+        pass
+
+
+class HasExpectedCashflows(abc.ABC):
+    @abc.abstractmethod
+    def expected_cashflows(self)->List[Tuple[dt.datetime, float]]:
         pass

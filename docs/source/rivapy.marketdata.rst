@@ -24,6 +24,11 @@ Rates and Discount Curves
    :undoc-members:
    :show-inheritance:
 
+.. autoclass:: rivapy.marketdata.ConstantRate
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 
 Equity

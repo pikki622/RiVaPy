@@ -147,6 +147,31 @@ class DiscountCurve:
 class NelsonSiegel(interfaces.FactoryObject):
     def __init__(self, beta0: float, beta1: float, 
                             beta2: float, tau: float):
+        """Nelson-Siegel parametrization for rates and yields, see :footcite:t:`Nelson1987`.
+
+        This parametrization is mostly used to parametrize rate curves and can be used in conjunction with :class:`rivapy.marketdata.DiscountCurveParametrized`. It is defined by
+        
+        .. math::
+
+            f(t) = \\beta_0 + (\\beta_1+\\beta_2)\\frac{1-e^{-t/\\tau}}{t/\\tau} -\\beta_2e^{t/\\tau}
+
+
+        Args:
+            beta0 (float): This parameter is the asymptotic (for arbitrary large maturities) rate, see formula above.
+            beta1 (float): beta0 + beta1 give the short term rate, see formula above.
+            beta2 (float): This parameter controls the size of the hump, see formula above.
+            tau (float): This parameter controls the location of the hump, see formula above.
+
+        Examples:
+            .. code-block:: python
+
+                >>> from rivapy.marketdata.curves import NelsonSiegel, DiscountCurveParametrized
+                >>> ns = NelsonSiegel(beta0=0.05, beta1 = 0.02, beta2=0.1, tau=1.0)
+                >>> dc = DiscountCurveParametrized('DC',  refdate = dt.datetime(2023,1,1), rate_parametrization=ns, daycounter = DayCounterType.Act365Fixed)
+                >>> dates = [dt.datetime(2023,1,1) + dt.timedelta(days=30*days) for days in range(120)]
+                >>> values = [dc.value(refdate = dt.datetime(2023,1,1),d=d) for d in dates]
+                >>> plt.plot(dates, values)
+        """
         self.beta0 = beta0
         self.beta1 = beta1
         self.beta2 = beta2
@@ -176,6 +201,23 @@ class NelsonSiegel(interfaces.FactoryObject):
         """
         t = np.maximum(T, 1e-4)/tau
         return beta0 + beta1*(1.0-np.exp(-t))/t + beta2*((1-np.exp(-t))/t - np.exp(-(t)))
+
+
+class ConstantRate(interfaces.FactoryObject):
+    def __init__(self, rate: float):
+        """Continuously compounded flat rate object that can be used  in conjunction with :class:`rivapy.marketdata.DiscountCurveParametrized`.
+        
+        Args:
+            rate (float): The constant rate.
+
+        """
+        self.rate = rate
+        
+    def _to_dict(self) -> dict:
+        return {'rate': self.rate}
+
+    def __call__(self, t: float):
+        return self.rate
 
 class NelsonSiegelSvensson(NelsonSiegel):
     def __init__(self, beta0: float, beta1: float, 

@@ -261,6 +261,7 @@ class PlainVanillaCouponBondSpecification(BondBaseSpecification):
             coupon_multiplier = period.days/365.0
         schedule = Schedule(self.accrual_start, self.maturity_date, period, stub=self.stub).generate_dates(ends_only=True)
         result = [(d, self.coupon*coupon_multiplier) for d in schedule]
+        result.insert(0, (self.accrual_start, 0.0))# the first entry of this schedule is the accrual start which has a cashflow of zero and is just used for accrual calculation
         result.append((self.maturity_date, self.notional))
         return result
 

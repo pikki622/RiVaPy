@@ -12,7 +12,6 @@ class SimpleCashflowPricer:
         for c in cashflows:
             if c[0]>= val_date:
                 pv_cashflows += discount_curve.value(val_date, c[0])*c[1]
-        print(pv_cashflows)
         return pv_cashflows
         
     @staticmethod

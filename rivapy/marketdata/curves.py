@@ -12,7 +12,6 @@ import pandas as pd
 import numpy as np
 
 from rivapy.tools.enums import DayCounterType, InterpolationType, ExtrapolationType
-from rivapy.tools._validators import _enum_to_string
 from rivapy.marketdata.factory import create as _create
 
 from rivapy import _pyvacon_available
@@ -252,7 +251,7 @@ class DiscountCurveParametrized(interfaces.FactoryObject):
         
         if not isinstance(daycounter, DayCounterType):
             raise TypeError('Daycounter is not of type enums.DaycounterType')
-        self.daycounter = _enum_to_string(DayCounterType, daycounter)
+        self.daycounter = DayCounterType.to_string(daycounter)
         self.obj_id = obj_id
         if isinstance(rate_parametrization, dict): #if schedule is a dict we try to create it from factory
             self.rate_parametrization = _create(rate_parametrization)
@@ -283,7 +282,7 @@ class DiscountCurveParametrized(interfaces.FactoryObject):
         if refdate < self.refdate:
             raise Exception('The given reference date is before the curves reference date.')
         yf = (d-self.refdate).total_seconds()/(365.0*24.0*60.0*60.0)
-        return self.rate_parametrization(yf)    
+        return np.exp(-self.rate_parametrization(yf)*yf)
             
 
 class EquityForwardCurve:

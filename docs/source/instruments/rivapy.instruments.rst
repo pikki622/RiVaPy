@@ -9,9 +9,9 @@ Instruments
    :maxdepth: 2
    :caption: Contents:
    
-   instruments/rivapy.instruments.equity
-   instruments/rivapy.instruments.credit
-   instruments/rivapy.instruments.power
+   instruments/equity
+   instruments/credit
+   instruments/power
 
 
 

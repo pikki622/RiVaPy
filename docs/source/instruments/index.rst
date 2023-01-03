@@ -9,9 +9,9 @@ Instruments
    :maxdepth: 2
    :caption: Contents:
    
-   instruments/equity
-   instruments/credit
-   instruments/power
+   equity
+   credit
+   power
 
 
 

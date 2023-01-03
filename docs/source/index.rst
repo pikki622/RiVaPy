@@ -12,8 +12,7 @@ Welcome to rivapy's documentation!
 
    
    marketdata/index
-   rivapy.models
-   rivapy.instruments
+   instruments/index
    rivapy.pricing
    rivapy.tools
    rivapy.interfaces

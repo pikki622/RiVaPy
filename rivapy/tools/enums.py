@@ -213,6 +213,7 @@ class Rating(_MyEnum):
     CC = 'CC'
     C = 'C'
     D = 'D'
+    NONE = 'NONE' # not rated
 
 # class ProductType:
 #        BOND = 'BOND'

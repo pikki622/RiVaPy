@@ -2,10 +2,9 @@ from abc import  abstractmethod as _abstractmethod
 from typing import List as _List, Union as _Union, Tuple
 from datetime import datetime, date
 from holidays import HolidayBase as _HolidayBase, ECB as _ECB
-from rivapy.tools.datetools import Period, Schedule, _datetime_to_date, _datetime_to_date_list, _term_to_period
+from rivapy.tools.datetools import Period, Schedule, _date_to_datetime, _datetime_to_date_list, _term_to_period
 from rivapy.tools.enums import DayCounterType, RollConvention, SecuritizationLevel, Currency
-from rivapy.tools._validators import _check_positivity, _check_start_before_end,  _roll_convention_to_string, _string_to_calendar, _is_ascending_date_list
-from rivapy.tools._validators import _enum_to_string
+from rivapy.tools._validators import _check_positivity, _check_start_before_end,  _string_to_calendar, _is_ascending_date_list
 import rivapy.tools.interfaces as interfaces
 from rivapy.tools.datetools import Period, Schedule
 
@@ -89,7 +88,7 @@ class BondBaseSpecification(interfaces.FactoryObject):
 
     @securitization_level.setter
     def securitization_level(self, securitisation_level:  _Union[SecuritizationLevel, str]):
-        self.__securitization_level = _enum_to_string(SecuritizationLevel, securitisation_level)
+        self.__securitization_level = SecuritizationLevel.to_string(securitisation_level)
 
     @property
     def issue_date(self) -> date:
@@ -109,7 +108,7 @@ class BondBaseSpecification(interfaces.FactoryObject):
         Args:
             issue_date (Union[datetime, date]): Bond's issue date.
         """
-        self.__issue_date = _datetime_to_date(issue_date)
+        self.__issue_date = _date_to_datetime(issue_date)
 
     @property
     def maturity_date(self) -> date:
@@ -129,7 +128,7 @@ class BondBaseSpecification(interfaces.FactoryObject):
         Args:
             maturity_date (Union[datetime, date]): Bond's maturity date.
         """
-        self.__maturity_date = _datetime_to_date(maturity_date)
+        self.__maturity_date = _date_to_datetime(maturity_date)
 
     @property
     def currency(self) -> str:
@@ -143,7 +142,7 @@ class BondBaseSpecification(interfaces.FactoryObject):
 
     @currency.setter
     def currency(self, currency:str):
-        self.__currency = _enum_to_string(Currency, currency)
+        self.__currency = Currency.to_string(currency)
 
     @property
     def notional(self) -> float:
@@ -391,7 +390,7 @@ class FixedRateBondSpecification(BondBaseSpecification):
         """
         coupon = _check_positivity(coupon)
         tenor = _term_to_period(tenor)
-        business_day_convention = _roll_convention_to_string(business_day_convention)
+        business_day_convention = RollConvention.to_string(business_day_convention)
         if calendar is None:
             calendar = _ECB(years=range(issue_date.year, maturity_date.year + 1))
         else:
@@ -399,7 +398,7 @@ class FixedRateBondSpecification(BondBaseSpecification):
         schedule = Schedule(issue_date, maturity_date, tenor, backwards, stub, business_day_convention, calendar)
         coupon_payment_dates = schedule.generate_dates(True)
         coupons = [coupon] * len(coupon_payment_dates)
-        securitisation_level = _enum_to_string(SecuritizationLevel, securitisation_level)
+        securitisation_level = SecuritizationLevel.to_string(securitisation_level)
         return FixedRateBondSpecification(obj_id, issue_date, maturity_date, coupon_payment_dates, coupons, currency, notional,
                              issuer, securitisation_level)
 
@@ -460,7 +459,7 @@ class FloatingRateNoteSpecification(BondBaseSpecification):
                             + "', payment dates '" + str(coupon_period_dates)
                             + "', and maturity date '" + str(maturity_date) + "'.")
             # TODO: Clarify if inconsistency should be shown explicitly.
-        self.__day_count_convention = _enum_to_string(DayCounterType, day_count_convention)
+        self.__day_count_convention = DayCounterType.to_string(day_count_convention)
         if spreads is None:
             self.__spreads = [0.0] * (len(coupon_period_dates) - 1)
         elif len(spreads) == len(coupon_period_dates) - 1:
@@ -536,7 +535,7 @@ class FloatingRateNoteSpecification(BondBaseSpecification):
             FloatingRateNote: Corresponding floating rate note with already generated schedule for coupon payments.
         """
         tenor = _term_to_period(tenor)
-        business_day_convention = _roll_convention_to_string(business_day_convention)
+        business_day_convention = RollConvention.to_string(business_day_convention)
         if calendar is None:
             calendar = _ECB(years=range(issue_date.year, maturity_date.year + 1))
         else:
@@ -569,7 +568,7 @@ class FloatingRateNoteSpecification(BondBaseSpecification):
 
     @daycount_convention.setter
     def daycount_convention(self, day_count_convention: _Union[DayCounterType, str])-> str:
-        self.__day_count_convention = _enum_to_string(DayCounterType, day_count_convention)
+        self.__day_count_convention = DayCounterType.to_string(day_count_convention)
 
     @property
     def spreads(self) -> _List[float]:

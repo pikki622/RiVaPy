@@ -12,7 +12,26 @@ class _MyEnum(_Enum):
     def has_value(cls, value):
         return value in cls._value2member_map_
 
+    @classmethod
+    def to_string(cls, value)->str:
+        """Checks if given enum class contains the value and raises exception if not. If value is str 
 
+        Args:
+            enum (_type_): _description_
+            value (_type_): _description_
+
+        Returns:
+            str: _description_
+        """
+        def has_value(cls, value):
+            return value in cls._value2member_map_
+        if isinstance(value, str):
+            if not cls.has_value(value):
+                raise Exception('Unknown  ' + cls.__name__ +': ' + value)
+            return value
+        if isinstance(value, cls):
+            return value.value
+        raise Exception('Given value ' + str(value) + ' does not belong to enum ' + enum_class.__name__)
 
 if _pyvacon_available:
     from pyvacon.finance.definition import DayCounter as _DayCounter
@@ -38,8 +57,6 @@ else:
         LINEAR = 'LINEAR'
         LINEAR_LOG = 'LINEARLOG'
         
-
-
 @_unique
 class SecuritizationLevel(_MyEnum):
     NONE = 'NONE'
@@ -172,7 +189,7 @@ class Sector(_MyEnum):
 
 
 @_unique
-class Rating(_Enum):
+class Rating(_MyEnum):
     # cf. https://www.moneyland.ch/de/vergleich-rating-agenturen
     AAA = 'AAA'
     AA_PLUS = 'AA+'
@@ -209,14 +226,14 @@ class PricerType:
     
        
 @_unique
-class VolatilityStickyness(_Enum):
+class VolatilityStickyness(_MyEnum):
     NONE = 'NONE'
     StickyStrike = 'StickyStrike'
     StickyXStrike = 'StickyXStrike'
     StickyFwdMoneyness = 'StickyFwdMoneyness'
 
 @_unique
-class Currency(_Enum):
+class Currency(_MyEnum):
     AED =  'AED'
     AFN =  'AFN'
     ALL =  'ALL'

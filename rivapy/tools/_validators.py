@@ -4,28 +4,27 @@ from datetime import datetime, date
 from typing import List as _List, Tuple as _Tuple, Union as _Union
 from holidays import  HolidayBase as _HolidayBase, CountryHoliday as _CountryHoliday
 from holidays.utils import list_supported_countries as _list_supported_countries
-from rivapy.tools.enums import DayCounterType, RollConvention, SecuritizationLevel
 
 # from iso4217parse import \
 #     by_alpha3 as _iso4217_by_alpha3, \
 #     by_code_num as _iso4217_by_code_num, \
 #     Currency as _Currency
 
-def _datetime_to_date(date_time: _Union[datetime, date]
+def _date_to_datetime(date_time: _Union[datetime, date]
                       ) -> date:
     """
-    Converts type of date from datetime to date or leaves it unchanged if it is already of type date.
+    Converts a date to a datetime or leaves it unchanged if it is already of type datetime.
 
     Args:
         date_time (_Union[datetime, date]): Date(time) to be converted.
 
     Returns:
-        date: (Potentially) Converted date(time).
+        date: (Potentially) Converted datetime.
     """
     if isinstance(date_time, datetime):
-        return date_time.date()
-    elif isinstance(date_time, date):
         return date_time
+    elif isinstance(date_time, date):
+        return datetime.combine(date_time, datetime.min.time())
     else:
         raise TypeError("'" + str(date_time) + "' must be of type datetime or date!")
 
@@ -124,8 +123,8 @@ def _check_start_before_end(start: _Union[date, datetime],
     Returns:
         Tuple[date, date]: start date, end date
     """
-    start_date = _datetime_to_date(start)
-    end_date = _datetime_to_date(end)
+    start_date = _date_to_datetime(start)
+    end_date = _date_to_datetime(end)
     if start_date < end_date:
         return start_date, end_date
     else:
@@ -188,8 +187,8 @@ def check_start_before_end(start: _Union[date, datetime],
     Returns:
         Tuple[date, date]: start date, end date
     """
-    start_date = _datetime_to_date(start)
-    end_date = _datetime_to_date(end)
+    start_date = _date_to_datetime(start)
+    end_date = _date_to_datetime(end)
     if start_date < end_date:
         return start_date, end_date
     else:
@@ -233,48 +232,6 @@ def _is_ascending_date_list(start_date: date,
 
     return True
 
-def _enum_to_string(enum_class: Enum, value)->str:
-    """Checks if given enum class contains the value and raises exception if not. If value is str 
-
-    Args:
-        enum (_type_): _description_
-        value (_type_): _description_
-
-    Returns:
-        str: _description_
-    """
-    def has_value(cls, value):
-        return value in cls._value2member_map_
-    if isinstance(value, str):
-        if not has_value(enum_class, value):
-            raise Exception('Unknown  ' + enum_class.__name__ +': ' + value)
-        return value
-    if isinstance(value, enum_class):
-        return value.value
-    raise Exception('Given value ' + str(value) + ' does not belong to enum ' + enum_class.__name__)
-
-def _roll_convention_to_string(business_day_convention: _Union[RollConvention, str]
-                               ) -> str:
-    """
-    Checks if business day convention is known, i.e. part of the enums list, and converts it if necessary into a sting.
-
-    Args:
-        business_day_convention (_Union[RollConvention, str]): Business day convention as RollConvention or string.
-
-    Returns:
-        str: Business day convention as string.
-    """
-    if isinstance(business_day_convention, RollConvention):
-        return business_day_convention.value
-    elif isinstance(business_day_convention, str):
-        if RollConvention.has_value(business_day_convention):
-            return business_day_convention
-        else:
-            raise Exception("Unknown business day convention '" + str(business_day_convention) + "'!")
-    else:
-        raise TypeError("The business day convention '" + str(business_day_convention)
-                        + "' must be provided as RollConvention or string!")
-
 
 
 def _string_to_calendar(calendar: _Union[_HolidayBase, str]
@@ -299,3 +256,7 @@ def _string_to_calendar(calendar: _Union[_HolidayBase, str]
     else:
         raise TypeError("The holiday calendar '" + str(calendar)
                         + "' must be provided as HolidayBase or string!")
+
+def _validate_schedule(self):
+        if ~_is_start_before_end(self.__start_day, self.__end_day, True):
+            raise Exception('Chronological order mismatch!')

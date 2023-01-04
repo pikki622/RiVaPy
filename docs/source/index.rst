@@ -7,12 +7,13 @@ Welcome to rivapy's documentation!
 ==================================
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
    :caption: Contents:
 
    
    marketdata/index
    instruments/index
+   models/index
    rivapy.pricing
    rivapy.tools
    rivapy.interfaces

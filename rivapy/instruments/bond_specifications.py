@@ -1,9 +1,10 @@
 from abc import  abstractmethod as _abstractmethod
 from typing import List as _List, Union as _Union, Tuple
-from datetime import datetime, date
+import numpy as np
+from datetime import datetime, date, timedelta
 from holidays import HolidayBase as _HolidayBase, ECB as _ECB
 from rivapy.tools.datetools import Period, Schedule, _date_to_datetime, _datetime_to_date_list, _term_to_period
-from rivapy.tools.enums import DayCounterType, RollConvention, SecuritizationLevel, Currency
+from rivapy.tools.enums import DayCounterType, RollConvention, SecuritizationLevel, Currency, Rating
 from rivapy.tools._validators import _check_positivity, _check_start_before_end,  _string_to_calendar, _is_ascending_date_list
 import rivapy.tools.interfaces as interfaces
 from rivapy.tools.datetools import Period, Schedule
@@ -18,7 +19,8 @@ class BondBaseSpecification(interfaces.FactoryObject):
                  currency: _Union[Currency, str] = 'EUR',
                  notional: float = 100.0,
                  issuer: str = None,
-                 securitization_level: _Union[SecuritizationLevel, str] = SecuritizationLevel.NONE):
+                 securitization_level: _Union[SecuritizationLevel, str] = SecuritizationLevel.NONE,
+                 rating: _Union[Rating, str] = Rating.NONE):
         """Base bond specification.
 
         Args:
@@ -39,6 +41,7 @@ class BondBaseSpecification(interfaces.FactoryObject):
         self.maturity_date = maturity_date
         self.currency = currency
         self.notional = notional
+        self.rating = Rating.to_string(rating)
         # validate dates
         self._validate_derived_issued_instrument()
 
@@ -51,6 +54,7 @@ class BondBaseSpecification(interfaces.FactoryObject):
             'securitization_level': self.securitization_level,
             'issue_date': self.issue_date, 'maturity_date':self.maturity_date, 
             'currency': self.currency, 'notional': self.notional, 
+            'rating': self.rating
         }
         return result
 
@@ -75,6 +79,14 @@ class BondBaseSpecification(interfaces.FactoryObject):
             issuer(str): Issuer of the instrument.
         """
         self.__issuer = issuer
+
+    @property
+    def rating(self)->str:
+        return self.__rating
+
+    @rating.setter
+    def rating(self, rating:_Union[Rating, str])->str:
+        self.__rating = Rating.to_string(rating)
 
     @property
     def securitization_level(self) -> str:
@@ -214,7 +226,8 @@ class PlainVanillaCouponBondSpecification(BondBaseSpecification):
                  notional: float = 100.0,
                  issuer: str = None,
                   securitization_level: _Union[SecuritizationLevel, str] = None,
-                  stub: bool = True):
+                  stub: bool = True,
+                  rating: _Union[Rating, str] = Rating.NONE):
         """PlainVanillaCouponBond specification.
 
         Args:
@@ -228,6 +241,7 @@ class PlainVanillaCouponBondSpecification(BondBaseSpecification):
             notional (float, optional): Bond's notional/face value. Must be positive. Defaults to 100.0.
             issuer (str, optional): Name/id of issuer. Defaults to None.
             securitization_level (_Union[SecuritizationLevel, str], optional): Securitization level. Defaults to None.
+            rating ( _Union[Rating, str]): Paper rating.
         """
         super().__init__(obj_id,
                          issue_date,
@@ -235,7 +249,8 @@ class PlainVanillaCouponBondSpecification(BondBaseSpecification):
                          currency,
                          notional,
                          issuer,
-                         securitization_level)
+                         securitization_level, 
+                         rating)
 
         self.accrual_start = accrual_start
         self.coupon_freq = coupon_freq
@@ -273,6 +288,36 @@ class PlainVanillaCouponBondSpecification(BondBaseSpecification):
         result.update(super(PlainVanillaCouponBondSpecification, self)._to_dict())
         return result
     
+    def _create_sample(n_samples: int, seed: int = None, ref_date = None, issuers: _List[str]= None):
+        if seed is not None:
+            np.random.seed(seed)
+        if ref_date is None:
+            ref_date = datetime.now()
+        else: 
+            ref_date = _date_to_datetime(ref_date)
+        if issuers is None:
+            issuers = ['Issuer_'+str(i) for i in range(int(n_samples/2))]
+        result = []
+        coupons = np.arange(0.01, 0.09, 0.005)
+        currencies = list(Currency)
+        sec_levels = list(SecuritizationLevel)
+        for i in range(n_samples):
+            coupon_freq = np.random.choice(['3M', '6M', '9M', '1Y'], p=[0.1,0.4,0.1,0.4])
+            issuer = np.random.choice(issuers)
+            issue_date = ref_date + timedelta(days=np.random.randint(low=-365, high=0))
+            accrual_start = issue_date + timedelta(days=np.random.randint(low=0, high=10))
+            maturity_date = issue_date + timedelta(days=np.random.randint(low=30, high=10*365))
+            coupon = np.random.choice(coupons)
+            currency = np.random.choice(currencies)
+            notional = np.random.choice([100.0, 1000.0, 10_000.0, 100_0000.0])
+            issuer = np.random.choice(issuers)
+            sec_level = np.random.choice(sec_levels)
+            result.append(PlainVanillaCouponBondSpecification('BND_'+str(i), issue_date=issue_date, 
+                                maturity_date=maturity_date, accrual_start=accrual_start,
+                                coupon_freq=coupon_freq,
+                                coupon=coupon, notional=notional, issuer=issuer, 
+                                securitization_level=sec_level,currency=currency ))
+        return result
 
 class FixedRateBondSpecification(BondBaseSpecification):
     def __init__(self,

@@ -406,7 +406,9 @@ class Currency(_MyEnum):
     ZWD =  'ZWD'
 
 
-       
+class Country(_MyEnum):
+    DE = 'DE'
+    US = 'US' 
        
 
     

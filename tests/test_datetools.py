@@ -1,10 +1,18 @@
 from unittest import main, TestCase
-from rivapy.tools.datetools import roll_day, Period, Schedule
-from rivapy.tools.enums import RollConvention
-from datetime import date
+from rivapy.tools.datetools import roll_day, Period, Schedule, DayCounter
+from rivapy.tools.enums import RollConvention, DayCounterType
+from datetime import date, datetime
 from holidays import DE
 
-
+class DayCounterTests(TestCase):
+    
+    def test_ACT365(self):
+        d1 = datetime(2023,1,1)
+        d2 = datetime(2024,1,1)
+        self.assertAlmostEqual(DayCounter.yf_Act365Fixed(d1,d2), 1.0, delta=1e-5)
+        dc = DayCounter(DayCounterType.Act365Fixed)
+        self.assertAlmostEqual(DayCounter.yf_Act365Fixed(d1,d2), dc.yf(d1,d2), delta=1e-5)
+            
 class Unit_Tests(TestCase):
 
     def test_roll_day(self):

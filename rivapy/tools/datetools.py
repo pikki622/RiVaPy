@@ -3,11 +3,11 @@
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from calendar import monthrange
-from typing import List as _List, Union as _Union
+from typing import List as _List, Union as _Union, Callable
 from holidays import \
     HolidayBase as _HolidayBase, \
     ECB as _ECB
-from rivapy.tools.enums import RollConvention
+from rivapy.tools.enums import RollConvention, DayCounterType
 from rivapy.tools._validators import _string_to_calendar
 import logging
 
@@ -15,6 +15,31 @@ import logging
 # TODO: Switch to locally configured logger.
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+class DayCounter:
+
+    def __init__(self, daycounter: _Union[str, DayCounterType]):
+        self._dc = DayCounterType.to_string(daycounter)
+        self._yf = DayCounter.get(self._dc)
+
+    def yf(self, d1: _Union[date, datetime], d2: _Union[_Union[date, datetime],_List[_Union[date, datetime]]]):
+        try:
+            result = [self._yf(d1, d2_) for d2_ in d2]
+            return result
+        except:
+            return self._yf(d1,d2)
+
+
+    @staticmethod
+    def get(daycounter: _Union[str, DayCounterType])->Callable[[ _Union[date, datetime],  _Union[date, datetime]], float]:
+        dc = DayCounterType.to_string(daycounter)
+        if dc == DayCounterType.Act365Fixed.value:
+            return DayCounter.yf_Act365Fixed
+        raise NotImplementedError(dc + ' not yet implemented.')
+
+    @staticmethod
+    def yf_Act365Fixed(d1: _Union[date, datetime], d2: _Union[date, datetime])->float:
+        return ((d2-d1).total_seconds()/(365.0*24*60*60))
 
 
 class Period:

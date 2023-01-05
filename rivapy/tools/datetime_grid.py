@@ -5,6 +5,8 @@ import pandas as pd
 import numpy as np
 from scipy.optimize import curve_fit as curve_fit
 from scipy.interpolate import interp1d
+from rivapy.tools.enums import DayCounterType
+from rivapy.tools.datetools import DayCounter
 
 
 class DateTimeGrid:
@@ -13,7 +15,7 @@ class DateTimeGrid:
                 start:Union[dt.datetime, pd.Timestamp]=None, 
                 end:Union[dt.datetime, pd.Timestamp]=None, 
                 freq: str='1H', 
-                daycounter=None, 
+                daycounter:Union[str, DayCounterType]=DayCounterType.Act365Fixed, 
                 tz=None):
         if (start is not None) and (datetime_grid is not None):
             raise ValueError('Either datetime_grid or start must be None.')
@@ -24,7 +26,7 @@ class DateTimeGrid:
         if self.dates is not None:
             if start is None:
                 start = self.dates[0]
-            self.timegrid = np.array([(d-start).total_seconds()/pd.Timedelta(days=365).total_seconds() for d in self.dates])
+            self.timegrid = np.array(yf = DayCounter.get(daycounter).yf(start, self.dates))
             self.shape = self.timegrid.shape
             self.df = pd.DataFrame({'dates': self.dates, 'tg': self.timegrid})
         else:

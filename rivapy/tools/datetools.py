@@ -692,7 +692,7 @@ def next_or_previous_business_day(day: _Union[date, datetime],
     else:
         direction = -1
 
-    _date_to_datetime(day)
+    day = _date_to_datetime(day)
     while not is_business_day(day, calendar):
         day += direction * relativedelta(days=1)
 
@@ -871,8 +871,8 @@ def roll_day(day: _Union[date, datetime],
         date: Adjusted day.
     """
     roll_convention = RollConvention.to_string(business_day_convention)
-    if start_day is not None:
-        start_day = _date_to_datetime(start_day)
+    #if start_day is not None:
+    #    start_day = _date_to_datetime(start_day)
 
     switcher = {
         'Unadjusted': unadjusted,

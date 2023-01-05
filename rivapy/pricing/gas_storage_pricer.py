@@ -4,8 +4,18 @@ from typing import Callable, Union
 
 from rivapy.instruments.gasstorage_specification import GasStorageSpecification
 
+class _PolynomialRegressionFunction:
+    def __init__(self, deg: int):
+        self.deg = deg
+
+    def fit(self, S: np.array, C: np.array):
+        return np.polyfit(S, C, self.deg)
+
+    def predict(self, R: np.array, S: np.array):
+        return np.polyval(R, S)
+
 class PricingParameter:
-    def __init__(self, n_time_steps:int, n_actions: int, n_vol_levels: int, regression):
+    def __init__(self, n_time_steps:int, n_actions: int, n_vol_levels: int, regression: object = _PolynomialRegressionFunction):
         self.n_time_steps = n_time_steps    
         self.n_actions = n_actions         
         self.n_vol_levels = n_vol_levels
@@ -28,16 +38,6 @@ def _payoff_func(S, delta_v, a1=0, a2=0, b1=0, b2=0, action=1):
         else: #do nothing
             return 0
 
-class _PolynomialRegressionFunction:
-    def __init__(self, deg: int):
-        self.deg = deg
-
-    def fit(self, S: np.array, C: np.array):
-        return np.polyfit(S, C, self.deg)
-
-    def predict(self, R: np.array, S: np.array):
-        return np.polyval(R, S)
-
 def _penalty_func(S, v): #final condition
     def indicator_function(v, y):
         return np.array([0 if x == y else 1 for x in v])
@@ -46,9 +46,9 @@ def _penalty_func(S, v): #final condition
 
 def pricing_lsmc(storage: GasStorageSpecification, 
                 pricing_parameters: PricingParameter,
-                penalty_func: Callable,
                 prices: np.ndarray, 
-                nb_sims: int) -> Union[np.ndarray, np.ndarray]:
+                nb_sims: int,
+                penalty_func: Callable = _penalty_func) -> Union[np.ndarray, np.ndarray]:
     """ Least-Squares Monte Carlo Method for Pricing the Gas Storage
 
     Args:
@@ -119,93 +119,3 @@ def pricing_lsmc(storage: GasStorageSpecification,
             total_volume[t,m] = v[int(ind_level[t,m])]
 
     return acc_cashflows, total_volume
-
-if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-
-    def create_contract_dates(startdate: dt.datetime, enddate: dt.datetime, datestep:dt.timedelta)->list:
-        dates=[startdate]
-        while dates[-1] <= enddate-datestep:
-            dates.append(dates[-1]+datestep)
-        
-        #dates=[startdate]*n #nb_timesteps 
-        #for i in range(1,n):
-        #    dates[i] = dates[i-1] + dateStep
-        
-        return dates
-
-    class GeometricBrownianMotionSimulator:
-
-        """Simulate a 1D Geometric Brownian Motion for a datetime timegrid"""
-
-        def __init__(self, timegrid: list, mu: float, sigma: float):
-            
-            self.timegrid = timegrid
-            self.mu = mu
-            self.sigma = sigma
-
-        def create_gbm(self, X0: float, seed=None) -> np.array:
-
-            if seed is not None:
-                np.random.seed(seed)
-
-            dtt = []
-            for i in range(len(self.timegrid)-1):
-                dti = self.timegrid[i+1] - self.timegrid[i]
-                dtt.append(dti.days/365.0)
-            dt = np.array(dtt)
-            rnd = np.random.normal(size=(len(self.timegrid)-1))
-            Y = np.exp((self.mu - self.sigma**2 / 2) * dt + self.sigma * np.sqrt(dt) * rnd)
-            R = X0 * np.cumprod(Y) 
-            return np.insert(R, 0, X0) #add start value X0
-
-    ## Setting the parameters
-    nomination = 1 #daily nomination
-    #n = 365 # one year to maturity
-    M = 20 #number of independent price paths simulated
-    S0 = 1.0 #starting value
-    #kappa = 0.05
-    sigma = 0.00945
-    mu = 0.2
-    
-    n_vol_levels = 11 #101
-    min_volume = 0.0
-    max_volume = 10.0 #1_000
-    start_volume = 0.0 #100_000
-    end_volume = 0.0 #100_000
-    max_withdrawal = -1.0 #-7500
-    max_injection = 1.0 #2500
-
-    startdate = dt.datetime.fromisoformat('2021-01-01')
-    enddate = dt.datetime.fromisoformat('2021-12-31')
-    dateStep = dt.timedelta(days=nomination)
-    contractdates = create_contract_dates(startdate, enddate, dateStep)
-    #fwd_times = [(date - contractdates)/n for date in contractDates]
-
-    # Simulate M independent price paths S^b(1), S^b(T+1) for b = 1...M starting at S(0)
-    gbm_sim = GeometricBrownianMotionSimulator(contractdates, mu, sigma)
-    gbm = np.empty((len(contractdates), M))
-    for i in range(M):
-        gbm[:,i] = gbm_sim.create_gbm(S0, seed=i) 
-
-    params = PricingParameter(n_time_steps = 0, n_actions = 0, n_vol_levels = n_vol_levels, regression = _PolynomialRegressionFunction)
-    
-    store = GasStorageSpecification(contractdates, max_volume, max_withdrawal, max_injection)  
-    gas_cashflows, vol_levels = pricing_lsmc(store, params, _penalty_func, gbm, M)
-    
-    #avg_gas_cashflow = np.average(gas_cashflows, axis=2)
-
-    if True: 
-        plt.figure()
-        plt.plot(gbm)
-        plt.show()
-
-        plt.figure(figsize=(12,8))
-        plt.plot(vol_levels)
-        plt.show()
-        
-        for i in range(n_vol_levels):
-            plt.figure(figsize=(12,8))
-            plt.plot(gas_cashflows[:-10,i,:])
-            plt.show()
-

@@ -13,6 +13,15 @@ class OrnsteinUhlenbeck:
     def __init__(self, speed_of_mean_reversion: Union[float, Callable], 
                     volatility: Union[float, Callable], 
                     mean_reversion_level: Union[float, Callable] = 0):
+        """Ornstein Uhlenbeck stochastic process.
+
+            
+
+        Args:
+            speed_of_mean_reversion (Union[float, Callable]): The 
+            volatility (Union[float, Callable]): _description_
+            mean_reversion_level (Union[float, Callable], optional): _description_. Defaults to 0.
+        """
         self.speed_of_mean_reversion = speed_of_mean_reversion
         self.mean_reversion_level = mean_reversion_level
         self.volatility = volatility
@@ -28,6 +37,19 @@ class OrnsteinUhlenbeck:
         self._mean_reversion_level_grid = OrnsteinUhlenbeck._eval_grid(self.mean_reversion_level, timegrid)
         
     def simulate(self, timegrid, start_value, rnd):
+        """ Simulate the Ornstein Uhlenbeck process on the given timegrid using simple explicit euler scheme:
+            .. math:: S_{t+\\delta t} = S_t + \\theta (\\mu(t) - S_t )\\delta t +\\sigma(t) \\varepsilon
+
+            where :math: \\varepsilon is a (0,1)-normal random variate
+
+        Args:
+            timegrid (_type_): _description_
+            start_value (_type_): _description_
+            rnd (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         self._set_timegrid(timegrid)
         result = np.empty((self._timegrid.shape[0], rnd.shape[1]))
         result[0,:] = start_value

@@ -3,8 +3,9 @@ import pandas as pd
 import datetime as dt
 import matplotlib.pyplot as plt
 import warnings
-from typing import Union, Callable
+from typing import Union, Callable, List, Tuple
 from  rivapy.tools.datetime_grid import DateTimeGrid, InterpolatedFunction, PeriodicFunction
+from rivapy.models.ornstein_uhlenbeck import OrnsteinUhlenbeck
 from rivapy.tools.interfaces import DateTimeFunction
 
 def _logit(x):
@@ -126,6 +127,98 @@ class WindPowerModel:
         data['des_logit_efficiency'] = data['logit_efficiency']-pf_target.compute(DateTimeGrid(data.index))
         deviation_model.calibrate(data['des_logit_efficiency'].values,dt=1.0/(24.0*365.0),**kwargs)
         return WindPowerModel(deviation_model, pf_target)
+
+
+class WindPowerForecastModel:
+    class SimulationResult:
+        def __init__(self, paths:np.ndarray, wind_forecast_model, timegrid):
+            self._paths = paths
+            self._timegrid = timegrid
+            self._wind_forecast_model = wind_forecast_model
+
+        def n_forwards(self)->float:
+            return self._wind_forecast_model.n_forwards()
+
+        def expiry(self, expiry: int)->float:
+            return self._wind_forecast_model.expiries[expiry]
+
+        def get_fwd(self, index_t, index_T):
+            return self._wind_forecast_model.get_forward(self._paths[index_t,:],self._timegrid[index_t], index_T)
+            
+        def get_path(self):
+            return self._paths
+
+    def __init__(self, speed_of_mean_reversion: float, 
+                    volatility: float,
+                    expiries: List[float],
+                    forecasts: List[float], # must be given as logit of percentage of max_capacity
+                    name:str = 'Wind_Germany'):
+        """Simple Model to simulate wind forecasts.
+
+        The base model used within this model is the Ornstein-Uhlenbeck process and uses internally the class :class:`rivapy.models.OrnsteinUhlenbeck` with a mean level of zero to simulate the forecast.
+        Here, the forecast is computed as the expected value of the Ornstein-Uhlenbeck process conditioned on current simulated value.
+
+        Args:
+            speed_of_mean_reversion (float): The speed of mean reversion of the underlying Ornstein-Uhlenbeck process (:class:`rivapy.models.OrnsteinUhlenbeck`).
+            volatility (float): The volatility of the underlying Ornstein-Uhlenbeck process (:class:`rivapy.models.OrnsteinUhlenbeck`).
+            expiries (List[float]): A list of the expiries of the futures that will be simulated.
+            forecasts (List[float]): The forecasted value of each of the futures that will be simulated.
+            name (str): The name of teh respective wind region.
+        """
+        self.ou = OrnsteinUhlenbeck(speed_of_mean_reversion, volatility, mean_reversion_level=0.0)
+        self.expiries = expiries
+        self.forecasts = forecasts
+        self.name = name
+        self._timegrid = None
+        
+        self._ou_additive_forward_corrections = np.empty((len(expiries)))
+        for i in range(len(expiries)):
+            #mean_ou = _inv_logit(self.ou.compute_expected_value(0.0, expiries[i]))
+            correction = _logit(forecasts[i])-self.ou.compute_expected_value(0.0, expiries[i])
+            self._ou_additive_forward_corrections[i] = correction
+            
+    def n_forwards(self):
+        return len(self.expiries)
+    
+    def get_forward(self, paths, t, num_expiry):
+        expected_ou = self.ou.compute_expected_value(paths, self.expiries[num_expiry]-t)#+correction
+        return _inv_logit(expected_ou + self._ou_additive_forward_corrections[num_expiry])
+            
+    def rnd_shape(self, n_sims: int, n_timesteps: int)->tuple:
+        return (n_timesteps-1, n_sims)
+    
+    def simulate(self, timegrid, rnd: np.ndarray, startvalue=0.0):
+        paths = self.ou.simulate(timegrid, startvalue, rnd)
+        return WindPowerForecastModel.SimulationResult(paths, self, timegrid)
+
+    
+class MultiRegionWindForecastModel:
+    def __init__(self, region_forecast_models: List[Tuple[float, WindPowerForecastModel, List[float]]]):
+        if len(region_forecast_models)==0:
+            raise Exception('Empty list of models is not allowed')
+        ref_model = region_forecast_models[0]
+        for i in range(1, len(region_forecast_models)):
+            if len(region_forecast_models[i][2]) != len(ref_model[2]):
+                raise Exception('')
+        self._region_forecast_models = region_forecast_models
+
+    def rnd_shape(self, n_sims: int, n_timesteps: int)->tuple:
+        return (self._region_forecast_models[0][2], n_timesteps-1, n_sims, )
+
+    def simulate(self, timegrid, rnd: np.ndarray, startvalue=0.0):
+        results = []
+        
+        for wind_model in self._region_forecast_models:
+            rnd_ = wind_model[2][0]*rnd[0,:,:]
+            for i in range(1, len(wind_model[2])):
+                rnd_ += wind_model[2][i]*rnd[i,:,:]
+            results.append(wind_model[1].simulate(timegrid, rnd_, startvalue))
+        return results
+
+    def rnd_shape(self, n_sims: int, n_timesteps: int)->tuple:
+        return (len(self._region_forecast_models), n_timesteps-1, n_sims)
+
+    
 
 class SupplyFunction:
     def __init__(self, floor:tuple, cap:tuple, peak:tuple, offpeak:tuple, peak_hours: set):

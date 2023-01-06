@@ -119,35 +119,35 @@ class BondSpecificationTests(TestCase):
         self.assertEqual(floating_rate_note.securitization_level, 'NON_PREFERRED_SENIOR')
 
         # fixed-to-floating rate note
-        if False:
-            # not correctly working
-            fixed_to_floating_rate_note = FixedToFloatingRateNote.from_master_data('XS1887493309', datetime(2018, 10, 4),
-                                                                                datetime(2022, 1, 20), datetime(2023, 1, 20),
-                                                                                0.04247, '6M', '3M', True, True, True,
-                                                                                False, RollConvention.MODIFIED_FOLLOWING,
-                                                                                RollConvention.MODIFIED_FOLLOWING, 'DE',
-                                                                                'DE', DayCounterType.ThirtyU360, 0.0115,
-                                                                                'US_LIBOR_3M', 'USD', 1000000,
-                                                                                'Standard Chartered PLC',
-                                                                                SecuritizationLevel.SENIOR_SECURED)
-            self.assertEqual(fixed_to_floating_rate_note.obj_id, 'XS1887493309')
-            # self.assertEqual(fixed_to_floating_rate_note.issue_date, datetime(2018, 10, 4))
-            self.assertEqual(fixed_to_floating_rate_note.maturity_date, datetime(2023, 1, 20))
-            self.assertEqual(fixed_to_floating_rate_note.coupon_payment_dates, [datetime(2019, 1, 21), datetime(2019, 7, 22),
-                                                                                datetime(2020, 1, 20), datetime(2020, 7, 20),
-                                                                                datetime(2021, 1, 20), datetime(2021, 7, 20),
-                                                                                datetime(2022, 1, 20)])
-            self.assertEqual(fixed_to_floating_rate_note.coupons, [0.04247, 0.04247, 0.04247, 0.04247, 0.04247, 0.04247,
-                                                                0.04247])
-            self.assertEqual(fixed_to_floating_rate_note.coupon_period_dates, [datetime(2022, 1, 20), datetime(2022, 4, 20),
-                                                                            datetime(2022, 7, 20), datetime(2022, 10, 20),
-                                                                            datetime(2023, 1, 20)])
-            self.assertEqual(fixed_to_floating_rate_note.day_count_convention, '30U360')
-            self.assertEqual(fixed_to_floating_rate_note.spreads, [0.0115, 0.0115, 0.0115, 0.0115])
-            self.assertEqual(fixed_to_floating_rate_note.currency, 'USD')
-            self.assertEqual(fixed_to_floating_rate_note.notional, 1000000)
-            self.assertEqual(fixed_to_floating_rate_note.issuer, 'Standard Chartered PLC')
-            self.assertEqual(fixed_to_floating_rate_note.securitization_level, 'SENIOR_SECURED')
+        # if False:
+        #     # not correctly working
+        #     fixed_to_floating_rate_note = FixedToFloatingRateNote.from_master_data('XS1887493309', datetime(2018, 10, 4),
+        #                                                                         datetime(2022, 1, 20), datetime(2023, 1, 20),
+        #                                                                         0.04247, '6M', '3M', True, True, True,
+        #                                                                         False, RollConvention.MODIFIED_FOLLOWING,
+        #                                                                         RollConvention.MODIFIED_FOLLOWING, 'DE',
+        #                                                                         'DE', DayCounterType.ThirtyU360, 0.0115,
+        #                                                                         'US_LIBOR_3M', 'USD', 1000000,
+        #                                                                         'Standard Chartered PLC',
+        #                                                                         SecuritizationLevel.SENIOR_SECURED)
+        #     self.assertEqual(fixed_to_floating_rate_note.obj_id, 'XS1887493309')
+        #     # self.assertEqual(fixed_to_floating_rate_note.issue_date, datetime(2018, 10, 4))
+        #     self.assertEqual(fixed_to_floating_rate_note.maturity_date, datetime(2023, 1, 20))
+        #     self.assertEqual(fixed_to_floating_rate_note.coupon_payment_dates, [datetime(2019, 1, 21), datetime(2019, 7, 22),
+        #                                                                         datetime(2020, 1, 20), datetime(2020, 7, 20),
+        #                                                                         datetime(2021, 1, 20), datetime(2021, 7, 20),
+        #                                                                         datetime(2022, 1, 20)])
+        #     self.assertEqual(fixed_to_floating_rate_note.coupons, [0.04247, 0.04247, 0.04247, 0.04247, 0.04247, 0.04247,
+        #                                                         0.04247])
+        #     self.assertEqual(fixed_to_floating_rate_note.coupon_period_dates, [datetime(2022, 1, 20), datetime(2022, 4, 20),
+        #                                                                     datetime(2022, 7, 20), datetime(2022, 10, 20),
+        #                                                                     datetime(2023, 1, 20)])
+        #     self.assertEqual(fixed_to_floating_rate_note.day_count_convention, '30U360')
+        #     self.assertEqual(fixed_to_floating_rate_note.spreads, [0.0115, 0.0115, 0.0115, 0.0115])
+        #     self.assertEqual(fixed_to_floating_rate_note.currency, 'USD')
+        #     self.assertEqual(fixed_to_floating_rate_note.notional, 1000000)
+        #     self.assertEqual(fixed_to_floating_rate_note.issuer, 'Standard Chartered PLC')
+        #     self.assertEqual(fixed_to_floating_rate_note.securitization_level, 'SENIOR_SECURED')
 
 class BondPricingTests(TestCase):
 

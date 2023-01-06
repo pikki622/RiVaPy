@@ -242,7 +242,7 @@ class DiscountCurveParametrized(interfaces.FactoryObject):
     def __init__(self, 
                 obj_id: str,
                 refdate: Union[datetime, date], 
-                rate_parametrization: Callable[[float], float],
+                rate_parametrization,#: Callable[[float], float],
                 daycounter: Union[DayCounterType, str] = DayCounterType.Act365Fixed):
         if isinstance(refdate, datetime):
             self.refdate = refdate

@@ -267,6 +267,28 @@ class LoadModel:
         deviation = self.deviation_process.simulate(timegrid.timegrid, start_value, rnd)
         return self.load_profile.get_profile(timegrid)[:, np.newaxis] + deviation
    
+
+class ResidualDemandForwardModel:
+        
+    def __init__(self, wind_power_forecast, highest_price_ou_model, supply_curve):
+        self.wind_power_forecast = wind_power_forecast
+        self.highest_price_ou_model = highest_price_ou_model
+        self.supply_curve = supply_curve
+        
+    def simulate(self, timegrid, rnd, forecast_timepoints, highest_price):
+        highest_prices = self.highest_price_ou_model.simulate(timegrid, 1.0, rnd[0,:])*highest_price
+        wind = self.wind_power_forecast.simulate(timegrid, rnd[1,:])._paths
+        result = np.empty((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
+        current_forecast_residual = np.empty((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
+        for i in range(timegrid.shape[0]):
+            for j in range(self.wind_power_forecast.n_forwards()):
+                if i in forecast_timepoints:
+                        current_forecast_residual[i,:,j] = 1.0-self.wind_power_forecast.get_forward(wind[i,:], timegrid[i],j)
+                else:
+                    current_forecast_residual[i,:,j] = current_forecast_residual[i-1,:,j]
+            for j in range(self.wind_power_forecast.n_forwards()):
+                result[i,:,j] =  self.supply_curve.compute(current_forecast_residual[i,:,j], highest_prices[i,:] )
+        return result, current_forecast_residual
 class ResidualDemandModel:
     def __init__(self, wind_model: object, capacity_wind: float, 
                     solar_model: object, capacity_solar: float,  

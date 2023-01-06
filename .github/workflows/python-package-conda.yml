@@ -16,8 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Install boost
-      run: sudo apt-get install libboost-dev
+    #- name: Install boost
+    #  run: sudo apt-get install libboost-dev
     - name: Set up Python 3.8
       uses: actions/setup-python@v4
       with:
@@ -26,8 +26,8 @@ jobs:
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         $CONDA/bin/conda env update --file environment.yml --name base
-    - name: Install pyvacon from pypi test
-      run: $CONDA/bin/python -m pip install pyvacon 
+    #- name: Install pyvacon from pypi test
+    #  run: $CONDA/bin/python -m pip install pyvacon 
     - name: Lint with flake8
       run: |
         $CONDA/bin/conda install flake8

@@ -2,7 +2,7 @@
 from enum import Enum
 from datetime import datetime, date
 from typing import List as _List, Tuple as _Tuple, Union as _Union
-from holidays import  HolidayBase as _HolidayBase, CountryHoliday as _CountryHoliday
+from holidays import  HolidayBase as _HolidayBase, country_holidays as _CountryHoliday
 from holidays.utils import list_supported_countries as _list_supported_countries
 
 # from iso4217parse import \

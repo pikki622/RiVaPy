@@ -31,7 +31,7 @@ class _MyEnum(_Enum):
             return value
         if isinstance(value, cls):
             return value.value
-        raise Exception('Given value ' + str(value) + ' does not belong to enum ' + enum_class.__name__)
+        raise Exception('Given value ' + str(value) + ' does not belong to enum ' + cls.__name__)
 
 if _pyvacon_available:
     from pyvacon.finance.definition import DayCounter as _DayCounter

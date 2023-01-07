@@ -1,13 +1,16 @@
 from typing import Protocol
 try:
     import tensorflow as tf
-    #tf.config.run_functions_eagerly(True)
+    tf.config.run_functions_eagerly(False)
 except:
     import warnings
     warnings.warn('Tensorflow is not installed. You cannot use the PPA pricer!')
     
 import numpy as np
+import sys
+sys.path.append('C:/Users/doeltz/development/RiVaPy/')
 from rivapy.models import ResidualDemandForwardModel
+from sklearn.preprocessing import StandardScaler
 #class PPAModel(Protocol):
 #    def __init__(self, )
 
@@ -18,79 +21,89 @@ class PPAHedgeModel(tf.keras.Model):
         super().__init__(**kwargs)
         self.model = model
         self.specification = specification # storage constraints
-        self.price = tf.Variable([0],trainable=False,dtype ="float32")
+        self.price = tf.Variable([0], trainable=False, dtype ="float32")
         self.timegrid = timegrid
         self.lamda = regularization
         self._prev_q = None
         self._output_scaler = None
         self.strike = strike
+        #self._input_scaler_power = StandardScaler()
+        #self._input_scaler_forecast = StandardScaler()
 
     def __call__(self, x, training=True):
         power_fwd = x[0]
+        #power_fwd_scaled = x[1]
         forecast = x[1]
-        return self._compute_pnl(power_fwd, forecast, training) + self.price
+        #forecast_scaled = x[3]
+        return self._compute_pnl(power_fwd, forecast, training) #+ self.price
+    
+    #def get_delta(power_fwd, forecast, t):
+    #    power_fwd_scaled = self._input_scaler_power.transform(power_fwd)
+    #    forecast_scaled = self._input_scaler_forecast.transform(forecast)
 
     def _compute_pnl(self, power_fwd, forecast, training):
         pnl = 0.0
         self._prev_q = tf.zeros((tf.shape(power_fwd)[0]), name='prev_q')
         for i in range(self.timegrid.shape[0]-2):
-            t = [self.timegrid[i]]*tf.ones((tf.shape(power_fwd)[0],1))
+            t = [self.timegrid[i]]*tf.ones((tf.shape(power_fwd)[0],1))/self.timegrid[-1]
             quantity = tf.squeeze(self.model([power_fwd[:,i], forecast[:,i], t], training=training))
             pnl = pnl + tf.math.multiply((self._prev_q-quantity), tf.squeeze(power_fwd[:,i]))
             self._prev_q = quantity
-        pnl = pnl + (-self._prev_q+forecast[:,-1]) * tf.squeeze(power_fwd[:,-1])-forecast[:,-1]*self.strike
+        pnl = pnl + self._prev_q* tf.squeeze(power_fwd[:,-1]) + forecast[:,-1]*(tf.squeeze(power_fwd[:,-1])-self.strike)
+            # (-self._prev_q+forecast[:,-1]) * tf.squeeze(power_fwd[:,-1])-forecast[:,-1]*self.strike
         return pnl
 
     @tf.function
     def custom_loss(self, y_true, y_pred):
-        return -tf.keras.backend.mean(y_pred) + self.lamda*tf.keras.backend.var(y_true-y_pred)
+        return 0.0*-tf.keras.backend.mean(y_pred) + self.lamda*tf.keras.backend.var(y_true-y_pred)
 
   
-    def train(self, paths_fwd_price, paths_forecasts, strike_price, lr_schedule, epochs, batch_size, tensorboard=False, verbose=0):
+    def train(self, paths_fwd_price, paths_forecasts, lr_schedule, 
+        epochs, batch_size, tensorboard_log:str=None, verbose=0):
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule) #beta_1=0.9, beta_2=0.999)
         callbacks = []
-        if tensorboard:
-            import os
-            import datetime
-            logdir = os.path.join("logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+        if tensorboard_log is not None:
+            logdir = tensorboard_log#os.path.join("logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
             tensorboard_callback = tf.keras.callbacks.TensorBoard(logdir, histogram_freq=1)
             callbacks.append(tensorboard_callback)
         self.compile(optimizer=optimizer, loss=self.custom_loss)
         y = np.zeros((paths_fwd_price.shape[0],1))
-        #y[:,0]=-paths_forecasts[:,-1]*strike_price
-        return self.fit([paths_fwd_price, paths_forecasts], y, epochs=epochs, batch_size=batch_size, callbacks=callbacks, verbose=verbose)
+        return self.fit([paths_fwd_price, paths_forecasts], y, epochs=epochs, 
+                            batch_size=batch_size, callbacks=callbacks, verbose=verbose)
 
 def _build_model(depth, nb_neurons):
     power_fwd_price = tf.keras.Input(shape=(1,),name = "power_fwd_price")
     forecast = tf.keras.Input(shape=(1,),name = "forecast")
     t = tf.keras.Input(shape=(1,),name = "t")
     fully_connected_Input = tf.keras.layers.concatenate([power_fwd_price, forecast, t])         
-    values_all = tf.keras.layers.Dense(nb_neurons,activation = "relu", 
+    values_all = tf.keras.layers.Dense(nb_neurons,activation = "selu", 
                     kernel_initializer=tf.keras.initializers.GlorotUniform())(fully_connected_Input)       
     for _ in range(depth):
-        values_all = tf.keras.layers.Dense(nb_neurons,activation = "relu", 
+        values_all = tf.keras.layers.Dense(nb_neurons,activation = "selu", 
                     kernel_initializer=tf.keras.initializers.GlorotUniform())(values_all)            
-    value_out = tf.keras.layers.Dense(1, activation="sigmoid",
+    value_out = tf.keras.layers.Dense(1, activation="linear",
                     kernel_initializer=tf.keras.initializers.GlorotUniform())(values_all)
     model = tf.keras.Model(inputs=[power_fwd_price, forecast, t], outputs = value_out)
     return model
 
-def price(power_wind_model: ResidualDemandForwardModel, depth: int, nb_neurons: int, n_sims: int, regularization: float, 
-            strike_price: float, epochs: int, timegrid: np.ndarray, verbose: bool=0):
+def price(power_wind_model: ResidualDemandForwardModel, depth: int, nb_neurons: int, 
+            n_sims: int, regularization: float, 
+            strike_price: float, epochs: int, timegrid: np.ndarray, verbose: bool=0,
+            tensorboard_logdir: str=None, initial_lr: float = 1e-4, batch_size: int = 100, decay_rate: float=0.7):
     model = _build_model(depth, nb_neurons)
     rnd = np.random.normal(size=(2,timegrid.shape[0], n_sims))
     forecast_points = [i for i in range(len(timegrid)) if i%8==0]
-    fwd_prices, fwd_residuals = power_wind_model.simulate(timegrid, rnd, forecast_points, highest_price=1000)
+    fwd_prices, fwd_residuals = power_wind_model.simulate(timegrid, rnd, forecast_points)
     fwd_prices = np.squeeze(fwd_prices.transpose())
     #print(fwd_prices.mean(axis=0))
     forecasts =  np.squeeze((-fwd_residuals+1.0).transpose())
     hedge_model = PPAHedgeModel(model, timegrid, None, regularization, strike=strike_price)
-    batch_size = 100
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=1e-3,#1e-3,
-            decay_steps=500*fwd_prices.shape[0]/batch_size,
-            decay_rate=0.8)
-    hedge_model.train(fwd_prices, forecasts, strike_price, lr_schedule, epochs, batch_size, tensorboard=False, verbose=verbose)
+            initial_learning_rate=initial_lr,#1e-3,
+            decay_steps=100*fwd_prices.shape[0]/batch_size,
+            decay_rate=decay_rate)
+    hedge_model.train(fwd_prices, forecasts, lr_schedule, epochs, batch_size, 
+                        tensorboard_log=tensorboard_logdir, verbose=verbose)
     return hedge_model
 
 if __name__=='__main__':
@@ -123,12 +136,14 @@ if __name__=='__main__':
     timegrid = np.linspace(0.0, days*1.0/365.0, days*24)
     forecast_points = [i for i in range(len(timegrid)) if i%8==0]
     forward_expiries = [timegrid[-1]]
-    n_sims = 10_000
-    wind_forecast_model = WindPowerForecastModel(speed_of_mean_reversion=1.0, volatility=0.30, 
+    n_sims = 1_000
+
+    wind_forecast_model = WindPowerForecastModel(speed_of_mean_reversion=0.5, volatility=1.80, 
                                 expiries=forward_expiries,
                                 forecasts = [0.8, 0.8,0.8,0.8],#*len(forward_expiries)
                                 )
     highest_price = OrnsteinUhlenbeck(1.0, 1.0, mean_reversion_level=1.0)
     supply_curve = SmoothstepSupplyCurve(1.0, 0)
-    rdm = ResidualDemandForwardModel(wind_forecast_model, highest_price, supply_curve)
-    price(rdm , depth=3, nb_neurons=32, n_sims = 1000, regularization= 0.01, strike_price=200.0, verbose=1, epochs=100, timegrid=timegrid)
+    rdm = ResidualDemandForwardModel(wind_forecast_model, highest_price, supply_curve, max_price = 1.0)
+    price(rdm , depth=3, nb_neurons=32, n_sims = 1000, regularization= 0.01, 
+            strike_price=200.0, verbose=1, epochs=100, timegrid=timegrid)

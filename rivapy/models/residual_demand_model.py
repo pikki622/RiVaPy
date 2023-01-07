@@ -270,13 +270,14 @@ class LoadModel:
 
 class ResidualDemandForwardModel:
         
-    def __init__(self, wind_power_forecast, highest_price_ou_model, supply_curve):
+    def __init__(self, wind_power_forecast, highest_price_ou_model, supply_curve, max_price):
         self.wind_power_forecast = wind_power_forecast
         self.highest_price_ou_model = highest_price_ou_model
         self.supply_curve = supply_curve
+        self.max_price = max_price
         
-    def simulate(self, timegrid, rnd, forecast_timepoints, highest_price):
-        highest_prices = self.highest_price_ou_model.simulate(timegrid, 1.0, rnd[0,:])*highest_price
+    def simulate(self, timegrid, rnd, forecast_timepoints):
+        highest_prices = self.highest_price_ou_model.simulate(timegrid, 1.0, rnd[0,:])*self.max_price
         wind = self.wind_power_forecast.simulate(timegrid, rnd[1,:])._paths
         result = np.empty((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
         current_forecast_residual = np.empty((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
@@ -289,6 +290,7 @@ class ResidualDemandForwardModel:
             for j in range(self.wind_power_forecast.n_forwards()):
                 result[i,:,j] =  self.supply_curve.compute(current_forecast_residual[i,:,j], highest_prices[i,:] )
         return result, current_forecast_residual
+        
 class ResidualDemandModel:
     def __init__(self, wind_model: object, capacity_wind: float, 
                     solar_model: object, capacity_solar: float,  

@@ -9,7 +9,10 @@ except:
 import numpy as np
 import sys
 sys.path.append('C:/Users/doeltz/development/RiVaPy/')
+import datetime as dt
 from rivapy.models import ResidualDemandForwardModel
+from rivapy.instruments.ppa_specification import GreenPPASpecification
+from rivapy.tools.datetime_grid import DateTimeGrid
 from sklearn.preprocessing import StandardScaler
 #class PPAModel(Protocol):
 #    def __init__(self, )
@@ -86,18 +89,36 @@ def _build_model(depth, nb_neurons):
     model = tf.keras.Model(inputs=[power_fwd_price, forecast, t], outputs = value_out)
     return model
 
-def price(power_wind_model: ResidualDemandForwardModel, depth: int, nb_neurons: int, 
+
+def price( val_date: dt.datetime,
+            green_ppa: GreenPPASpecification,
+            power_wind_model: ResidualDemandForwardModel, 
+            depth: int, nb_neurons: int, 
             n_sims: int, regularization: float, 
-            strike_price: float, epochs: int, timegrid: np.ndarray, verbose: bool=0,
-            tensorboard_logdir: str=None, initial_lr: float = 1e-4, batch_size: int = 100, decay_rate: float=0.7):
+            epochs: int,
+            verbose: bool=0,
+            tensorboard_logdir: str=None, initial_lr: float = 1e-4, 
+            batch_size: int = 100, decay_rate: float=0.7, seed: int = 42):
+    #print(locals())
+    if green_ppa.technology != power_wind_model.get_technology():
+        raise Exception('PPA technology ' + green_ppa.technology + 
+                        ' does not equal residual demand technology model ' 
+                        + power_wind_model.get_technology())
+    if green_ppa.n_deliveries() > 1:
+        raise Exception('Pricer for more than one delivery not yet implemented.')
+    ppa_schedule = green_ppa.get_schedule()
+    if ppa_schedule[-1] <= val_date:
+        return None
+    tf.random.set_seed(seed)
     model = _build_model(depth, nb_neurons)
-    rnd = np.random.normal(size=(2,timegrid.shape[0], n_sims))
-    forecast_points = [i for i in range(len(timegrid)) if i%8==0]
-    fwd_prices, fwd_residuals = power_wind_model.simulate(timegrid, rnd, forecast_points)
+    timegrid = DateTimeGrid(start=val_date, end=ppa_schedule[-1], freq='1H')
+    rnd = np.random.normal(size=power_wind_model.rnd_shape(n_sims, timegrid.timegrid.shape[0]))
+    forecast_points = [i for i in range(len(timegrid.timegrid)) if i%8==0]
+    fwd_prices, fwd_residuals = power_wind_model.simulate(timegrid.timegrid, rnd, forecast_points)
     fwd_prices = np.squeeze(fwd_prices.transpose())
     #print(fwd_prices.mean(axis=0))
     forecasts =  np.squeeze((-fwd_residuals+1.0).transpose())
-    hedge_model = PPAHedgeModel(model, timegrid, None, regularization, strike=strike_price)
+    hedge_model = PPAHedgeModel(model, timegrid.timegrid, None, regularization, strike=green_ppa.fixed_price)
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=initial_lr,#1e-3,
             decay_steps=100*fwd_prices.shape[0]/batch_size,
@@ -145,5 +166,15 @@ if __name__=='__main__':
     highest_price = OrnsteinUhlenbeck(1.0, 1.0, mean_reversion_level=1.0)
     supply_curve = SmoothstepSupplyCurve(1.0, 0)
     rdm = ResidualDemandForwardModel(wind_forecast_model, highest_price, supply_curve, max_price = 1.0)
-    price(rdm , depth=3, nb_neurons=32, n_sims = 1000, regularization= 0.01, 
-            strike_price=200.0, verbose=1, epochs=100, timegrid=timegrid)
+    val_date = dt.datetime(2023,1,1)
+    spec = GreenPPASpecification(technology = 'Wind_Onshore', 
+                            schedule = [val_date + dt.timedelta(days=2)], 
+                             fixed_price=0.2)
+    model = price(val_date, spec, rdm , depth=3, nb_neurons=64, n_sims = n_sims, regularization= 10.0, 
+              epochs = 50, timegrid=timegrid, verbose=1, 
+              initial_lr = 1e-2,
+              batch_size=200,
+              decay_rate=0.6,
+              tensorboard_logdir=None
+            )
+   

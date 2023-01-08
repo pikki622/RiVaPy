@@ -276,6 +276,12 @@ class ResidualDemandForwardModel:
         self.supply_curve = supply_curve
         self.max_price = max_price
         
+    def rnd_shape(self, n_sims: int, n_timesteps: int)->tuple:
+        return (2,n_timesteps-1, n_sims)
+
+    def get_technology(self):
+        return self.wind_power_forecast.name
+
     def simulate(self, timegrid, rnd, forecast_timepoints):
         highest_prices = self.highest_price_ou_model.simulate(timegrid, 1.0, rnd[0,:])*self.max_price
         wind = self.wind_power_forecast.simulate(timegrid, rnd[1,:])._paths

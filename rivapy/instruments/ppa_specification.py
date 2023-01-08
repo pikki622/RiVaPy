@@ -120,6 +120,11 @@ class PPASpecification(interfaces.FactoryObject):
 		self._schedule_df['amount'] = amount
 		self._schedule_df['flow'] = None
 
+	def get_schedule(self)->List[dt.datetime]:
+		if not isinstance(self.schedule, list):
+			return self.schedule.get_schedule()
+		return self.schedule
+
 	def _to_dict(self)->dict:
 		try: # if isinstance(self.schedule, interfaces.FactoryObject):
 			schedule = self.schedule.to_dict()
@@ -132,10 +137,12 @@ class PPASpecification(interfaces.FactoryObject):
 			'fixed_price': self.fixed_price
 		}
 
-
 	def set_amount(self, amount):
 		self.amount = amount
 		self._schedule_df['amount'] = amount
+
+	def n_deliveries(self):
+		return self._schedule_df.shape[0]
 
 	def compute_flows(self, refdate: dt.datetime, pfc, result: pd.DataFrame=None, result_col = None)->pd.DataFrame:
 		df = pfc.get_df()

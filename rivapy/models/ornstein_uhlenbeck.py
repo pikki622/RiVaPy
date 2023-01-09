@@ -1,7 +1,8 @@
 from typing import Union, Callable
 import numpy as np
+from rivapy.tools.interfaces import FactoryObject
 
-class OrnsteinUhlenbeck:
+class OrnsteinUhlenbeck(FactoryObject):
 
     def _eval_grid(f, timegrid):
         try:
@@ -26,6 +27,10 @@ class OrnsteinUhlenbeck:
         self.mean_reversion_level = mean_reversion_level
         self.volatility = volatility
         self._timegrid = None
+
+    def _to_dict(self) -> dict:
+        return {'speed_of_mean_reversion': self.speed_of_mean_reversion, 'volatility': self.volatility,
+                'mean_reversion_level': self.mean_reversion_level}
 
     def _set_timegrid(self, timegrid):
         self._timegrid = np.copy(timegrid)

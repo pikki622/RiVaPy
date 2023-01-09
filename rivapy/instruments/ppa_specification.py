@@ -152,17 +152,33 @@ class PPASpecification(interfaces.FactoryObject):
 		result[result_col] = self._schedule_df['amount']*(df.loc[self._schedule_df.index]['values']-self.fixed_price)
 
 class GreenPPASpecification(PPASpecification):
-	def __init__(self,schedule: Union[SimpleSchedule, List[dt.datetime]],
+	def __init__(self,
+				schedule: Union[SimpleSchedule, List[dt.datetime]],
 				technology: str,
 				fixed_price: float,
+				max_capacity: float,
 				id:str = None):
+		"""Green power purchase agreement.
+
+		In contrast to a normal PPA the quantities of this PPA are related to some kind of 
+		renewable energy such as wind or solar, i.e. the quantity is related to some uncertain production.
+		
+		Args:
+			schedule (Union[SimpleSchedule, List[dt.datetime]]): _description_
+			technology (str): _description_
+			fixed_price (float): _description_
+			max_capacity (float): _description__
+			id (str, optional): _description_. Defaults to None.
+		"""
 		super().__init__(None, schedule, fixed_price, id)
 		self.technology = technology
+		self.max_capacity = max_capacity
 
 	def _to_dict(self)->dict:
 		result = super()._to_dict()
 		del result['amount']
 		result['technology'] = self.technology
+		result['max_capacity'] = self.max_capacity
 		return result
 
 	def compute_flows(self, refdate: dt.datetime, pfc, forecast_amount: np.ndarray, result: pd.DataFrame=None, result_col = None)->pd.DataFrame:

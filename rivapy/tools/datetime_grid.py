@@ -26,7 +26,7 @@ class DateTimeGrid:
         if self.dates is not None:
             if start is None:
                 start = self.dates[0]
-            self.timegrid = np.array(yf = DayCounter.get(daycounter).yf(start, self.dates))
+            self.timegrid = np.array(DayCounter(daycounter).yf(start, self.dates))
             self.shape = self.timegrid.shape
             self.df = pd.DataFrame({'dates': self.dates, 'tg': self.timegrid})
         else:

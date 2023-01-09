@@ -3,10 +3,11 @@ import pandas as pd
 import datetime as dt
 import matplotlib.pyplot as plt
 import warnings
-from typing import Union, Callable, List, Tuple
-from  rivapy.tools.datetime_grid import DateTimeGrid, InterpolatedFunction, PeriodicFunction
+from typing import Union, Callable, List, Tuple, Dict
+from scipy.special import comb
+from rivapy.tools.datetime_grid import DateTimeGrid, InterpolatedFunction, PeriodicFunction
 from rivapy.models.ornstein_uhlenbeck import OrnsteinUhlenbeck
-from rivapy.tools.interfaces import DateTimeFunction
+from rivapy.tools.interfaces import DateTimeFunction, FactoryObject
 
 def _logit(x):
     return np.log(x/(1-x))
@@ -128,8 +129,30 @@ class WindPowerModel:
         deviation_model.calibrate(data['des_logit_efficiency'].values,dt=1.0/(24.0*365.0),**kwargs)
         return WindPowerModel(deviation_model, pf_target)
 
+class SmoothstepSupplyCurve(FactoryObject): 
+    def __init__(self, s, N):
+        self.s = s
+        self.N = N
+        
+    def _to_dict(self):
+        return {'s': self.s, 'N': self.N}
 
-class WindPowerForecastModel:
+    @staticmethod
+    def smoothstep(x, x_min=0, x_max=1, N=1):
+        x = np.clip((x - x_min) / (x_max - x_min), 0, 1)
+        result = 0
+        for n in range(0, N + 1):
+            result += comb(N + n, n) * comb(2 * N + 1, N - n) * (-x) ** n
+        result *= x ** (N + 1)
+        return result
+
+    def __call__(self, residual):
+        #wind_production = wind_production#np.maximum(np.minimum(wind_production, 0.99), 0.01)
+        #residual = (1.0-wind_production)
+        residual = np.power(residual, self.s)
+        return SmoothstepSupplyCurve.smoothstep(residual, N=self.N)
+
+class WindPowerForecastModel(FactoryObject):
     class SimulationResult:
         def __init__(self, paths:np.ndarray, wind_forecast_model, timegrid):
             self._paths = paths
@@ -152,7 +175,8 @@ class WindPowerForecastModel:
                     volatility: float,
                     expiries: List[float],
                     forecasts: List[float], # must be given as logit of percentage of max_capacity
-                    name:str = 'Wind_Germany'):
+                    name: str = 'Wind_Germany',
+                    ):
         """Simple Model to simulate wind forecasts.
 
         The base model used within this model is the Ornstein-Uhlenbeck process and uses internally the class :class:`rivapy.models.OrnsteinUhlenbeck` with a mean level of zero to simulate the forecast.
@@ -177,6 +201,9 @@ class WindPowerForecastModel:
             correction = _logit(forecasts[i])-self.ou.compute_expected_value(0.0, expiries[i])
             self._ou_additive_forward_corrections[i] = correction
             
+    def _to_dict(self)->dict:
+        return {'speed_of_mean_reversion': self.ou.speed_of_mean_reversion, 'volatility': self.ou.volatility,
+                'expiries': self.expiries, 'forecasts': self.forecasts, 'name': self.name}
     def n_forwards(self):
         return len(self.expiries)
     
@@ -191,7 +218,6 @@ class WindPowerForecastModel:
         paths = self.ou.simulate(timegrid, startvalue, rnd)
         return WindPowerForecastModel.SimulationResult(paths, self, timegrid)
 
-    
 class MultiRegionWindForecastModel:
     def __init__(self, region_forecast_models: List[Tuple[float, WindPowerForecastModel, List[float]]]):
         if len(region_forecast_models)==0:
@@ -217,8 +243,6 @@ class MultiRegionWindForecastModel:
 
     def rnd_shape(self, n_sims: int, n_timesteps: int)->tuple:
         return (len(self._region_forecast_models), n_timesteps-1, n_sims)
-
-    
 
 class SupplyFunction:
     def __init__(self, floor:tuple, cap:tuple, peak:tuple, offpeak:tuple, peak_hours: set):
@@ -266,36 +290,66 @@ class LoadModel:
         result[0,:] = start_value
         deviation = self.deviation_process.simulate(timegrid.timegrid, start_value, rnd)
         return self.load_profile.get_profile(timegrid)[:, np.newaxis] + deviation
-   
 
-class ResidualDemandForwardModel:
+class ResidualDemandForwardModel(FactoryObject):
         
-    def __init__(self, wind_power_forecast, highest_price_ou_model, supply_curve, max_price):
+    def __init__(self, wind_power_forecast,
+                        highest_price_ou_model, 
+                        supply_curve: Callable[[float], float],
+                        max_price: float,
+                        region_to_capacity: Dict[str, float],
+                        forecast_hours: List[int]=None):
         self.wind_power_forecast = wind_power_forecast
         self.highest_price_ou_model = highest_price_ou_model
         self.supply_curve = supply_curve
+        self.forecast_hours = forecast_hours
         self.max_price = max_price
+        self.region_to_capacity = region_to_capacity
         
+    def _to_dict(self)->dict:
+        return {'wind_power_forecast': self.wind_power_forecast.to_dict(),
+                'supply_curve': self.supply_curve.to_dict(),
+                'highest_price_ou_model': self.highest_price_ou_model.to_dict(),
+                'forecast_hours': self.forecast_hours,
+                'max_price': self.max_price,
+                'region_to_capacity': self.region_to_capacity}
+
     def rnd_shape(self, n_sims: int, n_timesteps: int)->tuple:
         return (2,n_timesteps-1, n_sims)
 
-    def get_technology(self):
+    def get_technology(self)->str:
+        """Return name of the technology modeled.
+
+        Returns:
+            str: Name of instrument.
+        """
         return self.wind_power_forecast.name
 
-    def simulate(self, timegrid, rnd, forecast_timepoints):
+    def simulate(self, timegrid: Union[np.ndarray, DateTimeGrid], 
+                rnd: np.ndarray, 
+                forecast_timepoints: List[int]=None):
+        if forecast_timepoints is None and self.forecast_hours is None:
+            raise Exception('Either a list of timepoints or a list of publishing hours for forecast must be specified.')
+        if forecast_timepoints is not None and self.forecast_hours is not None:
+            raise Exception('You cannot specify forecast_timepoints since forecast_hours have already been specified.')
+        if forecast_timepoints is None:
+            if not isinstance(timegrid, DateTimeGrid):
+                raise Exception('If forecast_timepoints is None, timegrid must be of type DateTimeGrid so that the points can be determined.')
+            forecast_timepoints = [i for i in range(len(timegrid.dates)) if timegrid.dates[i].hour in self.forecast_hours]
+            timegrid = timegrid.timegrid
         highest_prices = self.highest_price_ou_model.simulate(timegrid, 1.0, rnd[0,:])*self.max_price
         wind = self.wind_power_forecast.simulate(timegrid, rnd[1,:])._paths
-        result = np.empty((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
+        power_fwd = np.empty((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
         current_forecast_residual = np.empty((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
         for i in range(timegrid.shape[0]):
             for j in range(self.wind_power_forecast.n_forwards()):
-                if i in forecast_timepoints:
+                if i in forecast_timepoints or i == 0:
                         current_forecast_residual[i,:,j] = 1.0-self.wind_power_forecast.get_forward(wind[i,:], timegrid[i],j)
                 else:
                     current_forecast_residual[i,:,j] = current_forecast_residual[i-1,:,j]
             for j in range(self.wind_power_forecast.n_forwards()):
-                result[i,:,j] =  self.supply_curve.compute(current_forecast_residual[i,:,j], highest_prices[i,:] )
-        return result, current_forecast_residual
+                power_fwd[i,:,j] =  self.supply_curve(current_forecast_residual[i,:,j] )*highest_prices[i,:]
+        return power_fwd, current_forecast_residual
         
 class ResidualDemandModel:
     def __init__(self, wind_model: object, capacity_wind: float, 

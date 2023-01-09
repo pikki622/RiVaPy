@@ -219,26 +219,52 @@ class WindPowerForecastModel(FactoryObject):
         return WindPowerForecastModel.SimulationResult(paths, self, timegrid)
 
 class MultiRegionWindForecastModel:
-    def __init__(self, region_forecast_models: List[Tuple[float, WindPowerForecastModel, List[float]]]):
+    class Region:
+        def __init__(self, name: str, model: WindPowerForecastModel,  capacity: float, rnd_weights: List[float]):
+            self.name = name
+            self.model = model
+            self.capacity  = capacity
+            self.rnd_weights = rnd_weights
+
+        def n_random(self):
+            return len(self.rnd_weights)
+
+    def __init__(self, region_forecast_models: List[Region]):
         if len(region_forecast_models)==0:
             raise Exception('Empty list of models is not allowed')
-        ref_model = region_forecast_models[0]
+        n_rnd_ref_model = region_forecast_models[0].n_random()
+        n_fwd_ref_model = region_forecast_models[0].model.n_forwards()
         for i in range(1, len(region_forecast_models)):
-            if len(region_forecast_models[i][2]) != len(ref_model[2]):
-                raise Exception('')
+            if region_forecast_models[i].n_random() != n_rnd_ref_model:
+                raise Exception('All regions must have the same number of random variables.')
+            if region_forecast_models[i].model.n_forwards() != n_fwd_ref_model:
+                raise Exception('All regions must have the same number of fwds.')
         self._region_forecast_models = region_forecast_models
 
+    def n_forwards(self):
+        return self.region_forecast_models[0].model.n_forwards()
+
     def rnd_shape(self, n_sims: int, n_timesteps: int)->tuple:
-        return (self._region_forecast_models[0][2], n_timesteps-1, n_sims, )
+        return (self._region_forecast_models[0].rnd_weights, n_timesteps-1, n_sims)
+
+    def total_capacity(self):
+        result = 0.0
+        for r in self._region_forecast_models:
+            result += r.capacity
+
+    def region_relative_capacity(self, region: str):
+        for r in self._region_forecast_models:
+            if r.name == region:
+                return r.capacity/self.total_capacity()
+        raise Exception('Model does not contain a region with name ' + region)
 
     def simulate(self, timegrid, rnd: np.ndarray, startvalue=0.0):
-        results = []
-        
-        for wind_model in self._region_forecast_models:
-            rnd_ = wind_model[2][0]*rnd[0,:,:]
-            for i in range(1, len(wind_model[2])):
-                rnd_ += wind_model[2][i]*rnd[i,:,:]
-            results.append(wind_model[1].simulate(timegrid, rnd_, startvalue))
+        results = {}
+        for region in self._region_forecast_models:
+            rnd_ = region.rnd_weights[0]*rnd[0,:,:]
+            for i in range(1, region.n_random()):
+                rnd_ += region.rnd_weights[i]*rnd[i,:,:]
+            results[region.name] = region.model.simulate(timegrid, rnd_, startvalue)
         return results
 
     def rnd_shape(self, n_sims: int, n_timesteps: int)->tuple:
@@ -297,14 +323,13 @@ class ResidualDemandForwardModel(FactoryObject):
                         highest_price_ou_model, 
                         supply_curve: Callable[[float], float],
                         max_price: float,
-                        region_to_capacity: Dict[str, float],
                         forecast_hours: List[int]=None):
         self.wind_power_forecast = wind_power_forecast
         self.highest_price_ou_model = highest_price_ou_model
         self.supply_curve = supply_curve
         self.forecast_hours = forecast_hours
         self.max_price = max_price
-        self.region_to_capacity = region_to_capacity
+        #self.region_to_capacity = region_to_capacity
         
     def _to_dict(self)->dict:
         return {'wind_power_forecast': self.wind_power_forecast.to_dict(),
@@ -312,7 +337,8 @@ class ResidualDemandForwardModel(FactoryObject):
                 'highest_price_ou_model': self.highest_price_ou_model.to_dict(),
                 'forecast_hours': self.forecast_hours,
                 'max_price': self.max_price,
-                'region_to_capacity': self.region_to_capacity}
+                #'region_to_capacity': self.region_to_capacity
+                }
 
     def rnd_shape(self, n_sims: int, n_timesteps: int)->tuple:
         return (2,n_timesteps-1, n_sims)
@@ -324,6 +350,35 @@ class ResidualDemandForwardModel(FactoryObject):
             str: Name of instrument.
         """
         return self.wind_power_forecast.name
+
+    def _simulate_multi_region(self, timegrid: Union[np.ndarray, DateTimeGrid], 
+                rnd: np.ndarray, 
+                forecast_timepoints: List[int]=None):
+        if forecast_timepoints is None and self.forecast_hours is None:
+            raise Exception('Either a list of timepoints or a list of publishing hours for forecast must be specified.')
+        if forecast_timepoints is not None and self.forecast_hours is not None:
+            raise Exception('You cannot specify forecast_timepoints since forecast_hours have already been specified.')
+        if forecast_timepoints is None:
+            if not isinstance(timegrid, DateTimeGrid):
+                raise Exception('If forecast_timepoints is None, timegrid must be of type DateTimeGrid so that the points can be determined.')
+            forecast_timepoints = [i for i in range(len(timegrid.dates)) if timegrid.dates[i].hour in self.forecast_hours]
+            timegrid = timegrid.timegrid
+        highest_prices = self.highest_price_ou_model.simulate(timegrid, 1.0, rnd[0,:])*self.max_price
+        wind = self.wind_power_forecast.simulate(timegrid, rnd[1:,:])._paths
+        current_forecast_residual = np.ones((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
+        for region, forecast in wind.items():
+            multiplier = self.wind_power_forecast.region_relative_capacity(region)
+            for i in range(timegrid.shape[0]):
+                for j in range(self.wind_power_forecast.n_forwards()):
+                    if i in forecast_timepoints or i == 0:
+                        current_forecast_residual[i,:,j] -= multiplier*forecast.get_forward(wind[i,:], timegrid[i],j)
+                    else:
+                        current_forecast_residual[i,:,j] = current_forecast_residual[i-1,:,j]
+
+        power_fwd = np.empty((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
+        for j in range(self.wind_power_forecast.n_forwards()):
+            power_fwd[i,:,j] =  self.supply_curve(current_forecast_residual[i,:,j] )*highest_prices[i,:]
+        return power_fwd, current_forecast_residual
 
     def simulate(self, timegrid: Union[np.ndarray, DateTimeGrid], 
                 rnd: np.ndarray, 

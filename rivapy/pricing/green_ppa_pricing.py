@@ -33,15 +33,17 @@ class PPAHedgeModel(tf.keras.Model):
         self.strike = strike
         
     def __call__(self, x, training=True):
-        power_fwd = x[0]
-        forecast = x[1]
-        return self._compute_pnl(power_fwd, forecast, training) #+ self.price
+        return self._compute_pnl(x, training) #+ self.price
     
     #def get_delta(power_fwd, forecast, t):
     #    power_fwd_scaled = self._input_scaler_power.transform(power_fwd)
     #    forecast_scaled = self._input_scaler_forecast.transform(forecast)
 
-    def _compute_pnl(self, power_fwd, forecast, training):
+    def _compute_pnl(self,x, training):
+        power_fwd = x[0]
+        forecast = x[1]
+        rlzd_qty = x[-1]
+        
         pnl = 0.0
         self._prev_q = tf.zeros((tf.shape(power_fwd)[0]), name='prev_q')
         for i in range(self.timegrid.shape[0]-2):
@@ -49,7 +51,7 @@ class PPAHedgeModel(tf.keras.Model):
             quantity = tf.squeeze(self.model([power_fwd[:,i], forecast[:,i], t], training=training))
             pnl = pnl + tf.math.multiply((self._prev_q-quantity), tf.squeeze(power_fwd[:,i]))
             self._prev_q = quantity
-        pnl = pnl + self._prev_q* tf.squeeze(power_fwd[:,-1]) + forecast[:,-1]*(tf.squeeze(power_fwd[:,-1])-self.strike)
+        pnl = pnl + self._prev_q* tf.squeeze(power_fwd[:,-1]) + rlzd_qty[:,-1]*(tf.squeeze(power_fwd[:,-1])-self.strike)
             # (-self._prev_q+forecast[:,-1]) * tf.squeeze(power_fwd[:,-1])-forecast[:,-1]*self.strike
         return pnl
 
@@ -57,7 +59,7 @@ class PPAHedgeModel(tf.keras.Model):
     def custom_loss(self, y_true, y_pred):
         return 0.0*-tf.keras.backend.mean(y_pred) + self.lamda*tf.keras.backend.var(y_true-y_pred)
 
-    def train(self, paths_fwd_price, paths_forecasts, lr_schedule, 
+    def train(self, paths_fwd_price, paths_forecasts, rlzd_qty, lr_schedule, 
         epochs, batch_size, tensorboard_log:str=None, verbose=0):
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule) #beta_1=0.9, beta_2=0.999)
         callbacks = []
@@ -67,7 +69,7 @@ class PPAHedgeModel(tf.keras.Model):
             callbacks.append(tensorboard_callback)
         self.compile(optimizer=optimizer, loss=self.custom_loss)
         y = np.zeros((paths_fwd_price.shape[0],1))
-        return self.fit([paths_fwd_price, paths_forecasts], y, epochs=epochs, 
+        return self.fit([paths_fwd_price, paths_forecasts, rlzd_qty], y, epochs=epochs, 
                             batch_size=batch_size, callbacks=callbacks, verbose=verbose)
 
 def _build_model(depth, nb_neurons):
@@ -96,13 +98,14 @@ class PricingResults:
 def _validate(val_date: dt.datetime,
             green_ppa: GreenPPASpecification,
             power_wind_model: ResidualDemandForwardModel):
-    if green_ppa.technology != power_wind_model.get_technology():
-        raise Exception('PPA technology ' + green_ppa.technology + 
-                        ' does not equal residual demand technology model ' 
-                        + power_wind_model.get_technology())
+    #if green_ppa.technology != power_wind_model.get_technology():
+    #    raise Exception('PPA technology ' + green_ppa.technology + 
+    #                    ' does not equal residual demand technology model ' 
+    #                    + power_wind_model.get_technology())
     if green_ppa.n_deliveries() > 1:
         raise Exception('Pricer for more than one delivery not yet implemented.')
-       
+
+ 
 def price( val_date: dt.datetime,
             green_ppa: GreenPPASpecification,
             power_wind_model: ResidualDemandForwardModel, 
@@ -122,15 +125,21 @@ def price( val_date: dt.datetime,
     timegrid = DateTimeGrid(start=val_date, end=ppa_schedule[-1], freq='1H')
     rnd = np.random.normal(size=power_wind_model.rnd_shape(n_sims, timegrid.timegrid.shape[0]))
     fwd_prices, forecasts = power_wind_model.simulate(timegrid, rnd)
+    rlzd_qty = power_wind_model.compute_rlzd_qty(green_ppa.location, forecasts)
+    
     fwd_prices = np.squeeze(fwd_prices.transpose())
+    
     #print(fwd_prices.mean(axis=0))
-    forecasts =  np.squeeze(forecasts.transpose())
+    # dirty hack to test!!!
+    k = list(forecasts.keys())[0]
+    forecasts =  np.squeeze(forecasts[k].transpose())
+    #######################
     hedge_model = PPAHedgeModel(model, timegrid.timegrid, None, regularization, strike=green_ppa.fixed_price)
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=initial_lr,#1e-3,
             decay_steps=100*fwd_prices.shape[0]/batch_size,
             decay_rate=decay_rate)
-    hedge_model.train(fwd_prices, forecasts, lr_schedule, epochs, batch_size, 
+    hedge_model.train(fwd_prices, forecasts, rlzd_qty, lr_schedule, epochs, batch_size, 
                         tensorboard_log=tensorboard_logdir, verbose=verbose)
     return PricingResults(hedge_model, timegrid, fwd_prices, forecasts)
 
@@ -140,30 +149,42 @@ if __name__=='__main__':
     import numpy as np
     from scipy.special import comb
 
+    val_date = dt.datetime(2023,1,1)
     days = 2
     timegrid = np.linspace(0.0, days*1.0/365.0, days*24)
-    forecast_points = [i for i in range(len(timegrid)) if i%8==0]
+    #forecast_points = [i for i in range(len(timegrid)) if i%8==0]
     forward_expiries = [timegrid[-1]]
     n_sims = 1_000
 
     wind_forecast_model = WindPowerForecastModel(speed_of_mean_reversion=0.5, volatility=1.80, 
                                 expiries=forward_expiries,
-                                forecasts = [0.8, 0.8, 0.8, 0.8],
+                                forecasts = [0.8, 0.8,0.8,0.8],#*len(forward_expiries)
+                                region = 'Onshore'
                                 )
     highest_price = OrnsteinUhlenbeck(1.0, 1.0, mean_reversion_level=1.0)
     supply_curve = SmoothstepSupplyCurve(1.0, 0)
-    rdm = ResidualDemandForwardModel(wind_forecast_model, highest_price, supply_curve, 
-                            max_price = 1.0,  forecast_hours=[10, 14, 18],
-                            region_to_capacity={} )
-    val_date = dt.datetime(2023,1,1)
-    spec = GreenPPASpecification(technology = 'Wind_Onshore', 
-                            schedule = [val_date + dt.timedelta(days=2)], 
-                             fixed_price=0.2)
-    model = price(val_date, spec, rdm , depth=3, nb_neurons=64, n_sims = n_sims, regularization= 10.0, 
-              epochs = 50, timegrid=timegrid, verbose=1, 
+    rdm = ResidualDemandForwardModel(wind_forecast_model, 
+                                    highest_price,
+                                    supply_curve,
+                                    max_price = 1.0,
+                                    forecast_hours=[#6, 
+                                                    10, 14, 18], 
+                                    #region_to_capacity=None
+                                    )
+    strike = 0.2#fwd_prices[:,-1].mean()
+    spec = GreenPPASpecification(technology = 'Wind',
+                                location = 'Onshore',
+                                schedule = [val_date + dt.timedelta(days=2)], 
+                                fixed_price=strike,
+                                max_capacity = 1.0)
+
+    tensorboard_logdir = None#os.path.join("logs", dt.datetime.now().strftime("%Y%m%d-%H%M%S"))
+    result = price(val_date, spec, rdm , 
+               depth=3, nb_neurons=64, n_sims = n_sims, regularization= 10.0, 
+              epochs = 20, 
+              verbose=1, 
               initial_lr = 1e-2,
               batch_size=200,
               decay_rate=0.6,
-              tensorboard_logdir=None
+              tensorboard_logdir=tensorboard_logdir
             )
-   

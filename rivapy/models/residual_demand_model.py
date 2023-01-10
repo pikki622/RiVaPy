@@ -201,9 +201,6 @@ class WindPowerForecastModel(FactoryObject):
             correction = _logit(forecasts[i])-self.ou.compute_expected_value(0.0, expiries[i])
             self._ou_additive_forward_corrections[i] = correction
 
-    def region(self)->str:
-        return self.region
-
     def _to_dict(self)->dict:
         return {'speed_of_mean_reversion': self.ou.speed_of_mean_reversion, 
             'volatility': self.ou.volatility,
@@ -231,7 +228,7 @@ class MultiRegionWindForecastModel:
             self.rnd_weights = rnd_weights
 
         def name(self):
-            return self.model.region
+            return self.model.get_region
 
         def n_random(self):
             return len(self.rnd_weights)
@@ -340,6 +337,7 @@ class ResidualDemandForwardModel(FactoryObject):
         self.supply_curve = supply_curve
         self.forecast_hours = forecast_hours
         self.max_price = max_price
+                
         #self.region_to_capacity = region_to_capacity
         
     def _to_dict(self)->dict:
@@ -363,7 +361,7 @@ class ResidualDemandForwardModel(FactoryObject):
         Returns:
             str: Name of instrument.
         """
-        return self.wind_power_forecast.name
+        return self.wind_power_forecast.region
 
     def _simulate_multi_region(self, timegrid: Union[np.ndarray, DateTimeGrid], 
                 rnd: np.ndarray, 
@@ -399,9 +397,14 @@ class ResidualDemandForwardModel(FactoryObject):
                 power_fwd[i,:,j] =  self.supply_curve(1.0-efficiency_forecast_total[i,:,j] )*highest_prices[i,:]
         return power_fwd, result_efficiencies
 
+    def compute_rlzd_qty(self, location:str, simulated_forecasts: Dict[str, np.ndarray])->np.ndarray:
+        for k,v in simulated_forecasts.items():
+            if location == k:
+                return v[-1,:,:]
+
     def simulate(self, timegrid: Union[np.ndarray, DateTimeGrid], 
                 rnd: np.ndarray, 
-                forecast_timepoints: List[int]=None):
+                forecast_timepoints: List[int]=None)->Tuple[np.ndarray, Dict[str, np.ndarray]]:
         multi_region = True
         #self.wind_power_forecast.region_names()
         try:
@@ -421,7 +424,7 @@ class ResidualDemandForwardModel(FactoryObject):
             forecast_timepoints = [i for i in range(len(timegrid.dates)) if timegrid.dates[i].hour in self.forecast_hours]
             timegrid = timegrid.timegrid
         highest_prices = self.highest_price_ou_model.simulate(timegrid, 1.0, rnd[0,:])*self.max_price
-        wind = self.wind_power_forecast.simulate(timegrid, rnd[1:,:])._paths
+        wind = self.wind_power_forecast.simulate(timegrid, rnd[1])._paths
         power_fwd = np.empty((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
         current_forecast = np.empty((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
         for i in range(timegrid.shape[0]):
@@ -432,7 +435,7 @@ class ResidualDemandForwardModel(FactoryObject):
                     current_forecast[i,:,j] = current_forecast[i-1,:,j]
             for j in range(self.wind_power_forecast.n_forwards()):
                 power_fwd[i,:,j] =  self.supply_curve( 1.0-current_forecast[i,:,j] )*highest_prices[i,:]
-        return {'POWER_FWD': power_fwd, self.wind_power_forecast.region: current_forecast}
+        return power_fwd, {self.wind_power_forecast.region: current_forecast}
         
 class ResidualDemandModel:
     def __init__(self, wind_model: object, capacity_wind: float, 

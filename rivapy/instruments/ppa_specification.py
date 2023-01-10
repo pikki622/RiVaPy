@@ -155,6 +155,7 @@ class GreenPPASpecification(PPASpecification):
 	def __init__(self,
 				schedule: Union[SimpleSchedule, List[dt.datetime]],
 				technology: str,
+				location: str,
 				fixed_price: float,
 				max_capacity: float,
 				id:str = None):
@@ -173,6 +174,7 @@ class GreenPPASpecification(PPASpecification):
 		super().__init__(None, schedule, fixed_price, id)
 		self.technology = technology
 		self.max_capacity = max_capacity
+		self.location = location
 
 	def _to_dict(self)->dict:
 		result = super()._to_dict()

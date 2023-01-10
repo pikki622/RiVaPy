@@ -121,10 +121,10 @@ def price( val_date: dt.datetime,
     model = _build_model(depth, nb_neurons)
     timegrid = DateTimeGrid(start=val_date, end=ppa_schedule[-1], freq='1H')
     rnd = np.random.normal(size=power_wind_model.rnd_shape(n_sims, timegrid.timegrid.shape[0]))
-    fwd_prices, fwd_residuals = power_wind_model.simulate(timegrid, rnd)
+    fwd_prices, forecasts = power_wind_model.simulate(timegrid, rnd)
     fwd_prices = np.squeeze(fwd_prices.transpose())
     #print(fwd_prices.mean(axis=0))
-    forecasts =  np.squeeze((-fwd_residuals+1.0).transpose())
+    forecasts =  np.squeeze(forecasts.transpose())
     hedge_model = PPAHedgeModel(model, timegrid.timegrid, None, regularization, strike=green_ppa.fixed_price)
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=initial_lr,#1e-3,

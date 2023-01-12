@@ -288,6 +288,7 @@ class PlainVanillaCouponBondSpecification(BondBaseSpecification):
         result.update(super(PlainVanillaCouponBondSpecification, self)._to_dict())
         return result
     
+    @staticmethod
     def _create_sample(n_samples: int, seed: int = None, ref_date = None, issuers: _List[str]= None):
         if seed is not None:
             np.random.seed(seed)
@@ -329,7 +330,8 @@ class FixedRateBondSpecification(BondBaseSpecification):
                 currency: str = 'EUR',
                  notional: float = 100.0,
                  issuer: str = None,
-                 securitisation_level: _Union[SecuritizationLevel, str] = None):
+                 securitization_level: _Union[SecuritizationLevel, str] = None,
+                 rating: _Union[Rating, str] = Rating.NONE):
         """
         Fixed rate bond specification by providing coupons and coupon payment dates directly.
 
@@ -337,11 +339,9 @@ class FixedRateBondSpecification(BondBaseSpecification):
             coupon_payment_dates (List[Union[date, datetime]]): List of annualised coupon payment dates.
             coupons (List[float]): List of annualised coupon amounts as fraction of notional.
         """
-        super().__init__(obj_id, issue_date, maturity_date, currency, notional, issuer, securitisation_level)
+        super().__init__(obj_id, issue_date, maturity_date, currency, notional, issuer, securitization_level, rating)
         self.__coupon_payment_dates = coupon_payment_dates
         self.__coupons = coupons
-
-
         # validation of dates' consistency
         if not _is_ascending_date_list(issue_date, coupon_payment_dates, maturity_date):
             raise Exception("Inconsistent combination of issue date '" + str(issue_date)
@@ -353,6 +353,38 @@ class FixedRateBondSpecification(BondBaseSpecification):
         else:
             raise Exception('Number of coupons ' + str(coupons) +
                             ' is not equal to number of coupon payment dates ' + str(coupon_payment_dates))
+
+    
+    @staticmethod
+    def _create_sample(n_samples: int, seed: int = None, ref_date = None, issuers: _List[str]= None):
+        if seed is not None:
+            np.random.seed(seed)
+        if ref_date is None:
+            ref_date = datetime.now()
+        else: 
+            ref_date = _date_to_datetime(ref_date)
+        if issuers is None:
+            issuers = ['Issuer_'+str(i) for i in range(int(n_samples/2))]
+        result = []
+        coupons = np.arange(0.01, 0.09, 0.005)
+        currencies = list(Currency)
+        sec_levels = list(SecuritizationLevel)
+        for i in range(n_samples):
+            issuer = np.random.choice(issuers)
+            issue_date = ref_date + timedelta(days=np.random.randint(low=-365, high=0))
+            n_coupons = np.random.randint(low=0, high=20)
+            days_coupon_period = np.random.choice([90.0,180.0,365.0], p=[0.2,0.2,0.6])
+            coupon_dates = [issue_date+timedelta(days=(i+1)*days_coupon_period) for i in range(n_coupons)]
+            coupon = [np.random.choice(coupons)]*len(coupon_dates)
+            maturity_date = coupon_dates[-1]
+            currency = np.random.choice(currencies)
+            notional = np.random.choice([100.0, 1000.0, 10_000.0, 100_0000.0])
+            sec_level = np.random.choice(sec_levels)
+            result.append(FixedRateBondSpecification('BND_FR_'+str(i), issue_date=issue_date, 
+                                maturity_date=maturity_date, coupon_payment_dates=coupon_dates,
+                                coupons=coupon, notional=notional, issuer=issuer, 
+                                securitization_level=sec_level,currency=currency ))
+        return result
 
     def _validate_derived_bond(self):
         self.__coupon_payment_dates = _datetime_to_date_list(self.__coupon_payment_dates)

@@ -12,16 +12,16 @@ class FactoryTestsMeta(type):
     
     @classmethod
     def gen(cls, target_class):
-        examples = target_class._create_sample(2)
-        # Return a testcase that tests ``x``.
+        # Return a testcase that tests the creation of an instrument from factory
         def fn(self):
-            ins = target_class._create_sample(4, seed=42)
-            for i in range(len(ins)):
-                b = create(ins[i].to_dict())
-                self.assertEqual(b.hash(), ins[i].hash())
-            #errors = NotebookTestsMeta._notebook_run(notebook_file)
-            #self.assertTrue(errors == [])
-            
+            try:
+                ins = target_class._create_sample(4, seed=42)
+                for i in range(len(ins)):
+                    b = create(ins[i].to_dict())
+                    self.assertEqual(b.hash(), ins[i].hash())
+            except AttributeError as e:
+                self.assertEqual(0,1, msg = '_create_sample not implemented for class ' + target_class.__name__)
+                        
         return fn
 
 class InstrumentTests(unittest.TestCase, metaclass = FactoryTestsMeta):

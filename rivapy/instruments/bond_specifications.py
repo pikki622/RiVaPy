@@ -45,6 +45,33 @@ class BondBaseSpecification(interfaces.FactoryObject):
         # validate dates
         self._validate_derived_issued_instrument()
 
+    @staticmethod
+    def _create_sample(n_samples: int, seed: int = None, ref_date = None, issuers: _List[str]= None)->_List[dict]:
+        if seed is not None:
+            np.random.seed(seed)
+        if ref_date is None:
+            ref_date = datetime.now()
+        else: 
+            ref_date = _date_to_datetime(ref_date)
+        if issuers is None:
+            issuers = ['Issuer_'+str(i) for i in range(int(n_samples/2))]
+        result = []
+        currencies = list(Currency)
+        sec_levels = list(SecuritizationLevel)
+        for _ in range(n_samples):
+            issue_date = ref_date + timedelta(days=np.random.randint(low=-365, high=0))
+            result.append(
+                {
+                'issue_date': issue_date,
+                'maturity_date':issue_date + timedelta(days=np.random.randint(low=30, high=10*365)),
+                'currency':np.random.choice(currencies),
+                'notional': np.random.choice([100.0, 1000.0, 10_000.0, 100_0000.0]),
+                'issuer': np.random.choice(issuers),
+                'securitization_level': np.random.choice(sec_levels)
+                }
+            )
+        return result
+
     def _validate_derived_issued_instrument(self):
         self.__issue_date, self.__maturity_date = _check_start_before_end(self.__issue_date, self.__maturity_date)
 
@@ -214,6 +241,8 @@ class ZeroCouponBondSpecification(BondBaseSpecification):
         """
         return [(self.maturity_date, self.notional)]
 
+    
+    
 class PlainVanillaCouponBondSpecification(BondBaseSpecification):
     def __init__(self,
                  obj_id: str,
@@ -290,34 +319,16 @@ class PlainVanillaCouponBondSpecification(BondBaseSpecification):
     
     @staticmethod
     def _create_sample(n_samples: int, seed: int = None, ref_date = None, issuers: _List[str]= None):
-        if seed is not None:
-            np.random.seed(seed)
-        if ref_date is None:
-            ref_date = datetime.now()
-        else: 
-            ref_date = _date_to_datetime(ref_date)
-        if issuers is None:
-            issuers = ['Issuer_'+str(i) for i in range(int(n_samples/2))]
+        specs = BondBaseSpecification._create_sample(**locals())
         result = []
         coupons = np.arange(0.01, 0.09, 0.005)
-        currencies = list(Currency)
-        sec_levels = list(SecuritizationLevel)
-        for i in range(n_samples):
-            coupon_freq = np.random.choice(['3M', '6M', '9M', '1Y'], p=[0.1,0.4,0.1,0.4])
-            issuer = np.random.choice(issuers)
-            issue_date = ref_date + timedelta(days=np.random.randint(low=-365, high=0))
-            accrual_start = issue_date + timedelta(days=np.random.randint(low=0, high=10))
-            maturity_date = issue_date + timedelta(days=np.random.randint(low=30, high=10*365))
-            coupon = np.random.choice(coupons)
-            currency = np.random.choice(currencies)
-            notional = np.random.choice([100.0, 1000.0, 10_000.0, 100_0000.0])
-            issuer = np.random.choice(issuers)
-            sec_level = np.random.choice(sec_levels)
-            result.append(PlainVanillaCouponBondSpecification('BND_'+str(i), issue_date=issue_date, 
-                                maturity_date=maturity_date, accrual_start=accrual_start,
-                                coupon_freq=coupon_freq,
-                                coupon=coupon, notional=notional, issuer=issuer, 
-                                securitization_level=sec_level,currency=currency ))
+        for i, b in enumerate(specs):
+            b['coupon_freq'] = np.random.choice(['3M', '6M', '9M', '1Y'], p=[0.1,0.4,0.1,0.4])
+            issue_date = b['issue_date']
+            b['accrual_start'] = issue_date + timedelta(days=np.random.randint(low=0, high=10))
+            b['maturity_date'] = issue_date + timedelta(days=np.random.randint(low=30, high=10*365))
+            b['coupon'] = np.random.choice(coupons)
+            result.append(PlainVanillaCouponBondSpecification('BND_PV_'+str(i), **b))
         return result
 
 class FixedRateBondSpecification(BondBaseSpecification):
@@ -357,33 +368,18 @@ class FixedRateBondSpecification(BondBaseSpecification):
     
     @staticmethod
     def _create_sample(n_samples: int, seed: int = None, ref_date = None, issuers: _List[str]= None):
-        if seed is not None:
-            np.random.seed(seed)
-        if ref_date is None:
-            ref_date = datetime.now()
-        else: 
-            ref_date = _date_to_datetime(ref_date)
-        if issuers is None:
-            issuers = ['Issuer_'+str(i) for i in range(int(n_samples/2))]
+        specs = BondBaseSpecification._create_sample(**locals())
         result = []
         coupons = np.arange(0.01, 0.09, 0.005)
-        currencies = list(Currency)
-        sec_levels = list(SecuritizationLevel)
-        for i in range(n_samples):
-            issuer = np.random.choice(issuers)
-            issue_date = ref_date + timedelta(days=np.random.randint(low=-365, high=0))
-            n_coupons = np.random.randint(low=0, high=20)
+        for i, b in enumerate(specs):
+            issue_date = b['issue_date']
+            n_coupons = np.random.randint(low=1, high=20)
             days_coupon_period = np.random.choice([90.0,180.0,365.0], p=[0.2,0.2,0.6])
-            coupon_dates = [issue_date+timedelta(days=(i+1)*days_coupon_period) for i in range(n_coupons)]
-            coupon = [np.random.choice(coupons)]*len(coupon_dates)
-            maturity_date = coupon_dates[-1]
-            currency = np.random.choice(currencies)
-            notional = np.random.choice([100.0, 1000.0, 10_000.0, 100_0000.0])
-            sec_level = np.random.choice(sec_levels)
-            result.append(FixedRateBondSpecification('BND_FR_'+str(i), issue_date=issue_date, 
-                                maturity_date=maturity_date, coupon_payment_dates=coupon_dates,
-                                coupons=coupon, notional=notional, issuer=issuer, 
-                                securitization_level=sec_level,currency=currency ))
+            b['coupon_payment_dates'] = [issue_date+timedelta(days=(i+1)*days_coupon_period) for i in range(n_coupons)]
+            coupon = np.random.choice(coupons)
+            b['coupons'] = [coupon]*n_coupons
+            b['maturity_date'] = b['coupon_payment_dates'][-1]
+            result.append(FixedRateBondSpecification('BND_FR_'+str(i), **b))
         return result
 
     def _validate_derived_bond(self):

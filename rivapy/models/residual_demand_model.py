@@ -228,7 +228,7 @@ class MultiRegionWindForecastModel:
             self.rnd_weights = rnd_weights
 
         def name(self):
-            return self.model.get_region
+            return self.model.region
 
         def n_random(self):
             return len(self.rnd_weights)

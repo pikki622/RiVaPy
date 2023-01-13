@@ -144,17 +144,6 @@ class DiscountCurve:
         plt.plot(dates_new, values, label=self.id, **kwargs)
 
 
-class _CombinedParametrizations(interfaces.FactoryObject):
-    def __init__(self, curves, factors):
-        self._curves = curves
-        self._factors = factors
-
-    def _to_dict(self) -> dict:
-        raise NotImplementedError()
-
-    def __call__(self, t: float):
-        pass
-        #return NelsonSiegel.compute(self.beta0, self.beta1, self.beta2, self.tau, t)
 
 
 class NelsonSiegel(interfaces.FactoryObject):
@@ -254,6 +243,7 @@ class ConstantRate(interfaces.FactoryObject):
         """
         self.rate = rate
         
+    
     def _to_dict(self) -> dict:
         return {'rate': self.rate}
 
@@ -279,6 +269,37 @@ class NelsonSiegelSvensson(NelsonSiegel):
         t = np.maximum(T, 1e-4)/tau2
         return NelsonSiegel.compute(beta0, beta1, beta2, tau, T) + beta3*((1-np.exp(-t))/t - np.exp(-(t)))
     
+class DiscountCurveComposition(interfaces.FactoryObject):
+    def __init__(self, a, b, c):
+        self.a = a
+        if not hasattr(a, 'value'):
+            self.a = DiscountCurveParametrized('', datetime(1980,1,1), ConstantRate(a))
+        self.b = b
+        if not hasattr(b, 'value'):
+            self.b = DiscountCurveParametrized('', datetime(1980,1,1), ConstantRate(b))
+        self.c = c
+        if not hasattr(c, 'value'):
+            self.c = DiscountCurveParametrized('', datetime(1980,1,1), ConstantRate(c))
+        
+
+    def _to_dict(self) -> dict:
+        raise NotImplementedError()
+        
+    def value(self, refdate: Union[date, datetime], d: Union[date, datetime])->float:
+        return np.power(self.b.value(refdate, d), self.a.value_rate(refdate, d))*self.c.value(refdate,d)
+
+    def value_rate(self, refdate: Union[date, datetime], d: Union[date, datetime])->float:
+        return self.a.value_rate(refdate, d)*self.b.value_rate(refdate, d) + self.c.value_rate(refdate, d)
+
+    def __mul__(self, other):
+        # TODO unittests
+        return DiscountCurveComposition(self, other, 0.0)
+    def __rmul__(self, other):
+        return DiscountCurveComposition(self, other, 0.0)
+    def __add__(self, other):
+        return DiscountCurveComposition(self, 1.0, other)
+    def __radd__(self, other):
+        return DiscountCurveComposition(self, 1.0, other)
 
 class DiscountCurveParametrized(interfaces.FactoryObject):
     def __init__(self, 
@@ -344,6 +365,15 @@ class DiscountCurveParametrized(interfaces.FactoryObject):
             raise Exception('The given reference date is before the curves reference date.')
         yf = (d-self.refdate).total_seconds()/(365.0*24.0*60.0*60.0)
         return self.rate_parametrization(yf)
+
+    def __mul__(self, other):
+        return DiscountCurveComposition(self, other, 0.0)
+    def __rmul__(self, other):
+        return DiscountCurveComposition(self, other, 0.0)
+    def __add__(self, other):
+        return DiscountCurveComposition(self, 1.0, other)
+    def __radd__(self, other):
+        return DiscountCurveComposition(self, 1.0, other)
 
 class EquityForwardCurve:
     def __init__(self, 

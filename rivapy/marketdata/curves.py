@@ -143,6 +143,20 @@ class DiscountCurve:
         values[0] = values[1]
         plt.plot(dates_new, values, label=self.id, **kwargs)
 
+
+class _CombinedParametrizations(interfaces.FactoryObject):
+    def __init__(self, curves, factors):
+        self._curves = curves
+        self._factors = factors
+
+    def _to_dict(self) -> dict:
+        raise NotImplementedError()
+
+    def __call__(self, t: float):
+        pass
+        #return NelsonSiegel.compute(self.beta0, self.beta1, self.beta2, self.tau, t)
+
+
 class NelsonSiegel(interfaces.FactoryObject):
     def __init__(self, beta0: float, beta1: float, 
                             beta2: float, tau: float):
@@ -175,13 +189,19 @@ class NelsonSiegel(interfaces.FactoryObject):
         self.beta1 = beta1
         self.beta2 = beta2
         self.tau = tau
+        self._multiplier = 1.0
 
     def _to_dict(self) -> dict:
         return {'beta0': self.beta0, 'beta1': self.beta1, 
                 'beta2': self.beta2, 'tau': self.tau}
 
     def __call__(self, t: float):
-        return NelsonSiegel.compute(self.beta0, self.beta1, self.beta2, self.tau, t)
+        return self._multiplier*NelsonSiegel.compute(self.beta0, self.beta1, self.beta2, self.tau, t)
+
+    def __mul__(self, x: float):
+        result = NelsonSiegel(self.beta0, self.beta1, self.beta2, self.tau)
+        result._multiplier = x
+        return result
 
     @staticmethod
     def compute(beta0: float, beta1: float, 
@@ -200,6 +220,28 @@ class NelsonSiegel(interfaces.FactoryObject):
         """
         t = np.maximum(T, 1e-4)/tau
         return beta0 + beta1*(1.0-np.exp(-t))/t + beta2*((1-np.exp(-t))/t - np.exp(-(t)))
+
+    @staticmethod
+    def _create_sample(n_samples: int, seed: int = None,
+                        min_short_term_rate: float = -0.01, 
+                        max_short_term_rate: float = 0.12, 
+                        min_long_run_rate: float = 0.005, 
+                        max_long_run_rate: float = 0.15,
+                        min_hump: float=-0.1, 
+                        max_hump: float=0.1,
+                        min_tau: float=0.5,
+                        max_tau: float=3.0):
+        if seed is not None:
+            np.random.seed(seed)
+        result = []
+        for i in range(n_samples):
+            beta0 = np.random.uniform(min_long_run_rate, max_long_run_rate)
+            beta1 = np.random.uniform(min_short_term_rate-beta0, max_short_term_rate-beta0)
+            beta2 = np.random.uniform(min_hump, max_hump)
+            tau = np.random.uniform(min_tau, max_tau)
+            result.append(NelsonSiegel(beta0, beta1, beta2, tau))
+        return result
+    
 
 
 class ConstantRate(interfaces.FactoryObject):
@@ -283,7 +325,25 @@ class DiscountCurveParametrized(interfaces.FactoryObject):
             raise Exception('The given reference date is before the curves reference date.')
         yf = (d-self.refdate).total_seconds()/(365.0*24.0*60.0*60.0)
         return np.exp(-self.rate_parametrization(yf)*yf)
-            
+
+    def value_rate(self, refdate: Union[date, datetime], d: Union[date, datetime])->float:
+        """Return the continuous rate for a given date
+
+        Args:
+            refdate (Union[date, datetime]): The reference date. If the reference date is in the future (compared to the curves reference date), the forward discount factor will be returned.
+            d (Union[date, datetime]): The date for which the discount factor will be returned
+
+        Returns:
+            float: continuous rate
+        """
+        if not isinstance(refdate, datetime):
+            refdate = datetime(refdate,0,0,0)
+        if not isinstance(d, datetime):
+            d = datetime(d,0,0,0)
+        if refdate < self.refdate:
+            raise Exception('The given reference date is before the curves reference date.')
+        yf = (d-self.refdate).total_seconds()/(365.0*24.0*60.0*60.0)
+        return self.rate_parametrization(yf)
 
 class EquityForwardCurve:
     def __init__(self, 

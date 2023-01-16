@@ -5,7 +5,7 @@ from datetime import datetime, date
 import rivapy.tools.interfaces as interfaces
 from rivapy.tools.datetools import _date_to_datetime
 from rivapy.tools._validators import _check_positivity, _check_relation, _is_chronological
-from rivapy.tools.enums import DayCounterType, Rating, Sector, Country
+from rivapy.tools.enums import DayCounterType, Rating, Sector, Country, ESGRating
 
 
 class Coupon:
@@ -55,11 +55,13 @@ class Issuer(interfaces.FactoryObject):
                  obj_id: str,
                  name: str,
                  rating: _Union[Rating, str],
+                 esg_rating: _Union[ESGRating, str],
                  country: str,
                  sector: Sector):
         self.__obj_id = obj_id
         self.__name = name
         self.__rating = Rating.to_string(rating)
+        self.__esg_rating = ESGRating.to_string(esg_rating)
         self.__country = country
         self.__sector = Sector.to_string(sector)
 
@@ -82,6 +84,7 @@ class Issuer(interfaces.FactoryObject):
             np.random.seed(seed)
         result = []
         ratings = list(Rating)
+        esg_ratings = list(ESGRating)
         sectors = list(Sector)
         country = list(Country)
         if issuer is None:
@@ -89,13 +92,17 @@ class Issuer(interfaces.FactoryObject):
         elif (n_samples is not None) and (n_samples !=  len(issuer)):
             raise Exception('Cannot create data since length of issuer list does not equal number of sampled. Set n_namples to None.')
         for i in range(n_samples):
-            result.append(Issuer('Issuer_'+str(i), issuer[i], np.random.choice(ratings), 
-                        np.random.choice(country).value, np.random.choice(sectors)))
+            result.append(Issuer('Issuer_'+str(i), issuer[i],
+                        np.random.choice(ratings), 
+                        np.random.choice(esg_ratings), 
+                        np.random.choice(country).value,
+                        np.random.choice(sectors)))
         return result
 
     def _to_dict(self) -> dict:
         return {'obj_id': self.obj_id, 
-                'name': self.name, 'rating': self.rating, 
+                'name': self.name, 'rating': self.rating,
+                'esg_rating': self.esg_rating, 
                 'country': self.country, 'sector': self.sector}
 
     @property
@@ -137,6 +144,26 @@ class Issuer(interfaces.FactoryObject):
             rating: Rating of issuer.
         """
         self.__rating =Rating.to_string(rating)
+
+    @property
+    def esg_rating(self) -> str:
+        """
+        Getter for issuer's rating.
+
+        Returns:
+            Rating: Issuer's rating.
+        """
+        return self.__esg_rating
+
+    @esg_rating.setter
+    def esg_rating(self, esg_rating: _Union[ESGRating, str]):
+        """
+        Setter for issuer's rating.
+
+        Args:
+            rating: Rating of issuer.
+        """
+        self.__esg_rating = ESGRating.to_string(esg_rating)
 
     @property
     def country(self) -> str:

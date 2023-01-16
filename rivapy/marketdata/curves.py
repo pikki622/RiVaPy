@@ -250,6 +250,31 @@ class ConstantRate(interfaces.FactoryObject):
     def __call__(self, t: float):
         return self.rate
 
+class LinearRate(interfaces.FactoryObject):
+    def __init__(self, shortterm_rate: float, longterm_rate: float, max_maturity:float= 10.0):
+        """Continuously compounded linearly interpolated rate object that can be used  in conjunction with :class:`rivapy.marketdata.DiscountCurveParametrized`.
+        
+        Args:
+            shortterm_rate (float): The short term rate.
+            longterm_rate (float): the longterm rate.
+            max_maturity (float): AFer this timepoint constant extrapolation is applied.
+        """
+        self.shortterm_rate = shortterm_rate
+        self.longterm_rate = longterm_rate
+        self.max_maturity = max_maturity
+        self._coeff = (self.longterm_rate-self.shortterm_rate)/(self.max_maturity)
+    
+    def _to_dict(self) -> dict:
+        return {'shortterm_rate': self.shortterm_rate,
+                'longterm_rate': self.longterm_rate,
+                'max_maturity': self.max_maturity
+                }
+
+    def __call__(self, t: float):
+        if t < self.max_maturity:
+            return self.shortterm_rate + self._coeff*t
+        return self.longterm_rate
+
 class NelsonSiegelSvensson(NelsonSiegel):
     def __init__(self, beta0: float, beta1: float, 
                             beta2: float, beta3: float, tau: float):

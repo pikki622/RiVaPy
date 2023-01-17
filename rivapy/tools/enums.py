@@ -187,6 +187,11 @@ class Sector(_MyEnum):
     REAL_ESTATE = 'RealEstate'
     UTILITIES = 'Utilities'
 
+@_unique
+class ESGRating(_MyEnum):
+    A = 'A'
+    B = 'B'
+    C = 'C'
 
 @_unique
 class Rating(_MyEnum):

@@ -174,7 +174,7 @@ class WindPowerForecastModel(FactoryObject):
     def __init__(self, speed_of_mean_reversion: float, 
                     volatility: float,
                     expiries: List[float],
-                    forecasts: List[float], # must be given as logit of percentage of max_capacity
+                    forecasts: List[float],
                     region: str = 'Wind_Germany',
                     ):
         """Simple Model to simulate wind forecasts.
@@ -186,9 +186,11 @@ class WindPowerForecastModel(FactoryObject):
             speed_of_mean_reversion (float): The speed of mean reversion of the underlying Ornstein-Uhlenbeck process (:class:`rivapy.models.OrnsteinUhlenbeck`).
             volatility (float): The volatility of the underlying Ornstein-Uhlenbeck process (:class:`rivapy.models.OrnsteinUhlenbeck`).
             expiries (List[float]): A list of the expiries of the futures that will be simulated.
-            forecasts (List[float]): The forecasted value of each of the futures that will be simulated.
-            name (str): The name of teh respective wind region.
+            forecasts (List[float]): The forecasted efficiencies at each of the futures that will be simulated.
+            name (str): The name of the respective wind region.
         """
+        if len(expiries) != len(forecasts):
+            raise Exception('Number of forward expiries does not equal number of froecast. Each forward expiry needs an own forecast.')
         self.ou = OrnsteinUhlenbeck(speed_of_mean_reversion, volatility, mean_reversion_level=0.0)
         self.expiries = expiries
         self.forecasts = forecasts

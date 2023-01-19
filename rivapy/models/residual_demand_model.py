@@ -386,7 +386,10 @@ class ResidualDemandForwardModel(FactoryObject):
             multiplier = self.wind_power_forecast.region_relative_capacity(region)
             for i in range(timegrid.shape[0]):
                 for j in range(self.wind_power_forecast.n_forwards()):
-                    if i in forecast_timepoints or i == 0:
+                    #print(i,timegrid[i], j,forecast.expiry(j))
+                    #if abs(forecast.expiry(j)-timegrid[i])<1e-6:
+                    #    print(i,timegrid[i], j,forecast.expiry(j))
+                    if i in forecast_timepoints or i == 0 or abs(forecast.expiry(j)-timegrid[i])<1e-6:
                         efficiency_forecast[i,:,j] = forecast.get_fwd(i,j)
                         efficiency_forecast_total[i,:,j] += multiplier*efficiency_forecast[i,:,j]
                     else:

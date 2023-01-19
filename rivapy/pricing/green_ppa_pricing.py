@@ -131,8 +131,6 @@ class DeepHedgeModel(tf.keras.Model):
         return self.fit(inputs, payoff, epochs=epochs, 
                             batch_size=batch_size, callbacks=callbacks, verbose=verbose)
 
-
-
 class PPAHedgeModel(tf.keras.Model):
     def __init__(self, model, timegrid, 
                         regularization: float, 
@@ -160,7 +158,7 @@ class PPAHedgeModel(tf.keras.Model):
         pnl = 0.0
         self._prev_q = tf.zeros((tf.shape(power_fwd)[0]), name='prev_q')
         for i in range(self.timegrid.shape[0]-2):
-            t = [self.timegrid[i]]*tf.ones((tf.shape(power_fwd)[0],1))/self.timegrid[-1]
+            t = [self.timegrid[-1]-self.timegrid[i]]*tf.ones((tf.shape(power_fwd)[0],1))/self.timegrid[-1]
             inputs = [v[:,i] for v in x[:-1]]
             inputs.append(t)
             #quantity = tf.squeeze(self.model([power_fwd[:,i], forecast[:,i], t], training=training))
@@ -180,7 +178,7 @@ class PPAHedgeModel(tf.keras.Model):
         inputs_ = self._create_inputs(fwd_prices, forecasts, rlzd_qty=None,)
         if isinstance(t, int):
             inputs = [inputs_[i][:,t] for i in range(len(inputs_)-1)]
-            t = self.timegrid[t]
+            t = self.timegrid[-1]-self.timegrid[t]
         else:
             inputs = [inputs_[i] for i in range(len(inputs_)-1)]
         inputs.append(t*np.ones((tf.shape(fwd_prices)[0],1)))
@@ -337,7 +335,7 @@ def price( val_date: dt.datetime,
     if ppa_schedule[-1] <= val_date:
         return None
     tf.random.set_seed(seed)
-    timegrid = DateTimeGrid(start=val_date, end=ppa_schedule[-1], freq='1H')
+    timegrid = DateTimeGrid(start=val_date, end=ppa_schedule[-1], freq='1H', closed=None)
     np.random.seed(seed+123)
     rnd = np.random.normal(size=power_wind_model.rnd_shape(n_sims, timegrid.timegrid.shape[0]))
     fwd_prices, forecasts = power_wind_model.simulate(timegrid, rnd)

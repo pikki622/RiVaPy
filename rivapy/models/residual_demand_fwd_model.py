@@ -22,6 +22,7 @@ class ForwardSimulationResult(abc.ABC):
     @abc.abstractmethod
     def n_forwards(self)->float:
         pass
+
     @abc.abstractmethod
     def udls(self)->Set[str]:
         pass
@@ -31,34 +32,16 @@ class ForwardSimulationResult(abc.ABC):
         for udl in self.udls():
             for i in range(self.n_forwards()):
                 result.add(ForwardSimulationResult.get_key(udl, i))
-    
-    def get(self, key: str)->np.ndarray:
-        ...
-    @staticmethod
-    def get_key(udl: str, n_forward: int)->str:
-        return 
-class SmoothstepSupplyCurve(FactoryObject): 
-    def __init__(self, s, N):
-        self.s = s
-        self.N = N
-        
-    def _to_dict(self):
-        return {'s': self.s, 'N': self.N}
-
-    @staticmethod
-    def smoothstep(x, x_min=0, x_max=1, N=1):
-        x = np.clip((x - x_min) / (x_max - x_min), 0, 1)
-        result = 0
-        for n in range(0, N + 1):
-            result += comb(N + n, n) * comb(2 * N + 1, N - n) * (-x) ** n
-        result *= x ** (N + 1)
         return result
 
-    def __call__(self, residual):
-        #wind_production = wind_production#np.maximum(np.minimum(wind_production, 0.99), 0.01)
-        #residual = (1.0-wind_production)
-        residual = np.power(residual, self.s)
-        return SmoothstepSupplyCurve.smoothstep(residual, N=self.N)
+    @abc.abstractmethod
+    def get(self, key: str)->np.ndarray:
+        pass
+
+    @staticmethod
+    def get_key(udl: str, n_forward: int)->str:
+        return udl+':'+str(n_forward)
+
 
 class WindPowerForecastModel(FactoryObject):
     class ForwardSimulationResult(ForwardSimulationResult):
@@ -72,54 +55,39 @@ class WindPowerForecastModel(FactoryObject):
             self._model = wind_forecast_model
             self._result = None
             self.expiries = expiries
-            self.forecasts = initial_forecasts
-            self._ou_additive_forward_corrections = np.empty((len(expiries)))
-            for i in range(len(expiries)):
-                correction = _logit(initial_forecasts[i])-self._model.ou.compute_expected_value(0.0, expiries[i])
-                self._ou_additive_forward_corrections[i] = correction
+            self.initial_forecasts = initial_forecasts
+            self._ou_additive_forward_corrections = wind_forecast_model._compute_ou_additive_forward_correction(self.expiries, self.initial_forecasts)
 
         def n_forwards(self)->float:
             return len(self.expiries)
 
-        def keys(self)->List[str]:
-            return [self._model.region + '_' + str(i) for i in range(self.n_forwards())]
+        def udls(self)->Set[str]:
+            return set([self._model.region])
 
-        def get(self, key: str)->np.ndarray:
-            pass
+        def get(self, key: str, forecast_timepoints: List[int]=None)->np.ndarray:
+            expiry = int(key.split(':')[-1])
+            return self._get(expiry, forecast_timepoints)
 
-        def get_fwd(self, index_t, index_T):
-            return self._wind_forecast_model.get_forward(self._paths[index_t,:],self._timegrid[index_t], index_T)
-            
-        def _get_path(self, fwd_expiry: int = None):
-            if fwd_expiry is None:
-                return self._paths
-            result = np.empty((self._timegrid.shape[0], self._paths.shape[1]))
+        def _get(self, expiry: int, forecast_timepoints: List[int])->np.ndarray:
+            result = np.empty(self._paths.shape)
             for i in range(self._timegrid.shape[0]):
-                result[i,:] = self.get_fwd(i, fwd_expiry)
+                #print(self.expiries[expiry]-self._timegrid[i])
+                result[i,:] = self._model.get_forward(self._paths[i,:], self.expiries[expiry]-self._timegrid[i], self._ou_additive_forward_corrections[expiry])
+            if forecast_timepoints is not None:
+                ftp_prev = 1
+                for ftp in forecast_timepoints:
+                    for i in range(ftp_prev, ftp):
+                        if abs(self._timegrid[i]-self.expiries[expiry])>1e-6:
+                            result[i,:] = result[i-1,:]
+                    ftp_prev = ftp+1
+                for i in range(ftp_prev, self._timegrid.shape[0]):
+                    if abs(self._timegrid[i]-self.expiries[expiry])>1e-6:
+                        result[i,:] = result[i-1,:]
             return result
-
-        def path_dict(self):
-            if self._result is None:
-                self._result = {}
-                for i in range(self._model.n_forwards()):
-                    self._result[self._model.region+'_'+str(i)] = self.get_path(i)
-            return self._result
-
-        def keys(self)->List[str]:
-            return list(self.path_dict().keys())
-
-        def get(self, key:str):
-            return self.path_dict()[key]
-
-        def get_forward(self, key:str, fwd_number: int)->np.ndarray:
-            k = key+'_'+str(fwd_number)
-            return self.get(k)
-
-    def __init__(self, region: str = 'Wind_Germany',
+        
+    def __init__(self, region: str,
                     speed_of_mean_reversion: float, 
                     volatility: float,
-                    expiries: List[float],
-                    initial_forecasts: List[float],
                     ):
         """Simple Model to simulate wind forecasts.
 
@@ -131,34 +99,34 @@ class WindPowerForecastModel(FactoryObject):
             volatility (float): The volatility of the underlying Ornstein-Uhlenbeck process (:class:`rivapy.models.OrnsteinUhlenbeck`).
             expiries (List[float]): A list of the expiries of the futures that will be simulated.
             forecasts (List[float]): The forecasted efficiencies at each of the futures that will be simulated.
-            name (str): The name of the respective wind region.
+            region (str): The name of the respective wind region.
         """
-        if len(expiries) != len(initial_forecasts):
-            raise Exception('Number of forward expiries does not equal number of initial forecasts. Each forward expiry needs an own forecast.')
+        #if len(expiries) != len(initial_forecasts):
+        #    raise Exception('Number of forward expiries does not equal number of initial forecasts. Each forward expiry needs an own forecast.')
         self.ou = OrnsteinUhlenbeck(speed_of_mean_reversion, volatility, mean_reversion_level=0.0)
-        self.expiries = expiries
-        self.forecasts = initial_forecasts
         self.region = region
         self._timegrid = None
         
-        self._ou_additive_forward_corrections = np.empty((len(expiries)))
+    def _compute_ou_additive_forward_correction(self, expiries, initial_forecasts):
+        result = np.empty((len(expiries)))
         for i in range(len(expiries)):
             #mean_ou = _inv_logit(self.ou.compute_expected_value(0.0, expiries[i]))
             correction = _logit(initial_forecasts[i])-self.ou.compute_expected_value(0.0, expiries[i])
-            self._ou_additive_forward_corrections[i] = correction
+            result[i] = correction
+        return result
 
     def _to_dict(self)->dict:
         return {'speed_of_mean_reversion': self.ou.speed_of_mean_reversion, 
             'volatility': self.ou.volatility,
                 'expiries': self.expiries, 'forecasts': self.forecasts, 
                 'region': self.region}
-    
-    def n_forwards(self):
-        return len(self.expiries)
-    
-    def get_forward(self, paths, t, num_expiry):
-        expected_ou = self.ou.compute_expected_value(paths, self.expiries[num_expiry]-t)#+correction
-        return _inv_logit(expected_ou + self._ou_additive_forward_corrections[num_expiry])
+        
+    def get_forward(self, paths, ttm, ou_additive_forward_correction: float):
+        expected_ou = self.ou.compute_expected_value(paths, ttm)#+correction
+        result = _inv_logit(expected_ou + ou_additive_forward_correction)
+        #expected_ou = self.ou.compute_expected_value(paths[1], ttm)#+correction
+        #result += (1.0-ttm)*_inv_logit(expected_ou + ou_additive_forward_correction)
+        return result
             
     def rnd_shape(self, n_sims: int, n_timesteps: int)->tuple:
         return (n_timesteps-1, n_sims)
@@ -166,39 +134,50 @@ class WindPowerForecastModel(FactoryObject):
     def simulate(self, timegrid, 
                 rnd: np.ndarray,
                 expiries: List[float],
-                forecast: List[float],
-                startvalue=0.0)->SimulationResult:
+                initial_forecasts: List[float],
+                startvalue=0.0)->ForwardSimulationResult:
+        #paths = np.empty((2,timegrid.shape[0], rnd.shape[2]))
         paths = self.ou.simulate(timegrid, startvalue, rnd)
-        return WindPowerForecastModel.SimulationResult(paths, self, timegrid)
+        #paths[1,:,:] = self.ou.simulate(timegrid, startvalue, rnd[1])
+        return WindPowerForecastModel.ForwardSimulationResult(paths, self, timegrid, expiries, initial_forecasts)
 
 class MultiRegionWindForecastModel:
-    class SimulationResult(SimulationResultForward):
-        def __init__(self, model, regions_result: SimulationResult):
+    class ForwardSimulationResult(ForwardSimulationResult):
+        def __init__(self, model, regions_result):
             self._results = regions_result
             self._model = model
 
-        def path_dict(self):
-            result = {}
-            for r in self._results:
-                result.update(r.path_dict())
+        def n_forwards(self)->float:
+            for v in self._results.values():
+                return v.n_forwards()
+            
+        def udls(self)->Set[str]:
+            result = set([self._model.name])
+            for v in self._results.values():
+                result.update(v.udls())
             return result
 
-        def keys(self)->List[str]:
-            result = []
-            for r in self._results:
-                result.extend(r.keys())
+        def get(self, key: str, forecast_timepoints: List[int]=None)->np.ndarray:
+            tmp = key.split(':')
+            udl = tmp[0]
+            if udl == self._model.name:
+                expiry = int(tmp[-1])
+                return self._get(expiry, forecast_timepoints)
+            for v in self._results.values():
+                if udl in v.udls():
+                    return v.get(key, forecast_timepoints)
+            raise Exception('Cannot find key '+ key)
+
+        def _get(self, expiry: int, forecast_timepoints: List[int])->np.ndarray:
+            result = None
+            for udl in self.udls():
+                if udl == self._model.name:
+                    continue
+                if result is None:
+                    result = self._model.region_relative_capacity(udl)*np.copy(self.get(ForwardSimulationResult.get_key(udl, expiry), forecast_timepoints))
+                else:
+                    result += self._model.region_relative_capacity(udl)*np.copy(self.get(ForwardSimulationResult.get_key(udl, expiry), forecast_timepoints))
             return result
-
-        def path(self)->np.ndarray:
-            raise NotImplementedError('This method is not implemented.')
-
-        def n_forwards(self)->int:
-            return self.model.n_forwards()
-    
-        def get_forward(self, key: str, fwd_number: int)->np.ndarray:
-            pass    
-        def get(self, key:str):
-            pass
         
     class Region:
         def __init__(self, model: WindPowerForecastModel,  capacity: float, rnd_weights: List[float]):
@@ -217,12 +196,9 @@ class MultiRegionWindForecastModel:
         if len(region_forecast_models)==0:
             raise Exception('Empty list of models is not allowed')
         n_rnd_ref_model = region_forecast_models[0].n_random()
-        n_fwd_ref_model = region_forecast_models[0].model.n_forwards()
         for i in range(1, len(region_forecast_models)):
             if region_forecast_models[i].n_random() != n_rnd_ref_model:
                 raise Exception('All regions must have the same number of random variables.')
-            if region_forecast_models[i].model.n_forwards() != n_fwd_ref_model:
-                raise Exception('All regions must have the same number of fwds.')
         self._region_forecast_models = region_forecast_models
 
     def n_forwards(self):
@@ -246,34 +222,43 @@ class MultiRegionWindForecastModel:
     def region_names(self)->List[str]:
         return [r.name() for r in self._region_forecast_models]
 
-    def simulate(self, timegrid, rnd: np.ndarray, startvalue=0.0):
+    def simulate(self, timegrid, rnd: np.ndarray, expiries: List[float],
+                initial_forecasts: Dict[str,List[float]], startvalue=0.0):
         results = {}
         for region in self._region_forecast_models:
             rnd_ = region.rnd_weights[0]*rnd[0,:,:]
             for i in range(1, region.n_random()):
                 rnd_ += region.rnd_weights[i]*rnd[i,:,:]
-            results[region.name()] = region.model.simulate(timegrid, rnd_, startvalue)
-        return results
-    
-    def simulate_new(self, timegrid, rnd: np.ndarray, startvalue=0.0):
-        r = self.simulate(timegrid, rnd, startvalue)
-        return MultiRegionWindForecastModel.SimulationResult(r)
+            results[region.name()] = region.model.simulate(timegrid, rnd_, expiries, initial_forecasts[region.name()], startvalue)
+        return MultiRegionWindForecastModel.ForwardSimulationResult(self, results)
 
     def rnd_shape(self, n_sims: int, n_timesteps: int)->tuple:
         return (len(self._region_forecast_models), n_timesteps-1, n_sims)
 
 class ResidualDemandForwardModel(FactoryObject):
-    class SimulationResult:
-        def __init__(self, power_name, n_forwards, power_fwd, efficiencies):
-            self.result = {}
-            for i in range(n_forwards):
-                self.result[power_name+str(i)] = power_fwd[:,:,i]
-                for k,v in efficiencies.items():
-                    self.result[k+str(i)] = v[:,:,i]
+    class ForwardSimulationResult(ForwardSimulationResult):
+        def __init__(self, model, wind_results):
+            self._model = model
+            self._wind = wind_results
             
-        def path_dict(self):
-            return self.result
+        def n_forwards(self)->float:
+            return self._wind.n_forwards()
+            
+        def udls(self)->Set[str]:
+            result = set([self._wind.udls()])
+            result.add(self._model.power_name)
+            return result
 
+        def get(self, key: str)->np.ndarray:
+            tmp = key.split(':')
+            udl = tmp[0]
+            if udl == self._model.power_name:
+                expiry = int(tmp[-1])
+                return self._get(expiry)
+            else:
+                return self._wind.get(key)
+
+        
     def __init__(self, wind_power_forecast,
                         highest_price_ou_model, 
                         supply_curve: Callable[[float], float],
@@ -315,8 +300,10 @@ class ResidualDemandForwardModel(FactoryObject):
         """
         return self.wind_power_forecast.region
 
-    def _simulate_multi_region(self, timegrid: Union[np.ndarray, DateTimeGrid], 
+    def _simulate_multi_region(self, timegrid: np.ndarray, 
                 rnd: np.ndarray, 
+                expiries: List[float],
+                initial_forecasts: Dict[str, List[float]],
                 forecast_timepoints: List[int]=None):
         if forecast_timepoints is None and self.forecast_hours is None:
             raise Exception('Either a list of timepoints or a list of publishing hours for forecast must be specified.')
@@ -352,43 +339,7 @@ class ResidualDemandForwardModel(FactoryObject):
                 power_fwd[i,:,j] =  self.supply_curve(1.0-efficiency_forecast_total[i,:,j] )*highest_prices[i,:]
         return power_fwd, result_efficiencies
     
-    def _simulate_multi_region_new(self, timegrid: Union[np.ndarray, DateTimeGrid], 
-                rnd: np.ndarray, 
-                forecast_timepoints: List[int]=None):
-        if forecast_timepoints is None and self.forecast_hours is None:
-            raise Exception('Either a list of timepoints or a list of publishing hours for forecast must be specified.')
-        if forecast_timepoints is not None and self.forecast_hours is not None:
-            raise Exception('You cannot specify forecast_timepoints since forecast_hours have already been specified.')
-        if forecast_timepoints is None:
-            if not isinstance(timegrid, DateTimeGrid):
-                raise Exception('If forecast_timepoints is None, timegrid must be of type DateTimeGrid so that the points can be determined.')
-            forecast_timepoints = [i for i in range(len(timegrid.dates)) if timegrid.dates[i].hour in self.forecast_hours]
-            timegrid = timegrid.timegrid
-        highest_prices = self.highest_price_ou_model.simulate(timegrid, 1.0, rnd[0,:])*self.max_price
-        wind = self.wind_power_forecast.simulate_new(timegrid, rnd[1:,:])
-        efficiency_forecast_total = np.zeros((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
-        result_efficiencies = {}
-        for region, forecast in wind._results.items():
-            efficiency_forecast = np.empty((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
-            multiplier = self.wind_power_forecast.region_relative_capacity(region)
-            for i in range(timegrid.shape[0]):
-                for j in range(self.wind_power_forecast.n_forwards()):
-                    #print(i,timegrid[i], j,forecast.expiry(j))
-                    #if abs(forecast.expiry(j)-timegrid[i])<1e-6:
-                    #    print(i,timegrid[i], j,forecast.expiry(j))
-                    if i in forecast_timepoints or i == 0 or abs(forecast.expiry(j)-timegrid[i])<1e-6:
-                        efficiency_forecast[i,:,j] = forecast.get_fwd(i,j)
-                        efficiency_forecast_total[i,:,j] += multiplier*efficiency_forecast[i,:,j]
-                    else:
-                        efficiency_forecast[i,:,j] = efficiency_forecast[i-1,:,j]
-                        efficiency_forecast_total[i,:,j] = efficiency_forecast_total[i-1,:,j]
-            result_efficiencies[region] = efficiency_forecast     
-        power_fwd = np.empty((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
-        for i in range(timegrid.shape[0]):
-            for j in range(self.wind_power_forecast.n_forwards()):
-                power_fwd[i,:,j] =  self.supply_curve(1.0-efficiency_forecast_total[i,:,j] )*highest_prices[i,:]
-        return ResidualDemandForwardModel.SimulationResult(self.power_name, self.wind_power_forecast.n_forwards(),
-                            power_fwd, result_efficiencies)
+    
     
 
     def compute_rlzd_qty(self, location:str, simulated_forecasts: Dict[str, np.ndarray])->np.ndarray:
@@ -397,7 +348,9 @@ class ResidualDemandForwardModel(FactoryObject):
                 return v[-1,:,:]
 
     def simulate(self, timegrid: Union[np.ndarray, DateTimeGrid], 
-                rnd: np.ndarray, 
+                rnd: np.ndarray,
+                expiries: List[float],
+                initial_forecasts: List[float],
                 forecast_timepoints: List[int]=None)->Tuple[np.ndarray, Dict[str, np.ndarray]]:
         multi_region = True
         #self.wind_power_forecast.region_names()

@@ -25,7 +25,8 @@ from sklearn.preprocessing import StandardScaler
 
 
 class DeepHedgeModel(tf.keras.Model):
-    def __init__(self, hedge_instruments:List[str], additional_states:List[str],
+    def __init__(self, hedge_instruments:List[str], 
+                        additional_states:List[str],
                         timegrid, 
                         regularization: float, 
                         depth: int,
@@ -33,9 +34,11 @@ class DeepHedgeModel(tf.keras.Model):
                         **kwargs):
         super().__init__(**kwargs)
         self.hedge_instruments= hedge_instruments
-        self.additional_states = additional_states
+        if additional_states is None:
+            self.additional_states = []
+        else:
+            self.additional_states = additional_states
         self.model = self._build_model(depth,n_neurons)
-        #self.price = tf.Variable([0], trainable=True, dtype ="float32")
         self.timegrid = timegrid
         self.lamda = regularization
         self._prev_q = None
@@ -63,38 +66,38 @@ class DeepHedgeModel(tf.keras.Model):
         return model
 
     def _compute_pnl(self, x, training):
-        S = x[0]
-        forecast = x[1]
-        #rlzd_qty = x[-1]
-        
-        pnl = 0.0
-        self._prev_q = tf.zeros((tf.shape(S)[0]), name='prev_q')
+        pnl = tf.zeros((tf.shape(x[0])[0],))
+        self._prev_q = tf.zeros((tf.shape(x[0])[0], len(self.hedge_instruments)), name='prev_q')
         for i in range(self.timegrid.shape[0]-2):
-            t = [self.timegrid[i]]*tf.ones((tf.shape(S)[0],1))/self.timegrid[-1]
+            t = [self.timegrid[-1]-self.timegrid[i]]*tf.ones((tf.shape(x[0])[0],1))/self.timegrid[-1]
             inputs = [v[:,i] for v in x]
             inputs.append(t)
             quantity = tf.squeeze(self.model(inputs, training=training))
-            pnl = pnl + tf.math.multiply((self._prev_q-quantity), tf.squeeze(S[:,i]))
+            for j in range(len(self.hedge_instruments)):
+                pnl += tf.math.multiply((self._prev_q[:,j]-quantity[:,j]), tf.squeeze(x[j][:,i]))
             self._prev_q = quantity
-        pnl = pnl + self._prev_q* tf.squeeze(S[:,-1])#+ rlzd_qty[:,-1]*(tf.squeeze(power_fwd[:,-1])-self.fixed_price)
+        for j in range(len(self.hedge_instruments)):
+            pnl += self._prev_q[:,j]* tf.squeeze(x[j][:,-1])#+ rlzd_qty[:,-1]*(tf.squeeze(power_fwd[:,-1])-self.fixed_price)
         return pnl
 
-    def compute_delta(self, fwd_prices: np.ndarray, 
-                        forecasts: Dict[str, np.ndarray], 
+    def compute_delta(self, paths: Dict[str, np.ndarray], 
                         t: Union[int, float]):
         if self._forecast_ids is None:
             raise('Model does not contain any forecast ids. Please train model first')
-        inputs_ = self._create_inputs(fwd_prices, forecasts, rlzd_qty=None,)
+        inputs_ = self._create_inputs(paths)
         if isinstance(t, int):
             inputs = [inputs_[i][:,t] for i in range(len(inputs_)-1)]
             t = self.timegrid[t]
         else:
             inputs = [inputs_[i] for i in range(len(inputs_)-1)]
-        inputs.append(t*np.ones((tf.shape(fwd_prices)[0],1)))
+        for k,v in paths.items():
+            inputs.append(t*np.ones((v[0],1)))
         return self.model.predict(inputs)
 
-    def compute_pnl(self, fwd_prices: np.ndarray, forecasts: Dict[str, np.ndarray], rlzd_qty: np.ndarray=None):
-        inputs = self._create_inputs(fwd_prices, forecasts, rlzd_qty=rlzd_qty,)
+    def compute_pnl(self, 
+                    paths: Dict[str, np.ndarray], 
+                    rlzd_qty: np.ndarray=None):
+        inputs = self._create_inputs(paths)
         return self.predict(inputs)
 
     @tf.function
@@ -102,19 +105,23 @@ class DeepHedgeModel(tf.keras.Model):
         return - self.lamda*tf.keras.backend.mean(y_pred-y_true) + tf.keras.backend.var(y_pred-y_true)
         #return tf.keras.backend.mean(tf.keras.backend.exp(-self.lamda*y_pred))
 
-    def _create_inputs(self,  paths_fwd_price, paths_forecasts, rlzd_qty):
-        inputs = [paths_fwd_price]
-        if self._forecast_ids is None:
-            self._forecast_ids = list(paths_forecasts.keys())
-        inputs = [paths_fwd_price]
-        self._forecast_ids = list(paths_forecasts.keys())
-        for k in self._forecast_ids:
-            inputs.append(paths_forecasts[k])
-        inputs.append(rlzd_qty)
+    def _create_inputs(self, paths: Dict[str, np.ndarray])->List[np.ndarray]:
+       
+        inputs = []
+       
+        for k in self.hedge_instruments:
+            if paths[k].shape[1] != self.timegrid.shape[0]:
+                inputs.append(paths[k].transpose())
+            else:
+                inputs.append(paths[k])
+        for k in self.additional_states:
+            if paths[k].shape[1] != self.timegrid.shape[0]:
+                inputs.append(paths[k].transpose())
+            else:
+                inputs.append(paths[k])
         return inputs
 
-    def train(self, hedge_ins_prices: Dict[str,np.ndarray],
-            additional_states: Dict[str, np.ndarray], 
+    def train(self, paths: Dict[str,np.ndarray], 
             payoff: np.ndarray, 
             lr_schedule, 
             epochs: int, batch_size: int, 
@@ -127,7 +134,7 @@ class DeepHedgeModel(tf.keras.Model):
             tensorboard_callback = tf.keras.callbacks.TensorBoard(logdir, histogram_freq=1)
             callbacks.append(tensorboard_callback)
         self.compile(optimizer=optimizer, loss=self.custom_loss)
-        inputs = self._create_inputs(hedge_ins_prices, additional_states)
+        inputs = self._create_inputs(paths)
         return self.fit(inputs, payoff, epochs=epochs, 
                             batch_size=batch_size, callbacks=callbacks, verbose=verbose)
 
@@ -257,45 +264,6 @@ def _validate(val_date: dt.datetime,
     if green_ppa.n_deliveries() > 1:
         raise Exception('Pricer for more than one delivery not yet implemented.')
 
-def price_old( val_date: dt.datetime,
-            green_ppa: GreenPPASpecification,
-            power_wind_model: ResidualDemandForwardModel, 
-            depth: int, nb_neurons: int, 
-            n_sims: int, regularization: float, 
-            epochs: int,
-            verbose: bool=0,
-            tensorboard_logdir: str=None, initial_lr: float = 1e-4, 
-            batch_size: int = 100, decay_rate: float=0.7, seed: int = 42):
-    #print(locals())
-    tf.keras.backend.set_floatx('float64')
-
-    _validate(val_date, green_ppa,power_wind_model)
-    ppa_schedule = green_ppa.get_schedule()
-    if ppa_schedule[-1] <= val_date:
-        return None
-    tf.random.set_seed(seed)
-    model = _build_model(depth, nb_neurons)
-    timegrid = DateTimeGrid(start=val_date, end=ppa_schedule[-1], freq='1H')
-    rnd = np.random.normal(size=power_wind_model.rnd_shape(n_sims, timegrid.timegrid.shape[0]))
-    fwd_prices, forecasts = power_wind_model.simulate(timegrid, rnd)
-    rlzd_qty = power_wind_model.compute_rlzd_qty(green_ppa.location, forecasts)
-    
-    fwd_prices = np.squeeze(fwd_prices.transpose())
-    
-    #print(fwd_prices.mean(axis=0))
-    # dirty hack to test!!!
-    k = list(forecasts.keys())[0]
-    forecasts =  np.squeeze(forecasts[k].transpose())
-    #######################
-    hedge_model = PPAHedgeModel(model, timegrid.timegrid, green_ppa, regularization)
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=initial_lr,#1e-3,
-            decay_steps=100*fwd_prices.shape[0]/batch_size,
-            decay_rate=decay_rate)
-    print(type(forecasts))
-    hedge_model.train(fwd_prices, forecasts, rlzd_qty, lr_schedule, epochs, batch_size, 
-                        tensorboard_log=tensorboard_logdir, verbose=verbose)
-    return PricingResults(hedge_model, timegrid, fwd_prices, forecasts, rlzd_qty)
 
 def price( val_date: dt.datetime,
             green_ppa: GreenPPASpecification,
@@ -350,6 +318,72 @@ def price( val_date: dt.datetime,
     model = _build_model(depth, nb_neurons, regions)
     
     hedge_model = PPAHedgeModel(model, timegrid.timegrid, regularization, fixed_price=green_ppa.fixed_price)
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            initial_learning_rate=initial_lr,#1e-3,
+            decay_steps=100*fwd_prices.shape[0]/batch_size,
+            decay_rate=decay_rate)
+    hedge_model.train(fwd_prices, forecasts, rlzd_qty, lr_schedule, epochs, batch_size, 
+                        tensorboard_log=tensorboard_logdir, verbose=verbose)
+    return PricingResults(hedge_model, timegrid, fwd_prices, forecasts, rlzd_qty)
+
+
+def price_new( val_date: dt.datetime,
+            green_ppa: GreenPPASpecification,
+            power_wind_model: ResidualDemandForwardModel, 
+            depth: int, 
+            nb_neurons: int, 
+            n_sims: int, 
+            regularization: float, 
+            epochs: int,
+            verbose: bool=0,
+            tensorboard_logdir: str=None, 
+            initial_lr: float = 1e-4, 
+            batch_size: int = 100, 
+            decay_rate: float=0.7, 
+            seed: int = 42):
+    """Price a green PPA using deeep hedging
+
+    Args:
+        val_date (dt.datetime): Valuation date.
+        green_ppa (GreenPPASpecification): Specification of a green PPA.
+        power_wind_model (ResidualDemandForwardModel): The model modeling power prices and renewable quantities.
+        depth (int): Number of layers of neural network.
+        nb_neurons (int): Number of activation functions. 
+        n_sims (int): Number of paths used as input for network training.
+        regularization (float): The regularization term entering the loss: Loss is defined by -E[pnl] + regularization*Var(pnl)
+        epochs (int): Number of epochs for network training.
+        verbose (bool, optional): Verbosity level (0, 1 or 2). Defaults to 0.
+        tensorboard_logdir (str, optional): Pah to tensorboard log, if None, no log is written. Defaults to None.
+        initial_lr (float, optional): Initial learning rate. Defaults to 1e-4.
+        batch_size (int, optional): The batch size. Defaults to 100.
+        decay_rate (float, optional): Decay of learning rate after each epoch. Defaults to 0.7.
+        seed (int, optional): Seed that is set to make results reproducible. Defaults to 42.
+
+    Returns:
+        _type_: _description_
+    """
+    #print(locals())
+    tf.keras.backend.set_floatx('float32')
+
+    _validate(val_date, green_ppa,power_wind_model)
+    ppa_schedule = green_ppa.get_schedule()
+    if ppa_schedule[-1] <= val_date:
+        return None
+    tf.random.set_seed(seed)
+    timegrid = DateTimeGrid(start=val_date, end=ppa_schedule[-1], freq='1H', closed=None)
+    np.random.seed(seed+123)
+    rnd = np.random.normal(size=power_wind_model.rnd_shape(n_sims, timegrid.timegrid.shape[0]))
+    fwd_prices, forecasts = power_wind_model.simulate(timegrid, rnd)
+    rlzd_qty = power_wind_model.compute_rlzd_qty(green_ppa.location, forecasts)
+    fwd_prices = np.squeeze(fwd_prices.transpose())
+    
+    regions =  list(forecasts.keys())
+    forecasts =  {r: np.squeeze(forecasts[r].transpose()) for r in regions}
+    #######################
+    model = _build_model(depth, nb_neurons, regions)
+    
+    hedge_model = PPAHedgeModel(model, timegrid.timegrid, regularization, 
+                                fixed_price=green_ppa.fixed_price)
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=initial_lr,#1e-3,
             decay_steps=100*fwd_prices.shape[0]/batch_size,

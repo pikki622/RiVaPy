@@ -87,27 +87,25 @@ class DeepHedgeModel(tf.keras.Model):
 
     def compute_delta(self, paths: Dict[str, np.ndarray], 
                         t: Union[int, float]):
-        if self._forecast_ids is None:
-            raise('Model does not contain any forecast ids. Please train model first')
         inputs_ = self._create_inputs(paths)
         if isinstance(t, int):
-            inputs = [inputs_[i][:,t] for i in range(len(inputs_)-1)]
+            inputs = [inputs_[i][:,t] for i in range(len(inputs_))]
             t = self.timegrid[t]
         else:
-            inputs = [inputs_[i] for i in range(len(inputs_)-1)]
-        for k,v in paths.items():
-            inputs.append(t*np.ones((v[0],1)))
+            inputs = [inputs_[i] for i in range(len(inputs_))]
+        #for k,v in paths.items():
+        inputs.append(np.full(inputs[0].shape, fill_value=t))
         return self.model.predict(inputs)
 
     def compute_pnl(self, 
-                    paths: Dict[str, np.ndarray], 
-                    rlzd_qty: np.ndarray=None):
+                    paths: Dict[str, np.ndarray],
+                    payoff: np.ndarray):
         inputs = self._create_inputs(paths)
-        return self.predict(inputs)
+        return payoff+self.predict(inputs)
 
     @tf.function
     def custom_loss(self, y_true, y_pred):
-        return - self.lamda*tf.keras.backend.mean(y_pred-y_true) + tf.keras.backend.var(y_pred-y_true)
+        return - self.lamda*tf.keras.backend.mean(y_pred+y_true) + tf.keras.backend.var(y_pred+y_true)
         #return tf.keras.backend.mean(tf.keras.backend.exp(-self.lamda*y_pred))
 
     def _create_inputs(self, paths: Dict[str, np.ndarray])->List[np.ndarray]:

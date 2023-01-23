@@ -14,9 +14,14 @@ import numpy as np
 import sys
 sys.path.append('C:/Users/doeltz/development/RiVaPy/')
 import datetime as dt
+from rivapy.models.base_model import BaseFwdModel
 from rivapy.models import ResidualDemandForwardModel
 from rivapy.instruments.ppa_specification import GreenPPASpecification
+from rivapy.tools.datetools import DayCounter
+from rivapy.tools.enums import DayCounterType
 from rivapy.tools.datetime_grid import DateTimeGrid
+
+
 from sklearn.preprocessing import StandardScaler
 #class PPAModel(Protocol):
 #    def __init__(self, )
@@ -72,7 +77,7 @@ class DeepHedgeModel(tf.keras.Model):
             t = [self.timegrid[-1]-self.timegrid[i]]*tf.ones((tf.shape(x[0])[0],1))/self.timegrid[-1]
             inputs = [v[:,i] for v in x]
             inputs.append(t)
-            quantity = tf.squeeze(self.model(inputs, training=training))
+            quantity = self.model(inputs, training=training)#tf.squeeze(self.model(inputs, training=training))
             for j in range(len(self.hedge_instruments)):
                 pnl += tf.math.multiply((self._prev_q[:,j]-quantity[:,j]), tf.squeeze(x[j][:,i]))
             self._prev_q = quantity
@@ -131,7 +136,7 @@ class DeepHedgeModel(tf.keras.Model):
         callbacks = []
         if tensorboard_log is not None:
             logdir = tensorboard_log#os.path.join("logs", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
-            tensorboard_callback = tf.keras.callbacks.TensorBoard(logdir, histogram_freq=1)
+            tensorboard_callback = tf.keras.callbacks.TensorBoard(logdir, histogram_freq=0)
             callbacks.append(tensorboard_callback)
         self.compile(optimizer=optimizer, loss=self.custom_loss)
         inputs = self._create_inputs(paths)
@@ -326,10 +331,28 @@ def price( val_date: dt.datetime,
                         tensorboard_log=tensorboard_logdir, verbose=verbose)
     return PricingResults(hedge_model, timegrid, fwd_prices, forecasts, rlzd_qty)
 
+def _compute_points(val_date: dt.datetime, green_ppa: GreenPPASpecification, forecast_hours: List[int]):
+    ppa_schedule = green_ppa.get_schedule()
+    if ppa_schedule[-1] <= val_date:
+        return None
+    timegrid = DateTimeGrid(start=val_date, end=ppa_schedule[-1], freq='1H', closed=None, daycounter=DayCounterType.Act365Fixed)
+    dc = DayCounter(DayCounterType.Act365Fixed)
+    fwd_expiries = [dc.yf(val_date, d) for d in ppa_schedule if d>val_date]
+    forecast_points = [i for i in range(len(timegrid.dates)) if timegrid.dates[i].hour in forecast_hours]
+    return timegrid, fwd_expiries, forecast_points
+
+class PricingResultsNew:
+    def __init__(self, hedge_model: PPAHedgeModel, paths: np.ndarray, sim_results, payoff):
+        self.hedge_model = hedge_model
+        self.paths = paths
+        self.sim_results = sim_results
+        self.payoff = payoff
 
 def price_new( val_date: dt.datetime,
             green_ppa: GreenPPASpecification,
             power_wind_model: ResidualDemandForwardModel, 
+            initial_forecasts: dict,
+            forecast_hours,
             depth: int, 
             nb_neurons: int, 
             n_sims: int, 
@@ -365,65 +388,84 @@ def price_new( val_date: dt.datetime,
     #print(locals())
     tf.keras.backend.set_floatx('float32')
 
-    _validate(val_date, green_ppa,power_wind_model)
-    ppa_schedule = green_ppa.get_schedule()
-    if ppa_schedule[-1] <= val_date:
-        return None
+    #_validate(val_date, green_ppa,power_wind_model)
+    if green_ppa.udl not in power_wind_model.udls():
+        raise Exception('Underlying ' + green_ppa.udl + ' not in underlyings of the model ' + str(power_wind_model.udls()))
     tf.random.set_seed(seed)
-    timegrid = DateTimeGrid(start=val_date, end=ppa_schedule[-1], freq='1H', closed=None)
     np.random.seed(seed+123)
+    timegrid, expiries, forecast_points = _compute_points(val_date, green_ppa, forecast_hours)
+    if len(expiries) == 0:
+        return None
     rnd = np.random.normal(size=power_wind_model.rnd_shape(n_sims, timegrid.timegrid.shape[0]))
-    fwd_prices, forecasts = power_wind_model.simulate(timegrid, rnd)
-    rlzd_qty = power_wind_model.compute_rlzd_qty(green_ppa.location, forecasts)
-    fwd_prices = np.squeeze(fwd_prices.transpose())
+    simulation_results = power_wind_model.simulate(timegrid.timegrid, rnd, expiries=expiries, initial_forecasts=initial_forecasts)
+    additional_states = {}
+    hedge_ins = {}
+    for i in range(len(expiries)):
+        key = BaseFwdModel.get_key(green_ppa.udl, i)
+        hedge_ins[key] = simulation_results.get(key, forecast_points)
+    for i in range(len(expiries)):
+        key = BaseFwdModel.get_key(green_ppa.location, i)
+        additional_states[key] = simulation_results.get(key, forecast_points)
     
-    regions =  list(forecasts.keys())
-    forecasts =  {r: np.squeeze(forecasts[r].transpose()) for r in regions}
-    #######################
-    model = _build_model(depth, nb_neurons, regions)
-    
-    hedge_model = PPAHedgeModel(model, timegrid.timegrid, regularization, 
-                                fixed_price=green_ppa.fixed_price)
+    hedge_model = DeepHedgeModel(list(hedge_ins.keys()), list(additional_states.keys()), timegrid.timegrid, 
+                                    regularization=regularization,depth=depth, n_neurons=nb_neurons)
+    paths = {}
+    paths.update(hedge_ins)
+    paths.update(additional_states)
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=initial_lr,#1e-3,
-            decay_steps=100*fwd_prices.shape[0]/batch_size,
+            decay_steps=100_000,
             decay_rate=decay_rate)
-    hedge_model.train(fwd_prices, forecasts, rlzd_qty, lr_schedule, epochs, batch_size, 
-                        tensorboard_log=tensorboard_logdir, verbose=verbose)
-    return PricingResults(hedge_model, timegrid, fwd_prices, forecasts, rlzd_qty)
+
+    payoff = np.zeros((n_sims,))
+    for k,v in hedge_ins.items(): #TODO: We assume that each hedge instruments corresponds to the spot price at the last time step. Make this more explicit!
+        expiry = k.split('_')[-1]
+        forecast_key = green_ppa.location+'_'+expiry
+        payoff += (v[-1,:] -green_ppa.fixed_price)*(additional_states[forecast_key][-1,:])
+    
+    hedge_model.train(paths, payoff,lr_schedule, epochs=epochs, batch_size=batch_size, tensorboard_log=tensorboard_logdir, verbose=verbose)
+    return PricingResultsNew(hedge_model, paths=paths, sim_results=simulation_results, payoff=payoff)
 
 if __name__=='__main__':
-    from rivapy.models import WindPowerForecastModel, OrnsteinUhlenbeck
+    from rivapy.models import OrnsteinUhlenbeck
     from rivapy.models.residual_demand_model import SmoothstepSupplyCurve
-    import numpy as np
-    from scipy.special import comb
-
-    from rivapy.models.residual_demand_model import MultiRegionWindForecastModel
-    forward_expiries = [24.0*2/365.0]
+    from rivapy.models.residual_demand_fwd_model import WindPowerForecastModel, MultiRegionWindForecastModel, ResidualDemandForwardModel
+    
+    days = 2
+    timegrid = np.linspace(0.0, days*1.0/365.0, days*24)
+    forward_expiries = [timegrid[-10] +i/(365.0*24.0) for i in range(4)]#
+    #forward_expiries = [timegrid[-1] + i for i in range(4)]
+    n_sims = 10_000
+    wind_onshore = WindPowerForecastModel(region='Onshore', speed_of_mean_reversion=0.001, volatility=3.30)
+    wind_offshore = WindPowerForecastModel(region='Offshore', speed_of_mean_reversion=0.001, volatility=3.30)
     regions = [ MultiRegionWindForecastModel.Region( 
-                                        WindPowerForecastModel(speed_of_mean_reversion=0.5, 
-                                                            volatility=1.80, 
-                                                                expiries=forward_expiries,
-                                                                forecasts = [0.8, 0.8,0.8,0.8],#*len(forward_expiries)
-                                                                region = 'Onshore'
-                                                                ),
+                                        wind_onshore,
                                         capacity=1000.0,
                                         rnd_weights=[0.7,0.3]
                                     ),
             MultiRegionWindForecastModel.Region( 
-                                        WindPowerForecastModel(speed_of_mean_reversion=0.5, 
-                                                            volatility=1.80, 
-                                                                expiries=forward_expiries,
-                                                                forecasts = [0.8, 0.8,0.8,0.8],#*len(forward_expiries)
-                                                                region = 'Offshore'
-                                                                ),
+                                        wind_offshore,
                                         capacity=500.0,
                                         rnd_weights=[0.3,0.7]
                                     )
             
             ]
-    days = 2 
-    timegrid = np.linspace(0.0, days*1.0/365.0, days*24)
-    multi_region_model = MultiRegionWindForecastModel(regions)
-    rnd = np.random.normal(size=multi_region_model.rnd_shape(1000, timegrid.shape[0]))
-    
+    wind = MultiRegionWindForecastModel('Wind_Germany', regions)
+    highest_price = OrnsteinUhlenbeck(speed_of_mean_reversion=1.0, volatility=0.01, mean_reversion_level=1.0)
+    supply_curve = SmoothstepSupplyCurve(1.0, 0)
+    rd_model = ResidualDemandForwardModel(wind_power_forecast=wind, highest_price_ou_model= highest_price, 
+                                      supply_curve=supply_curve, max_price=1.0, power_name= 'Power_Germany')
+    val_date = dt.datetime(2023,1,1)
+    strike = 0.3 #0.22
+    spec = GreenPPASpecification(udl='Power_Germany',
+                                technology = 'Wind',
+                                location = 'Onshore',
+                                schedule = [val_date + dt.timedelta(days=2)], 
+                                fixed_price=strike,
+                                max_capacity = 1.0)
+    price_new(val_date, spec, rd_model, initial_forecasts={'Onshore': [0.8, 0.7,0.6,0.5],
+                                                          'Offshore': [0.6,0.6,0.6,0.6]},
+            forecast_hours=[6, 10, 14, 18],
+          depth=3, nb_neurons=32, n_sims=10_000, regularization=0.0,
+          epochs=100, verbose=1, tensorboard_logdir = None, initial_lr=1e-3, 
+          batch_size=100, decay_rate=0.8, seed=42)

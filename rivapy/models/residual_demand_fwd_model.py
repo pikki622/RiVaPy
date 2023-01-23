@@ -305,6 +305,7 @@ class ResidualDemandForwardModel(FactoryObject):
                 expiries: List[float],
                 initial_forecasts: Dict[str, List[float]],
                 forecast_timepoints: List[int]=None):
+        self.
         if forecast_timepoints is None and self.forecast_hours is None:
             raise Exception('Either a list of timepoints or a list of publishing hours for forecast must be specified.')
         if forecast_timepoints is not None and self.forecast_hours is not None:
@@ -340,8 +341,6 @@ class ResidualDemandForwardModel(FactoryObject):
         return power_fwd, result_efficiencies
     
     
-    
-
     def compute_rlzd_qty(self, location:str, simulated_forecasts: Dict[str, np.ndarray])->np.ndarray:
         for k,v in simulated_forecasts.items():
             if location == k:
@@ -352,37 +351,8 @@ class ResidualDemandForwardModel(FactoryObject):
                 expiries: List[float],
                 initial_forecasts: List[float],
                 forecast_timepoints: List[int]=None)->Tuple[np.ndarray, Dict[str, np.ndarray]]:
-        multi_region = True
-        #self.wind_power_forecast.region_names()
-        try:
-            r_names = self.wind_power_forecast.region_names()    
-        except:
-            multi_region = False
-        if multi_region:
-            return self._simulate_multi_region(timegrid, rnd, forecast_timepoints)
+        return self._simulate_multi_region(timegrid, rnd, forecast_timepoints)
 
-        if forecast_timepoints is None and self.forecast_hours is None:
-            raise Exception('Either a list of timepoints or a list of publishing hours for forecast must be specified.')
-        if forecast_timepoints is not None and self.forecast_hours is not None:
-            raise Exception('You cannot specify forecast_timepoints since forecast_hours have already been specified.')
-        if forecast_timepoints is None:
-            if not isinstance(timegrid, DateTimeGrid):
-                raise Exception('If forecast_timepoints is None, timegrid must be of type DateTimeGrid so that the points can be determined.')
-            forecast_timepoints = [i for i in range(len(timegrid.dates)) if timegrid.dates[i].hour in self.forecast_hours]
-            timegrid = timegrid.timegrid
-        highest_prices = self.highest_price_ou_model.simulate(timegrid, 1.0, rnd[0,:])*self.max_price
-        wind = self.wind_power_forecast.simulate(timegrid, rnd[1])._paths
-        power_fwd = np.empty((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
-        current_forecast = np.empty((timegrid.shape[0], rnd.shape[2], self.wind_power_forecast.n_forwards()))
-        for i in range(timegrid.shape[0]):
-            for j in range(self.wind_power_forecast.n_forwards()):
-                if i in forecast_timepoints or i == 0:
-                        current_forecast[i,:,j] =self.wind_power_forecast.get_forward(wind[i,:], timegrid[i],j)
-                else:
-                    current_forecast[i,:,j] = current_forecast[i-1,:,j]
-            for j in range(self.wind_power_forecast.n_forwards()):
-                power_fwd[i,:,j] =  self.supply_curve( 1.0-current_forecast[i,:,j] )*highest_prices[i,:]
-        return power_fwd, {self.wind_power_forecast.region: current_forecast}
         
     
 

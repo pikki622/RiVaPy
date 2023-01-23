@@ -8,11 +8,35 @@ import datetime as dt
 import numpy as np
 from rivapy.models.residual_demand_model import MultiRegionWindForecastModel, WindPowerForecastModel, OrnsteinUhlenbeck, ResidualDemandForwardModel, SmoothstepSupplyCurve
 from rivapy.instruments.ppa_specification import GreenPPASpecification
-from rivapy.pricing.green_ppa_pricing import price
+from rivapy.pricing.green_ppa_pricing import price, DeepHedgeModel
+
+class DeepHedger(unittest.TestCase):
+    def test_simple(self):
+        spots = {}
+        np.random.seed(42)
+        n_sims = 100
+        timegrid = np.linspace(0.0,1.0,12, endpoint=True)
+        payoff = None
+        for i in range(2):
+            model = OrnsteinUhlenbeck(1.0,0.2,1.0)
+            rnd = np.random.normal(size=(timegrid.shape[0], n_sims))
+            s =  model.simulate(timegrid, start_value=1.0, rnd=rnd)
+            spots['Asset'+str(i)] = s
+            if payoff is None:
+                payoff = np.maximum(s[-1,:]-1.0,0.0)
+            else:
+                payoff = np.maximum(np.maximum(s[-1,:]-1.0,0.0), payoff)
+        model = DeepHedgeModel([k for k in spots.keys()], None, timegrid=timegrid,
+                                regularization=0.0, depth=3, n_neurons=32)
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            initial_learning_rate=0.1,#1e-3,
+            decay_steps=100,
+            decay_rate=0.9)
+        model.train(spots, payoff, lr_schedule, 5, 10)
 
 class GreenPPAHedger(unittest.TestCase):
     def test_hedging(self):
-        """Simple test checking if a process with very small variance in the forecast converges to static volume hedge
+        """Simple test with a perfect forecast 
         """
         val_date = dt.datetime(2023,1,1)
         days = 2
@@ -28,24 +52,24 @@ class GreenPPAHedger(unittest.TestCase):
                                                                     forecasts = [0.8, 0.8,0.8,0.8],#*len(forward_expiries)
                                                                     region = 'Onshore'
                                                                     ),
-                                            capacity=1000.0,
-                                            rnd_weights=[0.8,0.2]
+                                            capacity=100.0,
+                                            rnd_weights=[1.0,0.0]
                                         ),
                 MultiRegionWindForecastModel.Region( 
                                             WindPowerForecastModel(speed_of_mean_reversion=0.5, 
                                                                 volatility=1.80, 
                                                                     expiries=forward_expiries,
-                                                                    forecasts = [0.6, 0.6,0.6,0.6],#*len(forward_expiries)
+                                                                    forecasts = [0.8, 0.8,0.8,0.8],#*len(forward_expiries)
                                                                     region = 'Offshore'
                                                                     ),
                                             capacity=100.0,
-                                            rnd_weights=[0.2,0.8]
+                                            rnd_weights=[1.0,0.0]
                                         )
                 
                 ]
         multi_region_wind_foecast_model = MultiRegionWindForecastModel(regions)
         
-        highest_price = OrnsteinUhlenbeck(1.0, 1.0, mean_reversion_level=1.0)
+        highest_price = OrnsteinUhlenbeck(1.0, 0.01, mean_reversion_level=1.0)
         supply_curve = SmoothstepSupplyCurve(1.0, 0)
         rdm = ResidualDemandForwardModel(
                                         #wind_forecast_model, 

@@ -92,6 +92,7 @@ class SimpleSchedule(interfaces.FactoryObject):
 
 class PPASpecification(interfaces.FactoryObject):
 	def __init__(self, 
+				udl: str,
 				amount: Union[float, np.ndarray], 
 				schedule: Union[SimpleSchedule, List[dt.datetime]],
 				fixed_price: float,
@@ -99,12 +100,14 @@ class PPASpecification(interfaces.FactoryObject):
 		"""Specification for a simple power purchase agreement (PPA).
 
 		Args:
-			amount (Union[None, float, np.ndarray]): Amount of power delivered at each timepoint/period. Either a single value s.t. all volumes delivered are constant or a load table.
+			udl (str): Name of underlying (power) that is delivered (just use for consistency checking within pricing against simulated model values).
+			amount (Union[None, float, np.ndarray]): Amount of power delivered at each timepoint/period. Either a single value s.t. all volumes delivered are constant or a load table. If None, a non-constant amount (e.g. by production from renewables) is assumed.
 			schedule (Union[SimpleSchedule, List[dt.datetime]): Schedule describing when power is delivered.
 			fixed_price (float): The fixed price paif for the power.
 			id (str): Simple id of the specification. If None, a uuid will be generated. Defaults to None.
 		"""
 		self.id = id
+		self.udl = udl
 		if id is None:
 			self.id = type(self).__name__+'/'+str(dt.datetime.now())
 		self.amount = amount
@@ -131,6 +134,7 @@ class PPASpecification(interfaces.FactoryObject):
 		except  Exception as e:
 			schedule = self.schedule
 		return {
+			'udl': self.udl,
 			'id': self.id,
 			'amount': self.amount,
 			'schedule': schedule,
@@ -153,6 +157,7 @@ class PPASpecification(interfaces.FactoryObject):
 
 class GreenPPASpecification(PPASpecification):
 	def __init__(self,
+				udl: str,
 				schedule: Union[SimpleSchedule, List[dt.datetime]],
 				technology: str,
 				location: str,
@@ -165,13 +170,14 @@ class GreenPPASpecification(PPASpecification):
 		renewable energy such as wind or solar, i.e. the quantity is related to some uncertain production.
 		
 		Args:
+			udl (str): Name of underlying (power) that is delivered (just use for consistency checking within pricing against simulated model values).
 			schedule (Union[SimpleSchedule, List[dt.datetime]]): _description_
 			technology (str): _description_
 			fixed_price (float): _description_
 			max_capacity (float): _description__
 			id (str, optional): _description_. Defaults to None.
 		"""
-		super().__init__(None, schedule, fixed_price, id)
+		super().__init__(udl, None, schedule, fixed_price, id)
 		self.technology = technology
 		self.max_capacity = max_capacity
 		self.location = location

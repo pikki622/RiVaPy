@@ -187,6 +187,7 @@ class GreenPPASpecification(PPASpecification):
 		del result['amount']
 		result['technology'] = self.technology
 		result['max_capacity'] = self.max_capacity
+		result['location'] = self.location
 		return result
 
 	def compute_flows(self, refdate: dt.datetime, pfc, forecast_amount: np.ndarray, result: pd.DataFrame=None, result_col = None)->pd.DataFrame:

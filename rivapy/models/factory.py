@@ -7,6 +7,8 @@ def _factory(depp=None):
     return _factory_entries
 
 def create(data: dict)->object:
+    if not isinstance(data, dict):
+        return data
     if 'cls' not in data.keys():
         raise Exception('Given dictionary has not a cls key, unable create from factory.')
     cls = data['cls']

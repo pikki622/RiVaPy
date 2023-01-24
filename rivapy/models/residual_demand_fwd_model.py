@@ -6,6 +6,7 @@ import abc
 from typing import Union, Callable, List, Tuple, Dict, Protocol, Set
 from scipy.special import comb
 from rivapy.tools.interfaces import FactoryObject
+from rivapy.models.factory import create as _create
 from rivapy.models.ornstein_uhlenbeck import OrnsteinUhlenbeck
 from rivapy.models.base_model import BaseFwdModel
 
@@ -173,7 +174,7 @@ class MultiRegionWindForecastModel(BaseFwdModel):
         
     class Region(FactoryObject):
         def __init__(self, model: WindPowerForecastModel,  capacity: float, rnd_weights: List[float]):
-            self.model = model
+            self.model = _create(model)
             self.capacity  = capacity
             self.rnd_weights = rnd_weights
 
@@ -193,15 +194,17 @@ class MultiRegionWindForecastModel(BaseFwdModel):
         self.name = name
         if len(region_forecast_models)==0:
             raise Exception('Empty list of models is not allowed')
-        n_rnd_ref_model = region_forecast_models[0].n_random()
-        for i in range(1, len(region_forecast_models)):
-            if region_forecast_models[i].n_random() != n_rnd_ref_model:
+        self._region_forecast_models = [ _create(r) for r in region_forecast_models]
+        n_rnd_ref_model = self._region_forecast_models[0].n_random()
+        for i in range(1, len(self._region_forecast_models)):
+            if self._region_forecast_models[i].n_random() != n_rnd_ref_model:
                 raise Exception('All regions must have the same number of random variables.')
-        self._region_forecast_models = region_forecast_models
+        
+        
 
     def _to_dict(self)->dict:
         return {'name': self.name, 
-                'region_forecast_models':[v._to_dict() for v in self._region_forecast_models]
+                'region_forecast_models':[v.to_dict() for v in self._region_forecast_models]
                 }
 
     def rnd_shape(self, n_sims: int, n_timesteps: int)->tuple:
@@ -275,9 +278,10 @@ class ResidualDemandForwardModel(BaseFwdModel):
                         max_price: float,
                         forecast_hours: List[int]=None,
                         power_name:str = None):
-        self.wind_power_forecast = wind_power_forecast
-        self.highest_price_ou_model = highest_price_ou_model
-        self.supply_curve = supply_curve
+        #print(wind_power_forecast)
+        self.wind_power_forecast = _create(wind_power_forecast)
+        self.highest_price_ou_model = _create(highest_price_ou_model)
+        self.supply_curve = _create(supply_curve)
         self.forecast_hours = forecast_hours
         self.max_price = max_price
         if power_name is not None:

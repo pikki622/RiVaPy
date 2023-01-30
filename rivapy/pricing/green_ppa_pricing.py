@@ -1,4 +1,5 @@
 from typing import List, Dict, Union
+import json
 
 try:
     import tensorflow as tf
@@ -36,18 +37,21 @@ class DeepHedgeModel(tf.keras.Model):
                         regularization: float, 
                         depth: int,
                         n_neurons: int,
+                        model=None,
                         **kwargs):
         super().__init__(**kwargs)
-        self.hedge_instruments= hedge_instruments
+        self.hedge_instruments = hedge_instruments
         if additional_states is None:
             self.additional_states = []
         else:
             self.additional_states = additional_states
-        self.model = self._build_model(depth,n_neurons)
+        if model is None:
+            self.model = self._build_model(depth,n_neurons)
+        else:
+            self.model = model
         self.timegrid = timegrid
-        self.lamda = regularization
+        self.regularization = regularization
         self._prev_q = None
-        self._output_scaler = None
         self._forecast_ids = None
         
     def __call__(self, x, training=True):
@@ -87,11 +91,12 @@ class DeepHedgeModel(tf.keras.Model):
 
     def compute_delta(self, paths: Dict[str, np.ndarray], 
                         t: Union[int, float]):
-        inputs_ = self._create_inputs(paths)
         if isinstance(t, int):
+            inputs_ = self._create_inputs(paths, check_timegrid=True)
             inputs = [inputs_[i][:,t] for i in range(len(inputs_))]
             t = (self.timegrid[-1] - self.timegrid[t])/self.timegrid[-1]
         else:
+            inputs_ = self._create_inputs(paths, check_timegrid=False)
             inputs = [inputs_[i] for i in range(len(inputs_))]
         #for k,v in paths.items():
         inputs.append(np.full(inputs[0].shape, fill_value=t))
@@ -105,22 +110,26 @@ class DeepHedgeModel(tf.keras.Model):
 
     @tf.function
     def custom_loss(self, y_true, y_pred):
-        return - self.lamda*tf.keras.backend.mean(y_pred+y_true) + tf.keras.backend.var(y_pred+y_true)
+        return - self.regularization*tf.keras.backend.mean(y_pred+y_true) + tf.keras.backend.var(y_pred+y_true)
         #return tf.keras.backend.mean(tf.keras.backend.exp(-self.lamda*y_pred))
 
-    def _create_inputs(self, paths: Dict[str, np.ndarray])->List[np.ndarray]:
-       
+    def _create_inputs(self, paths: Dict[str, np.ndarray], check_timegrid: bool=True)->List[np.ndarray]:
         inputs = []
-       
-        for k in self.hedge_instruments:
-            if paths[k].shape[1] != self.timegrid.shape[0]:
-                inputs.append(paths[k].transpose())
-            else:
+        if check_timegrid:
+            for k in self.hedge_instruments:
+                if paths[k].shape[1] != self.timegrid.shape[0]:
+                    inputs.append(paths[k].transpose())
+                else:
+                    inputs.append(paths[k])
+            for k in self.additional_states:
+                if paths[k].shape[1] != self.timegrid.shape[0]:
+                    inputs.append(paths[k].transpose())
+                else:
+                    inputs.append(paths[k])
+        else:
+            for k in self.hedge_instruments:
                 inputs.append(paths[k])
-        for k in self.additional_states:
-            if paths[k].shape[1] != self.timegrid.shape[0]:
-                inputs.append(paths[k].transpose())
-            else:
+            for k in self.additional_states:
                 inputs.append(paths[k])
         return inputs
 
@@ -140,6 +149,26 @@ class DeepHedgeModel(tf.keras.Model):
         inputs = self._create_inputs(paths)
         return self.fit(inputs, payoff, epochs=epochs, 
                             batch_size=batch_size, callbacks=callbacks, verbose=verbose)
+
+    def save(self, folder):
+        self.model.save(folder+'/delta_model')
+        params = {}
+        params['regularization'] = self.regularization
+        params['timegrid'] =[x for x in self.timegrid]
+        params['additional_states'] = self.additional_states
+        params['hedge_instruments'] = self.hedge_instruments
+        with open(folder+'/params.json','w') as f:
+            json.dump(params, f)
+        
+        
+        
+    @staticmethod
+    def load(folder: str):
+        with open(folder+'/params.json','r') as f:
+            params = json.load(f)
+        base_model = tf.keras.models.load_model(folder+'/delta_model')
+        params['timegrid'] = np.array(params['timegrid'])
+        return DeepHedgeModel(depth=None,n_neurons=None, model=base_model, **params)
 
 class PPAHedgeModel(tf.keras.Model):
     def __init__(self, model, timegrid, 
@@ -276,7 +305,7 @@ def price( val_date: dt.datetime,
             epochs: int,
             verbose: bool=0,
             tensorboard_logdir: str=None, initial_lr: float = 1e-4, 
-            batch_size: int = 100, decay_rate: float=0.7, seed: int = 42):
+            batch_size: int = 100, decay_rate: float=0.7, decay_step=100, seed: int = 42):
     """Price a green PPA using deeep hedging
 
     Args:
@@ -323,7 +352,7 @@ def price( val_date: dt.datetime,
     hedge_model = PPAHedgeModel(model, timegrid.timegrid, regularization, fixed_price=green_ppa.fixed_price)
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=initial_lr,#1e-3,
-            decay_steps=100*fwd_prices.shape[0]/batch_size,
+            decay_steps=decay_step*fwd_prices.shape[0]/batch_size,
             decay_rate=decay_rate)
     hedge_model.train(fwd_prices, forecasts, rlzd_qty, lr_schedule, epochs, batch_size, 
                         tensorboard_log=tensorboard_logdir, verbose=verbose)
@@ -375,6 +404,7 @@ class GreenPPADeepHedgingPricer:
                 initial_lr: float = 1e-4, 
                 batch_size: int = 100, 
                 decay_rate: float=0.7, 
+                decay_steps: int = 100_000,
                 seed: int = 42,
                 additional_states=None, 
                 paths: Dict[str, np.ndarray] = None):
@@ -400,8 +430,8 @@ class GreenPPADeepHedgingPricer:
             _type_: _description_
         """
         #print(locals())
-        if paths is None or power_wind_model is None:
-            raise Exception('Eother paths or a power wind model must be specified.')
+        if paths is None and power_wind_model is None:
+            raise Exception('Either paths or a power wind model must be specified.')
         tf.keras.backend.set_floatx('float32')
 
         #_validate(val_date, green_ppa,power_wind_model)
@@ -436,8 +466,9 @@ class GreenPPADeepHedgingPricer:
         paths.update(additional_states_)
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
                 initial_learning_rate=initial_lr,#1e-3,
-                decay_steps=100_000,
-                decay_rate=decay_rate)
+                decay_steps=decay_steps,
+                decay_rate=decay_rate, 
+                staircase=True)
 
         payoff = GreenPPADeepHedgingPricer.compute_payoff(n_sims, hedge_ins, additional_states_, green_ppa)  
         

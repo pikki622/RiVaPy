@@ -193,5 +193,5 @@ class Issuer(interfaces.FactoryObject):
         Returns:
             Sector: Issuer's sector.
         """
-        self.__sector = Sector.to_string(str)
+        self.__sector = Sector.to_string(sector)
 

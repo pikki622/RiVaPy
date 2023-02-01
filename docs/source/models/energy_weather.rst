@@ -3,19 +3,34 @@ Energy and Weather
 
 Wind
 ----------------------------------
-The WindPowerModels model the total production of power from wind in percentage of the total wind capacity. That means that all simulated values that will be returned by the model are between 0 and 1.
+The WindPowerModels model the total production of power from wind in percentage of the total wind capacity. That means that all simulated values that will be returned by these models are between 0 and 1.
 
+Instantenous Production Models (Spot Models)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: rivapy.models.WindPowerModel
    :members:
    :undoc-members:
    :show-inheritance:
 
+Forecast Models (Forward Models)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+WindPowerForecastModel
+""""""""""""""""""""""""""""""""""""""""""""""""
 .. autoclass:: rivapy.models.WindPowerForecastModel
    :members:
    :undoc-members:
    :show-inheritance:
+
+MultiRegionWindForecastModel
+""""""""""""""""""""""""""""""""""""""""""""""""
+.. autoclass:: rivapy.models.MultiRegionWindForecastModel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+   
 
 Solar
 ------------------------------------

@@ -1,4 +1,4 @@
-Stochastic stochastic_processes
+Stochastic Processes
 ===================================
 
 .. autoclass:: rivapy.models.OrnsteinUhlenbeck

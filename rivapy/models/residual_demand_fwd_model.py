@@ -84,16 +84,28 @@ class WindPowerForecastModel(BaseFwdModel):
                     speed_of_mean_reversion: float, 
                     volatility: float,
                     ):
-        """Simple Model to simulate wind forecasts.
+        """Simple model to simulate forecasts of wind efficiencies (power production by wind as percentage of total wind capacity) based on the Ornstein-Uhlenbeck process.
 
         The base model used within this model is the Ornstein-Uhlenbeck process and uses internally the class :class:`rivapy.models.OrnsteinUhlenbeck` with a mean level of zero to simulate the forecast.
-        Here, the forecast is computed as the expected value of the Ornstein-Uhlenbeck process conditioned on current simulated value.
+        Here, the forecast of wind efficiency :math:`w_{t,T}` at time :math:`T` is computed as the expected value of the standard logistic function (sigmoid) applied to the Ornstein-Uhlenbeck process conditioned on current simulated value,
+        i.e.
+
+        .. math:: w_{t, T} = \\frac{1}{1+e^{-(X_{t,T}+\\nu(T))}} 
+
+        where :math:`X_{t,T}:=E[X_T\mid X_t]` with
+
+        .. math:: dX = -\\lambda X dt + \\sigma dW_t, X(0) = 0
+
+        and :math:`\\nu(T)` is a correction term to ensure that the initial value of :math:`w_{t,T}` is equal to 
+        a given initial forecast :math:`\\bar{w}_{0,T}`. It is computed by 
+
+        .. math:: \\nu(T) := \log\\frac{\\bar{w}_{0,T}}{(1.0-\\bar{w}_{0,T})}.
+
+        The sigmoid function is applied to ensure that the forecast is between 0 and 1 (as percentage of total wind capacity)
 
         Args:
             speed_of_mean_reversion (float): The speed of mean reversion of the underlying Ornstein-Uhlenbeck process (:class:`rivapy.models.OrnsteinUhlenbeck`).
             volatility (float): The volatility of the underlying Ornstein-Uhlenbeck process (:class:`rivapy.models.OrnsteinUhlenbeck`).
-            expiries (List[float]): A list of the expiries of the futures that will be simulated.
-            forecasts (List[float]): The forecasted efficiencies at each of the futures that will be simulated.
             region (str): The name of the respective wind region.
         """
         #if len(expiries) != len(initial_forecasts):
@@ -106,7 +118,7 @@ class WindPowerForecastModel(BaseFwdModel):
         result = np.empty((len(expiries)))
         for i in range(len(expiries)):
             #mean_ou = _inv_logit(self.ou.compute_expected_value(0.0, expiries[i]))
-            correction = _logit(initial_forecasts[i])-self.ou.compute_expected_value(0.0, expiries[i])
+            correction = _logit(initial_forecasts[i]) #-self.ou.compute_expected_value(0.0, expiries[i])
             result[i] = correction
         return result
 
@@ -191,6 +203,43 @@ class MultiRegionWindForecastModel(BaseFwdModel):
             return {'model': self.model.to_dict(), 'capacity': self.capacity, 'rnd_weights': self.rnd_weights}
 
     def __init__(self, name: str, region_forecast_models: List[Region]):
+        """Simple model to simulate power forecasts for more then one wind region and a total efficiency over all regions.
+
+        This model relates the wind models for the different regions within the simulation by just using a linear sum of normal random variates, i.e.
+        for a region :math:`r` we have weights :math:`w_{r,i}`,  :math:`1\leq i\leq N`, so that within the simulation based on :math:`n` different normal random
+        variates :math:`X_i` we compute the random variate for the region by
+
+        .. math:: X_{r,i} = \\frac{\sum_i w_{r,i} X_i}{\sqrt{\sum_i w_{r,i}^2}}.
+
+        Args:
+            name (str): Name of the overall region.
+            region_forecast_models (List[Region]): List of regions that will be simulated.
+
+        Examples:
+            >>> wind_onshore = WindPowerForecastModel(region='Onshore', speed_of_mean_reversion=0.1, volatility=4.80)
+            >>> wind_offshore = WindPowerForecastModel(region='Offshore', speed_of_mean_reversion=0.5, volatility=4.80)
+            >>> regions = [ MultiRegionWindForecastModel.Region( 
+                                    wind_onshore,
+                                    capacity=1000.0,
+                                    rnd_weights=[0.8,0.2]
+                                ),
+                            MultiRegionWindForecastModel.Region( 
+                                                        wind_offshore,
+                                                        capacity=100.0,
+                                                        rnd_weights=[0.2,0.8]
+                                                    )
+                            ]
+            >>> wind = MultiRegionWindForecastModel('Wind_Germany', regions)
+            >>> # after model setup we simulate forecasts
+            >>> days = 10
+            >>> timegrid = np.linspace(0.0, days*1.0/365.0, days*24)
+            >>> forward_expiries = [timegrid[-1] + i/(365.0*24.0) for i in range(4)]
+            >>> rnd = np.random.normal(size=wind.rnd_shape(n_sims, timegrid.shape[0]))
+            >>> results = wind.simulate(timegrid, rnd, expiries=forward_expiries, 
+                                       initial_forecasts={'Onshore': [0.8, 0.7,0.6,0.5],
+                                                          'Offshore': [0.6, 0.6, 0.5, 0.5]}
+                               )
+        """
         self.name = name
         if len(region_forecast_models)==0:
             raise Exception('Empty list of models is not allowed')

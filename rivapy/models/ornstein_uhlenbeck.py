@@ -16,8 +16,13 @@ class OrnsteinUhlenbeck(FactoryObject):
                     mean_reversion_level: Union[float, Callable] = 0):
         """Ornstein Uhlenbeck stochastic process.
 
+        .. math:: dX = \\lambda(t) (\\theta(t)-X)dt + \\sigma(t) dW_t
             
+        where :math:`\\lambda(t)` is the speed of mean reversion that determines how fast the process returns to the
+        so-called mean reversion level :math:`\\theta(t)` and :math:`\sigma` is the volatility of the process. The higher
+        :math:`\\lambda`, the faster the process return to the mean level, which can be seen in the following figure
 
+        
         Args:
             speed_of_mean_reversion (Union[float, Callable]): The 
             volatility (Union[float, Callable]): _description_
@@ -41,19 +46,23 @@ class OrnsteinUhlenbeck(FactoryObject):
         self._volatility_grid = OrnsteinUhlenbeck._eval_grid(self.volatility, timegrid)
         self._mean_reversion_level_grid = OrnsteinUhlenbeck._eval_grid(self.mean_reversion_level, timegrid)
         
+    def rnd_shape(self, n_sims: int, n_timepoints: int)->tuple:
+        return (n_timepoints-1, n_sims)
+
+
     def simulate(self, timegrid, start_value, rnd):
         """ Simulate the Ornstein Uhlenbeck process on the given timegrid using simple explicit euler scheme:
-            .. math:: S_{t+\\delta t} = S_t + \\theta (\\mu(t) - S_t )\\delta t +\\sigma(t) \\varepsilon
+            .. math:: X_{t+\\delta t} = X_t + \\theta (\\mu(t) - X_t )\\delta t +\\sigma(t) \\varepsilon \\sqrt{\delta t}
 
-            where :math: \\varepsilon is a (0,1)-normal random variate
-
+            where :math:`\\varepsilon` is a (0,1)-normal random variate.
+        
         Args:
-            timegrid (_type_): _description_
-            start_value (_type_): _description_
-            rnd (_type_): _description_
+            timegrid (np.ndarray): One dimensional array containing the time points where the process will be simulated (containing 0.0 as the first timepoint).
+            start_value (Union[float, np.ndarray]): Either a float or an array (for each path) with the start value of the simulation.
+            rnd (np.ndarray): Array of random normal (variance equal to one) variates used within the discretization (:math:`\varepsilon` in the above description). Here, shape[0] equals the number of timestes and shape[1] teh number of simulations.
 
         Returns:
-            _type_: _description_
+            np.ndarray: Array r containing the simulations where r[:,i] is the path of the i-th simulation (r.shape[0] equals number of timepoints, r.shape[1] the number of simulations). 
         """
         self._set_timegrid(timegrid)
         result = np.empty((self._timegrid.shape[0], rnd.shape[1]))

@@ -1,8 +1,21 @@
+import numpy as np
+from rivapy.tools.enums import Currency, ESGRating, Rating, Sector, Country
+from rivapy.marketdata import DiscountCurveParametrized, NelsonSiegel, LinearRate
+from rivapy.instruments.components import Issuer
+from rivapy.instruments import PlainVanillaCouponBondSpecification
+
 class SpreadCurveSampler:
     def __init__(self):
+        """This class samples spreadcurves used to price bonds. It creates different curves according to
+            
+            * issuer rating (for all ratings defined in :class:`rivapy.tools.enums.Rating`)
+            * currency (for all currencies defined in :class:`rivapy.tools.enums.Currency`)
+            * esg rating (for all ratings defined in :class:`rivapy.tools.enums.ESGRating`)
+            * sector (for all sectors defined in :class:`rivapy.tools.enums.Sector`)
+        """
         pass
     
-    def sample(self):
+    def sample(self, ref_date):
         min_params = {'min_short_term_rate': -0.01, 
                           'max_short_term_rate': 0.02, 
                           'min_long_run_rate': 0.0,

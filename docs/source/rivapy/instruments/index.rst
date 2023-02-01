@@ -12,6 +12,7 @@ Instruments
    equity
    credit
    power
+   components
 
 
 

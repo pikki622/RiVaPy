@@ -6,4 +6,13 @@ bunch of instruments together with certain prices.
 Here, the methods for the creation may be of special use.
 
 Some classes provide a _create_sample method. This method can be used to create a sample of the respective classes.
-  
+
+Sample Data Algorithms
+===========================
+
+Spreadcurves
+---------------------------------
+.. autoclass:: rivapy.sample_data.market_data.spread_curves.SpreadCurveSampler
+   :members:
+   :undoc-members:
+   :show-inheritance:

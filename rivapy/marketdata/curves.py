@@ -12,6 +12,7 @@ import pandas as pd
 import numpy as np
 
 from rivapy.tools.enums import DayCounterType, InterpolationType, ExtrapolationType
+from rivapy.tools.datetools import DayCounter
 from rivapy.marketdata.factory import create as _create
 
 from rivapy import _pyvacon_available
@@ -296,23 +297,34 @@ class NelsonSiegelSvensson(NelsonSiegel):
     
 class DiscountCurveComposition(interfaces.FactoryObject):
     def __init__(self, a, b, c):
+        # check if all discount curves have the same daycounter, otherwise exception
+        dc = set()
+        for k in [a,b,c]:
+            if hasattr(k, 'daycounter'):
+                dc.add(k.daycounter)
+        if len(dc) != 1:
+            raise Exception('At least one argument must be of type DiscountCurveParametrized and all curves must have same daycounter.')
+        self.daycounter = dc.pop()
+        self._dc = DayCounter(self.daycounter)
         self.a = a
         if not hasattr(a, 'value'):
-            self.a = DiscountCurveParametrized('', datetime(1980,1,1), ConstantRate(a))
+            self.a = DiscountCurveParametrized('', datetime(1980,1,1), ConstantRate(a), self.daycounter)
         self.b = b
         if not hasattr(b, 'value'):
-            self.b = DiscountCurveParametrized('', datetime(1980,1,1), ConstantRate(b))
+            self.b = DiscountCurveParametrized('', datetime(1980,1,1), ConstantRate(b), self.daycounter)
         self.c = c
         if not hasattr(c, 'value'):
-            self.c = DiscountCurveParametrized('', datetime(1980,1,1), ConstantRate(c))
+            self.c = DiscountCurveParametrized('', datetime(1980,1,1), ConstantRate(c), self.daycounter)
         
 
     def _to_dict(self) -> dict:
         raise NotImplementedError()
         
     def value(self, refdate: Union[date, datetime], d: Union[date, datetime])->float:
-        return np.power(self.b.value(refdate, d), self.a.value_rate(refdate, d))*self.c.value(refdate,d)
-
+        r = self.value_rate(refdate, d)
+        yf = self._dc.yf(refdate, d)
+        return np.exp(-r*yf)
+        
     def value_rate(self, refdate: Union[date, datetime], d: Union[date, datetime])->float:
         return self.a.value_rate(refdate, d)*self.b.value_rate(refdate, d) + self.c.value_rate(refdate, d)
 
@@ -332,14 +344,21 @@ class DiscountCurveParametrized(interfaces.FactoryObject):
                 refdate: Union[datetime, date], 
                 rate_parametrization,#: Callable[[float], float],
                 daycounter: Union[DayCounterType, str] = DayCounterType.Act365Fixed):
+        """_summary_
+
+        Args:
+            obj_id (str): _description_
+            refdate (Union[datetime, date]): _description_
+            rate_parametrization (Callable[[float], float]): _description_
+            daycounter (Union[DayCounterType, str], optional): _description_. Defaults to DayCounterType.Act365Fixed.
+        """
         if isinstance(refdate, datetime):
             self.refdate = refdate
         else:
             self.refdate = datetime(refdate,0,0,0)
         
-        if not isinstance(daycounter, DayCounterType):
-            raise TypeError('Daycounter is not of type enums.DaycounterType')
         self.daycounter = DayCounterType.to_string(daycounter)
+        self._dc = DayCounter(self.daycounter)
         self.obj_id = obj_id
         if isinstance(rate_parametrization, dict): #if schedule is a dict we try to create it from factory
             self.rate_parametrization = _create(rate_parametrization)
@@ -369,7 +388,7 @@ class DiscountCurveParametrized(interfaces.FactoryObject):
             d = datetime(d,0,0,0)
         if refdate < self.refdate:
             raise Exception('The given reference date is before the curves reference date.')
-        yf = (d-self.refdate).total_seconds()/(365.0*24.0*60.0*60.0)
+        yf = self._dc.yf(refdate, d)
         return np.exp(-self.rate_parametrization(yf)*yf)
 
     def value_rate(self, refdate: Union[date, datetime], d: Union[date, datetime])->float:
@@ -388,7 +407,7 @@ class DiscountCurveParametrized(interfaces.FactoryObject):
             d = datetime(d,0,0,0)
         if refdate < self.refdate:
             raise Exception('The given reference date is before the curves reference date.')
-        yf = (d-self.refdate).total_seconds()/(365.0*24.0*60.0*60.0)
+        yf = self._dc.yf(refdate, d)
         return self.rate_parametrization(yf)
 
     def __mul__(self, other):

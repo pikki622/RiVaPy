@@ -302,9 +302,12 @@ class DiscountCurveComposition(interfaces.FactoryObject):
         for k in [a,b,c]:
             if hasattr(k, 'daycounter'):
                 dc.add(k.daycounter)
-        if len(dc) != 1:
-            raise Exception('At least one argument must be of type DiscountCurveParametrized and all curves must have same daycounter.')
-        self.daycounter = dc.pop()
+        if len(dc) > 1:
+            raise Exception('All curves must have same daycounter.')
+        if len(dc) > 0:
+            self.daycounter = dc.pop()
+        else:
+            self.daycounter = DayCounterType.Act365Fixed.value
         self._dc = DayCounter(self.daycounter)
         self.a = a
         if not hasattr(a, 'value'):

@@ -17,6 +17,7 @@ these instruments.
  
    install
    rivapy/index
+   logging
    sample_data/index
    
 

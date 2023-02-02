@@ -46,7 +46,10 @@ class BondBaseSpecification(interfaces.FactoryObject):
         self._validate_derived_issued_instrument()
 
     @staticmethod
-    def _create_sample(n_samples: int, seed: int = None, ref_date = None, issuers: _List[str]= None)->_List[dict]:
+    def _create_sample(n_samples: int, seed: int = None, ref_date = None, 
+                    issuers: _List[str]= None,
+                    sec_levels: _List[str]=None,
+                    currencies: _List[str]= None)->_List[dict]:
         if seed is not None:
             np.random.seed(seed)
         if ref_date is None:
@@ -56,8 +59,10 @@ class BondBaseSpecification(interfaces.FactoryObject):
         if issuers is None:
             issuers = ['Issuer_'+str(i) for i in range(int(n_samples/2))]
         result = []
-        currencies = list(Currency)
-        sec_levels = list(SecuritizationLevel)
+        if currencies is None:
+            currencies = list(Currency)
+        if sec_levels is None:
+            sec_levels = list(SecuritizationLevel)
         for _ in range(n_samples):
             issue_date = ref_date + timedelta(days=np.random.randint(low=-365, high=0))
             result.append(
@@ -303,7 +308,7 @@ class PlainVanillaCouponBondSpecification(BondBaseSpecification):
         elif period.days > 0:
             coupon_multiplier = period.days/365.0
         schedule = Schedule(self.accrual_start, self.maturity_date, period, stub=self.stub).generate_dates(ends_only=True)
-        result = [(d, self.coupon*coupon_multiplier) for d in schedule]
+        result = [(d, self.coupon*coupon_multiplier*self.notional) for d in schedule]
         result.insert(0, (self.accrual_start, 0.0))# the first entry of this schedule is the accrual start which has a cashflow of zero and is just used for accrual calculation
         result.append((self.maturity_date, self.notional))
         return result
@@ -318,7 +323,9 @@ class PlainVanillaCouponBondSpecification(BondBaseSpecification):
         return result
     
     @staticmethod
-    def _create_sample(n_samples: int, seed: int = None, ref_date = None, issuers: _List[str]= None):
+    def _create_sample(n_samples: int, seed: int = None, ref_date = None, 
+                        issuers: _List[str]= None, sec_levels: _List[str]=None,
+                    currencies: _List[str]= None):
         specs = BondBaseSpecification._create_sample(**locals())
         result = []
         coupons = np.arange(0.01, 0.09, 0.005)

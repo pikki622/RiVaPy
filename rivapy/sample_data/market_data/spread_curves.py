@@ -29,12 +29,12 @@ class SpreadCurveSampler:
                           'min_tau': 0.5,
                           'max_tau': 3.0}
         
-        max_params = {'min_short_term_rate': 0.02, 
-                          'max_short_term_rate': 0.15, 
-                          'min_long_run_rate': 0.03,
+        max_params = {'min_short_term_rate': 0.1, 
+                          'max_short_term_rate': 0.25, 
+                          'min_long_run_rate': 0.1,
                           'max_long_run_rate': 0.25,
                           'min_hump': 0.0,
-                          'max_hump': 0.2,
+                          'max_hump': 0.3,
                           'min_tau': 0.5,
                           'max_tau': 5.0}
         

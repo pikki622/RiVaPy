@@ -68,7 +68,7 @@ class BondBaseSpecification(interfaces.FactoryObject):
             result.append(
                 {
                 'issue_date': issue_date,
-                'maturity_date':issue_date + timedelta(days=np.random.randint(low=30, high=10*365)),
+                'maturity_date': ref_date + timedelta(days=np.random.randint(low=30, high=10*365)),
                 'currency':np.random.choice(currencies),
                 'notional': np.random.choice([100.0, 1000.0, 10_000.0, 100_0000.0]),
                 'issuer': np.random.choice(issuers),
@@ -333,7 +333,6 @@ class PlainVanillaCouponBondSpecification(BondBaseSpecification):
             b['coupon_freq'] = np.random.choice(['3M', '6M', '9M', '1Y'], p=[0.1,0.4,0.1,0.4])
             issue_date = b['issue_date']
             b['accrual_start'] = issue_date + timedelta(days=np.random.randint(low=0, high=10))
-            b['maturity_date'] = issue_date + timedelta(days=np.random.randint(low=30, high=10*365))
             b['coupon'] = np.random.choice(coupons)
             result.append(PlainVanillaCouponBondSpecification('BND_PV_'+str(i), **b))
         return result

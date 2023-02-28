@@ -512,7 +512,7 @@ if __name__=='__main__':
                                 schedule = [val_date + dt.timedelta(days=2)], 
                                 fixed_price=strike,
                                 max_capacity = 1.0)
-    price_new(val_date, spec, rd_model, initial_forecasts={'Onshore': [0.8, 0.7,0.6,0.5],
+    price(val_date, spec, rd_model, initial_forecasts={'Onshore': [0.8, 0.7,0.6,0.5],
                                                           'Offshore': [0.6,0.6,0.6,0.6]},
             forecast_hours=[6, 10, 14, 18],
           depth=3, nb_neurons=32, n_sims=10_000, regularization=0.0,

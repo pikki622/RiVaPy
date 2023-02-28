@@ -379,7 +379,7 @@ class ResidualDemandForwardModel(BaseFwdModel):
     
 
 if __name__=='__main__':
-    from rivapy.models.residual_demand_model import MultiRegionWindForecastModel
+    from rivapy.models.residual_demand_model import MultiRegionWindForecastModel, SmoothstepSupplyCurve
     forward_expiries = [(24.0+23.0)/365.0, 24.0*2/365.0]
     regions = [ MultiRegionWindForecastModel.Region( 
                                     WindPowerForecastModel(speed_of_mean_reversion=0.5, 

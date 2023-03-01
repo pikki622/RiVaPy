@@ -19,7 +19,7 @@ dependencies:
     - python-dateutil
     - sphinx-rtd-theme
     - jupyter-dash
-    - pyvacon
+    #- pyvacon
     - holidays
     - sphinxcontrib-bibtex
     - nbsphinx

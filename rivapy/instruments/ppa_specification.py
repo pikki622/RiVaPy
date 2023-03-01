@@ -90,6 +90,19 @@ class SimpleSchedule(interfaces.FactoryObject):
 		"""
 		return {'start': self.start, 'end': self.end, 'freq': self.freq, 'weekdays': self.weekdays, 'hours': self.hours, 'tz': self.tz}
 
+	@staticmethod
+	def _create_sample(n_samples: int, seed: int = None, ref_date = None):
+		if ref_date is None:
+			ref_date = dt.datetime(1980,1,1)
+		if seed is not None:
+			np.random.seed(seed)
+		result = []
+		for i in range(n_samples):
+			start = ref_date + dt.timedelta(days=np.random.randint(0,100))
+			end = start + + dt.timedelta(days=np.random.randint(5,365))
+			result.append(SimpleSchedule(start=start, end=end))
+		return result
+	
 class PPASpecification(interfaces.FactoryObject):
 	def __init__(self, 
 				udl: str,
@@ -123,6 +136,16 @@ class PPASpecification(interfaces.FactoryObject):
 		self._schedule_df['amount'] = amount
 		self._schedule_df['flow'] = None
 
+	@staticmethod
+	def _create_sample(n_samples: int, seed: int = None, ref_date = None):
+		schedules = SimpleSchedule._create_sample(n_samples, seed, ref_date)
+		result = []
+		for schedule in schedules:
+			amount = np.random.uniform(low=50., high=100.0)
+			fixed_price = np.random.uniform(low=0.5, high=1.5)
+			result.append(PPASpecification(udl='Power', amount=amount, schedule=schedule, fixed_price=fixed_price))
+		return result
+	
 	def get_schedule(self)->List[dt.datetime]:
 		if not isinstance(self.schedule, list):
 			return self.schedule.get_schedule()
@@ -182,6 +205,16 @@ class GreenPPASpecification(PPASpecification):
 		self.max_capacity = max_capacity
 		self.location = location
 
+	@staticmethod
+	def _create_sample(n_samples: int, seed: int = None, ref_date = None):
+		schedules = SimpleSchedule._create_sample(n_samples, seed, ref_date)
+		result = []
+		for schedule in schedules:
+			max_capacity = np.random.uniform(low=50., high=100.0)
+			fixed_price = np.random.uniform(low=0.5, high=1.5)
+			result.append(GreenPPASpecification(udl='Power', technology='Wind',  location='Onshore', fixed_price=fixed_price, max_capacity=max_capacity, schedule = schedule))
+		return result
+	
 	def _to_dict(self)->dict:
 		result = super()._to_dict()
 		del result['amount']

@@ -31,6 +31,7 @@ class BondBaseSpecification(interfaces.FactoryObject):
             notional (float, optional): Bond's notional/face value. Must be positive. Defaults to 100.0.
             issuer (str, optional): Name/id of issuer. Defaults to None.
             securitization_level (_Union[SecuritizationLevel, str], optional): Securitization level. Defaults to None.
+            rating (_Union[Rating, str]): Paper rating.
         """
         self.obj_id = obj_id
         if issuer is not None:
@@ -212,7 +213,8 @@ class ZeroCouponBondSpecification(BondBaseSpecification):
                  currency: str = 'EUR',
                  notional: float = 100.0,
                  issuer: str = None,
-                  securitization_level: _Union[SecuritizationLevel, str] = None):
+                securitization_level: _Union[SecuritizationLevel, str] = None,
+                 rating: _Union[Rating, str] = Rating.NONE):
         """Zero coupon bond specification.
 
         Args:
@@ -223,6 +225,7 @@ class ZeroCouponBondSpecification(BondBaseSpecification):
             notional (float, optional): Bond's notional/face value. Must be positive. Defaults to 100.0.
             issuer (str, optional): Name/id of issuer. Defaults to None.
             securitization_level (_Union[SecuritizationLevel, str], optional): Securitization level. Defaults to None.
+            rating (_Union[Rating, str]): Paper rating.
         """
         super().__init__(obj_id,
                          issue_date,
@@ -232,6 +235,16 @@ class ZeroCouponBondSpecification(BondBaseSpecification):
                          issuer,
                          securitization_level)
 
+    @staticmethod
+    def _create_sample(n_samples: int, seed: int = None, ref_date = None, 
+                        issuers: _List[str]= None, sec_levels: _List[str]=None,
+                    currencies: _List[str]= None):
+        specs = BondBaseSpecification._create_sample(**locals())
+        result = []
+        for i, b in enumerate(specs):
+            result.append(ZeroCouponBondSpecification('ZC_BND_'+str(i), **b))
+        return result
+    
     def _validate_derived_bond(self):
         pass
 

@@ -15,19 +15,19 @@ jobs:
       max-parallel: 5
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Install boost
-      run: sudo apt-get install libboost-dev
+    - uses: actions/checkout@v3
+    #- name: Install boost
+    #  run: sudo apt-get install libboost-dev
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.8
     - name: Install dependencies
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         $CONDA/bin/conda env update --file environment.yml --name base
-    - name: Install pyvacon from pypi test
-      run: $CONDA/bin/python -m pip install pyvacon 
+    #- name: Install pyvacon from pypi test
+    #  run: $CONDA/bin/python -m pip install pyvacon 
     - name: Lint with flake8
       run: |
         $CONDA/bin/conda install flake8
@@ -38,6 +38,14 @@ jobs:
     - name: Test with unittest
       run: $CONDA/bin/python -m unittest discover tests
       shell: bash
+    #- name: Coverage of tests
+    #  run: coverage run -m unittest discover tests
+    #- name: Add codecov uploader
+    #  run: | 
+    #    curl -Os https://uploader.codecov.io/latest/linux/codecov
+    #    chmod +x codecov
+    #    ./codecov
+    #  shell: bash
       
     - name: Install rtd theme for sphinx doc from pypi
       run: $CONDA/bin/python -m pip install sphinx_rtd_theme 

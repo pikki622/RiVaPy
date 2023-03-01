@@ -3,23 +3,43 @@
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from calendar import monthrange
-from typing import \
-    List as _List, \
-    Union as _Union
+from typing import List as _List, Union as _Union, Callable
 from holidays import \
     HolidayBase as _HolidayBase, \
     ECB as _ECB
-from rivapy.tools.enums import RollConvention
-from rivapy.tools._validators import \
-    _is_start_before_end, \
-    _roll_convention_to_string, \
-    _string_to_calendar
+from rivapy.tools.enums import RollConvention, DayCounterType
+from rivapy.tools._validators import _string_to_calendar
 import logging
 
 
 # TODO: Switch to locally configured logger.
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+class DayCounter:
+
+    def __init__(self, daycounter: _Union[str, DayCounterType]):
+        self._dc = DayCounterType.to_string(daycounter)
+        self._yf = DayCounter.get(self._dc)
+
+    def yf(self, d1: _Union[date, datetime], d2: _Union[_Union[date, datetime],_List[_Union[date, datetime]]]):
+        try:
+            result = [self._yf(d1, d2_) for d2_ in d2]
+            return result
+        except:
+            return self._yf(d1,d2)
+
+
+    @staticmethod
+    def get(daycounter: _Union[str, DayCounterType])->Callable[[ _Union[date, datetime],  _Union[date, datetime]], float]:
+        dc = DayCounterType.to_string(daycounter)
+        if dc == DayCounterType.Act365Fixed.value:
+            return DayCounter.yf_Act365Fixed
+        raise NotImplementedError(dc + ' not yet implemented.')
+
+    @staticmethod
+    def yf_Act365Fixed(d1: _Union[date, datetime], d2: _Union[date, datetime])->float:
+        return ((d2-d1).total_seconds()/(365.0*24*60*60))
 
 
 class Period:
@@ -39,6 +59,31 @@ class Period:
         self.months = months
         self.days = days
 
+    @staticmethod
+    def from_string(period: str):
+        """Creates a Period from a string
+
+        Args:
+            period (str): The string defining the period. The string must be defined by the number of days/months/years followed by one of the letters 'Y'/'M'/'D', i.e. '6M' means 6 months.
+
+        Returns:
+            Period: The resulting period
+
+        Examples:
+            .. code-block:: python
+
+                >>> p = Period('6M')  # period of 6 months
+                >>> p = Period('1Y') #period of 1 year
+        """
+        period_length = int(period[:-1])
+        period_type = period[1]
+        if period_type == 'Y':
+            return Period(years=period_length)
+        elif period_type == 'M':
+            return Period(months = period_length)
+        elif period_type == 'D':
+            return Period(days=period_length)
+        raise Exception(period + ' is not a valid period string. See documentation of tools.datetools.Period for deocumentation of valid strings.')
     @property
     def years(self) -> int:
         """
@@ -58,7 +103,7 @@ class Period:
             years(int): Number of years.
         """
         self.__years = years
-
+    
     @property
     def months(self) -> int:
         """
@@ -135,6 +180,15 @@ class Schedule:
                                                           Saturdays and Sundays).
                                                           Defaults (through constructor) to holidays.ECB
                                                           (= Target2 calendar) between start_day and end_day.
+
+        Examples:
+
+            .. code-block:: python
+            
+                >>> from datetime import date
+                >>> from rivapy.tools import schedule
+                >>> schedule = Schedule(date(2020, 8, 21), date(2021, 8, 21), Period(0, 3, 0), True, False, RollConvention.UNADJUSTED, holidays_de).generate_dates(False),
+                       [date(2020, 8, 21), date(2020, 11, 21), date(2021, 2, 21), date(2021, 5, 21), date(2021, 8, 21)])
         """
         self.start_day = start_day
         self.end_day = end_day
@@ -144,9 +198,7 @@ class Schedule:
         self.business_day_convention = business_day_convention
         self.calendar = calendar
 
-    def _validate_schedule(self):
-        if ~_is_start_before_end(self.__start_day, self.__end_day, True):
-            raise Exception('Chronological order mismatch!')
+    
 
     @property
     def start_day(self):
@@ -160,7 +212,7 @@ class Schedule:
 
     @start_day.setter
     def start_day(self, start_day: _Union[date, datetime]):
-        self.__start_day = _datetime_to_date(start_day)
+        self.__start_day = _date_to_datetime(start_day)
 
     @property
     def end_day(self):
@@ -174,7 +226,7 @@ class Schedule:
 
     @end_day.setter
     def end_day(self, end_day: _Union[date, datetime]):
-        self.__end_day = _datetime_to_date(end_day)
+        self.__end_day = _date_to_datetime(end_day)
 
     @property
     def time_period(self):
@@ -232,7 +284,7 @@ class Schedule:
 
     @business_day_convention.setter
     def business_day_convention(self, business_day_convention: _Union[RollConvention, str]):
-        self.__business_day_convention = _roll_convention_to_string(business_day_convention)
+        self.__business_day_convention = RollConvention.to_string(business_day_convention)
 
     @property
     def calendar(self):
@@ -269,8 +321,8 @@ class Schedule:
             Date schedule not yet adjusted to any business day convention.
         """
         # convert datetime to date (if necessary):
-        from_ = _datetime_to_date(from_)
-        to_ = _datetime_to_date(to_)
+        from_ = _date_to_datetime(from_)
+        to_ = _date_to_datetime(to_)
 
         # check input consistency:
         if (~backwards) & (from_ < to_):
@@ -332,22 +384,21 @@ class Schedule:
         return rolled_schedule_dates
 
 
-# TODO: Clarify if we also need date_to_datetime or if we even shall switch to it.
-def _datetime_to_date(date_time: _Union[datetime, date]
+def _date_to_datetime(date_time: _Union[datetime, date]
                       ) -> date:
     """
-    Converts type of date from datetime to date or leaves it unchanged if it is already of type date.
+    Converts a date to a datetime or leaves it unchanged if it is already of type datetime.
 
     Args:
         date_time (_Union[datetime, date]): Date(time) to be converted.
 
     Returns:
-        date: (Potentially) Converted date(time).
+        date: (Potentially) Converted datetime.
     """
     if isinstance(date_time, datetime):
-        return date_time.date()
-    elif isinstance(date_time, date):
         return date_time
+    elif isinstance(date_time, date):
+        return datetime.combine(date_time, datetime.min.time())
     else:
         raise TypeError("'" + str(date_time) + "' must be of type datetime or date!")
 
@@ -364,7 +415,7 @@ def _datetime_to_date_list(date_times: _Union[_List[datetime], _List[date]]
         List[date]: List of (potentially) converted date(time)s.
     """
     if isinstance(date_times, list):
-        return [_datetime_to_date(date_time) for date_time in date_times]
+        return [_date_to_datetime(date_time) for date_time in date_times]
     else:
         raise TypeError("'" + str(date_times) + "' must be a list of type datetime or date!")
 
@@ -437,7 +488,7 @@ def calc_end_day(start_day: _Union[date, datetime],
         date: End date potentially adjusted according to the specified business day convention with respect to the given
               calendar.
     """
-    start_date = _datetime_to_date(start_day)
+    start_date = _date_to_datetime(start_day)
     period = _term_to_period(term)
     end_date = start_date + relativedelta(years=period.years, months=period.months, days=period.days)
     if (business_day_convention is not None) & (calendar is not None):
@@ -468,7 +519,7 @@ def calc_start_day(end_day: _Union[date, datetime],
         date: Start date potentially adjusted according to the specified business day convention with respect to the
               given calendar.
     """
-    end_date = _datetime_to_date(end_day)
+    end_date = _date_to_datetime(end_day)
     period = _term_to_period(term)
     start_date = end_date - relativedelta(years=period.years, months=period.months, days=period.days)
     if (business_day_convention is not None) & (calendar is not None):
@@ -502,7 +553,7 @@ def is_last_day_of_month(day: _Union[date, datetime]
     Returns:
         bool: True, if day is last day of the month, False otherwise.
     """
-    return _datetime_to_date(day) == last_day_of_month(day)
+    return _date_to_datetime(day) == last_day_of_month(day)
 
 
 def is_business_day(day: _Union[date, datetime],
@@ -554,7 +605,7 @@ def is_last_business_day_of_month(day: _Union[date, datetime],
     Returns:
         bool: True if day is last business day of the corresponding month, False otherwise.
     """
-    return _datetime_to_date(day) == last_business_day_of_month(day, calendar)
+    return _date_to_datetime(day) == last_business_day_of_month(day, calendar)
 
 
 def nearest_business_day(day: _Union[date, datetime],
@@ -580,7 +631,7 @@ def nearest_business_day(day: _Union[date, datetime],
     else:
         direction = +1
 
-    day = _datetime_to_date(day)
+    day = _date_to_datetime(day)
     while not is_business_day(day, calendar):
         distance += 1
         direction *= -1
@@ -611,7 +662,7 @@ def nearest_last_business_day_of_month(day: _Union[date, datetime],
     else:
         direction = +1
 
-    day = _datetime_to_date(day)
+    day = _date_to_datetime(day)
     while not is_last_business_day_of_month(day, calendar):
         distance += 1
         direction *= -1
@@ -641,7 +692,7 @@ def next_or_previous_business_day(day: _Union[date, datetime],
     else:
         direction = -1
 
-    _datetime_to_date(day)
+    day = _date_to_datetime(day)
     while not is_business_day(day, calendar):
         day += direction * relativedelta(days=1)
 
@@ -796,7 +847,7 @@ def unadjusted(day: _Union[date, datetime],
     Returns:
         date: Unadjusted day.
     """
-    return _datetime_to_date(day)
+    return _date_to_datetime(day)
 
 
 def roll_day(day: _Union[date, datetime],
@@ -819,9 +870,9 @@ def roll_day(day: _Union[date, datetime],
     Returns:
         date: Adjusted day.
     """
-    roll_convention = _roll_convention_to_string(business_day_convention)
-    if start_day is not None:
-        start_day = _datetime_to_date(start_day)
+    roll_convention = RollConvention.to_string(business_day_convention)
+    #if start_day is not None:
+    #    start_day = _date_to_datetime(start_day)
 
     switcher = {
         'Unadjusted': unadjusted,

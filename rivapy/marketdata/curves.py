@@ -1,15 +1,19 @@
 from typing import List, Union, Tuple
+from collections.abc import Callable
 from enum import Enum
 from datetime import datetime, date, timedelta
 import matplotlib.pyplot as plt
 import math
 import dateutil.relativedelta as relativedelta
 from typing import List
+import rivapy.tools.interfaces as interfaces
 import scipy.optimize
 import pandas as pd
 import numpy as np
 
 from rivapy.tools.enums import DayCounterType, InterpolationType, ExtrapolationType
+from rivapy.tools.datetools import DayCounter
+from rivapy.marketdata.factory import create as _create
 
 from rivapy import _pyvacon_available
 if _pyvacon_available:
@@ -39,12 +43,6 @@ class DiscountCurve:
             extrapolation (enums.ExtrapolationType, optional): Defaults to ExtrapolationType.NONE which does not allow to compute a discount factor for a date past all given dates given to this constructor.
             daycounter (enums.DayCounterType, optional): Daycounter used within the interpolation formula to compute a discount factor between two dates from the dates-list above. Defaults to DayCounterType.Act365Fixed.
 
-        Raises:
-            Exception: [description]
-            Exception: [description]
-            Exception: [description]
-            Exception: [description]
-            Exception: [description]
         """
         if len(dates) < 1:
             raise Exception('Please specify at least one date and discount factor')
@@ -145,7 +143,284 @@ class DiscountCurve:
                 values[i] = -math.log(values[i])/dt
         values[0] = values[1]
         plt.plot(dates_new, values, label=self.id, **kwargs)
-            
+
+
+
+
+class NelsonSiegel(interfaces.FactoryObject):
+    def __init__(self, beta0: float, beta1: float, 
+                            beta2: float, tau: float):
+        """Nelson-Siegel parametrization for rates and yields, see :footcite:t:`Nelson1987`.
+
+        This parametrization is mostly used to parametrize rate curves and can be used in conjunction with :class:`rivapy.marketdata.DiscountCurveParametrized`. It is defined by
+        
+        .. math::
+
+            f(t) = \\beta_0 + (\\beta_1+\\beta_2)\\frac{1-e^{-t/\\tau}}{t/\\tau} -\\beta_2e^{t/\\tau}
+
+
+        Args:
+            beta0 (float): This parameter is the asymptotic (for arbitrary large maturities) rate, see formula above.
+            beta1 (float): beta0 + beta1 give the short term rate, see formula above.
+            beta2 (float): This parameter controls the size of the hump, see formula above.
+            tau (float): This parameter controls the location of the hump, see formula above.
+
+        Examples:
+            .. code-block:: python
+
+                >>> from rivapy.marketdata.curves import NelsonSiegel, DiscountCurveParametrized
+                >>> ns = NelsonSiegel(beta0=0.05, beta1 = 0.02, beta2=0.1, tau=1.0)
+                >>> dc = DiscountCurveParametrized('DC',  refdate = dt.datetime(2023,1,1), rate_parametrization=ns, daycounter = DayCounterType.Act365Fixed)
+                >>> dates = [dt.datetime(2023,1,1) + dt.timedelta(days=30*days) for days in range(120)]
+                >>> values = [dc.value(refdate = dt.datetime(2023,1,1),d=d) for d in dates]
+                >>> plt.plot(dates, values)
+        """
+        self.beta0 = beta0
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.tau = tau
+        self._multiplier = 1.0
+
+    def _to_dict(self) -> dict:
+        return {'beta0': self.beta0, 'beta1': self.beta1, 
+                'beta2': self.beta2, 'tau': self.tau}
+
+    def __call__(self, t: float):
+        return self._multiplier*NelsonSiegel.compute(self.beta0, self.beta1, self.beta2, self.tau, t)
+
+    def __mul__(self, x: float):
+        result = NelsonSiegel(self.beta0, self.beta1, self.beta2, self.tau)
+        result._multiplier = x
+        return result
+
+    @staticmethod
+    def compute(beta0: float, beta1: float, 
+                            beta2: float, tau: float, T: float)->float:
+        """_summary_
+
+        Args:
+            beta0 (float): longrun
+            beta1 (float): beta0 + beta1 = shortrun
+            beta2 (float): hump or through
+            tau (float):locaton of hump
+            T (float): _description_
+
+        Returns:
+            float: _description_
+        """
+        t = np.maximum(T, 1e-4)/tau
+        return beta0 + beta1*(1.0-np.exp(-t))/t + beta2*((1-np.exp(-t))/t - np.exp(-(t)))
+
+    @staticmethod
+    def _create_sample(n_samples: int, seed: int = None,
+                        min_short_term_rate: float = -0.01, 
+                        max_short_term_rate: float = 0.12, 
+                        min_long_run_rate: float = 0.005, 
+                        max_long_run_rate: float = 0.15,
+                        min_hump: float=-0.1, 
+                        max_hump: float=0.1,
+                        min_tau: float=0.5,
+                        max_tau: float=3.0):
+        if seed is not None:
+            np.random.seed(seed)
+        result = []
+        for i in range(n_samples):
+            beta0 = np.random.uniform(min_long_run_rate, max_long_run_rate)
+            beta1 = np.random.uniform(min_short_term_rate-beta0, max_short_term_rate-beta0)
+            beta2 = np.random.uniform(min_hump, max_hump)
+            tau = np.random.uniform(min_tau, max_tau)
+            result.append(NelsonSiegel(beta0, beta1, beta2, tau))
+        return result
+    
+
+
+class ConstantRate(interfaces.FactoryObject):
+    def __init__(self, rate: float):
+        """Continuously compounded flat rate object that can be used  in conjunction with :class:`rivapy.marketdata.DiscountCurveParametrized`.
+        
+        Args:
+            rate (float): The constant rate.
+
+        """
+        self.rate = rate
+        
+    
+    def _to_dict(self) -> dict:
+        return {'rate': self.rate}
+
+    def __call__(self, t: float):
+        return self.rate
+
+class LinearRate(interfaces.FactoryObject):
+    def __init__(self, shortterm_rate: float, longterm_rate: float, max_maturity:float= 10.0):
+        """Continuously compounded linearly interpolated rate object that can be used  in conjunction with :class:`rivapy.marketdata.DiscountCurveParametrized`.
+        
+        Args:
+            shortterm_rate (float): The short term rate.
+            longterm_rate (float): the longterm rate.
+            max_maturity (float): AFer this timepoint constant extrapolation is applied.
+        """
+        self.shortterm_rate = shortterm_rate
+        self.longterm_rate = longterm_rate
+        self.max_maturity = max_maturity
+        self._coeff = (self.longterm_rate-self.shortterm_rate)/(self.max_maturity)
+    
+    def _to_dict(self) -> dict:
+        return {'shortterm_rate': self.shortterm_rate,
+                'longterm_rate': self.longterm_rate,
+                'max_maturity': self.max_maturity
+                }
+
+    def __call__(self, t: float):
+        if t < self.max_maturity:
+            return self.shortterm_rate + self._coeff*t
+        return self.longterm_rate
+
+class NelsonSiegelSvensson(NelsonSiegel):
+    def __init__(self, beta0: float, beta1: float, 
+                            beta2: float, beta3: float, tau: float):
+        super().__init__(beta0, beta1, beta2, tau)
+        self.beta3 = beta3
+
+    def _to_dict(self) -> dict:
+        tmp = super()._to_dict()
+        tmp.update({'beta3': self.beta3})
+        return tmp
+
+    def __call__(self, t: float):
+        return NelsonSiegelSvensson.compute(self.beta0, self.beta1, self.beta2, self.beta3, self.tau, t)
+
+    @staticmethod
+    def compute(beta0, beta1, beta2, beta3, tau, tau2, T):
+        t = np.maximum(T, 1e-4)/tau2
+        return NelsonSiegel.compute(beta0, beta1, beta2, tau, T) + beta3*((1-np.exp(-t))/t - np.exp(-(t)))
+    
+class DiscountCurveComposition(interfaces.FactoryObject):
+    def __init__(self, a, b, c):
+        # check if all discount curves have the same daycounter, otherwise exception
+        dc = set()
+        for k in [a,b,c]:
+            if hasattr(k, 'daycounter'):
+                dc.add(k.daycounter)
+        if len(dc) > 1:
+            raise Exception('All curves must have same daycounter.')
+        if len(dc) > 0:
+            self.daycounter = dc.pop()
+        else:
+            self.daycounter = DayCounterType.Act365Fixed.value
+        self._dc = DayCounter(self.daycounter)
+        self.a = a
+        if not hasattr(a, 'value'):
+            self.a = DiscountCurveParametrized('', datetime(1980,1,1), ConstantRate(a), self.daycounter)
+        self.b = b
+        if not hasattr(b, 'value'):
+            self.b = DiscountCurveParametrized('', datetime(1980,1,1), ConstantRate(b), self.daycounter)
+        self.c = c
+        if not hasattr(c, 'value'):
+            self.c = DiscountCurveParametrized('', datetime(1980,1,1), ConstantRate(c), self.daycounter)
+        
+
+    def _to_dict(self) -> dict:
+        raise NotImplementedError()
+        
+    def value(self, refdate: Union[date, datetime], d: Union[date, datetime])->float:
+        r = self.value_rate(refdate, d)
+        yf = self._dc.yf(refdate, d)
+        return np.exp(-r*yf)
+        
+    def value_rate(self, refdate: Union[date, datetime], d: Union[date, datetime])->float:
+        return self.a.value_rate(refdate, d)*self.b.value_rate(refdate, d) + self.c.value_rate(refdate, d)
+
+    def __mul__(self, other):
+        # TODO unittests
+        return DiscountCurveComposition(self, other, 0.0)
+    def __rmul__(self, other):
+        return DiscountCurveComposition(self, other, 0.0)
+    def __add__(self, other):
+        return DiscountCurveComposition(self, 1.0, other)
+    def __radd__(self, other):
+        return DiscountCurveComposition(self, 1.0, other)
+
+class DiscountCurveParametrized(interfaces.FactoryObject):
+    def __init__(self, 
+                obj_id: str,
+                refdate: Union[datetime, date], 
+                rate_parametrization,#: Callable[[float], float],
+                daycounter: Union[DayCounterType, str] = DayCounterType.Act365Fixed):
+        """_summary_
+
+        Args:
+            obj_id (str): _description_
+            refdate (Union[datetime, date]): _description_
+            rate_parametrization (Callable[[float], float]): _description_
+            daycounter (Union[DayCounterType, str], optional): _description_. Defaults to DayCounterType.Act365Fixed.
+        """
+        if isinstance(refdate, datetime):
+            self.refdate = refdate
+        else:
+            self.refdate = datetime(refdate,0,0,0)
+        
+        self.daycounter = DayCounterType.to_string(daycounter)
+        self._dc = DayCounter(self.daycounter)
+        self.obj_id = obj_id
+        if isinstance(rate_parametrization, dict): #if schedule is a dict we try to create it from factory
+            self.rate_parametrization = _create(rate_parametrization)
+        else:
+            self.rate_parametrization = rate_parametrization
+        
+    def _to_dict(self) -> dict:
+        try:
+            parametrization = self.rate_parametrization.to_dict()
+        except Exception as e:
+            raise Exception('Missing implementation of to_dict() in parametrization of type ' + type(self.rate_parametrization).__name__)
+        return {'obj_id': self.obj_id, 'refdate': self.refdate, 'rate_parametrization': self.rate_parametrization}
+
+    def value(self, refdate: Union[date, datetime], d: Union[date, datetime])->float:
+        """Return discount factor for a given date
+
+        Args:
+            refdate (Union[date, datetime]): The reference date. If the reference date is in the future (compared to the curves reference date), the forward discount factor will be returned.
+            d (Union[date, datetime]): The date for which the discount factor will be returned
+
+        Returns:
+            float: discount factor
+        """
+        if not isinstance(refdate, datetime):
+            refdate = datetime(refdate,0,0,0)
+        if not isinstance(d, datetime):
+            d = datetime(d,0,0,0)
+        if refdate < self.refdate:
+            raise Exception('The given reference date is before the curves reference date.')
+        yf = self._dc.yf(refdate, d)
+        return np.exp(-self.rate_parametrization(yf)*yf)
+
+    def value_rate(self, refdate: Union[date, datetime], d: Union[date, datetime])->float:
+        """Return the continuous rate for a given date
+
+        Args:
+            refdate (Union[date, datetime]): The reference date. If the reference date is in the future (compared to the curves reference date), the forward discount factor will be returned.
+            d (Union[date, datetime]): The date for which the discount factor will be returned
+
+        Returns:
+            float: continuous rate
+        """
+        if not isinstance(refdate, datetime):
+            refdate = datetime(refdate,0,0,0)
+        if not isinstance(d, datetime):
+            d = datetime(d,0,0,0)
+        if refdate < self.refdate:
+            raise Exception('The given reference date is before the curves reference date.')
+        yf = self._dc.yf(refdate, d)
+        return self.rate_parametrization(yf)
+
+    def __mul__(self, other):
+        return DiscountCurveComposition(self, other, 0.0)
+    def __rmul__(self, other):
+        return DiscountCurveComposition(self, other, 0.0)
+    def __add__(self, other):
+        return DiscountCurveComposition(self, 1.0, other)
+    def __radd__(self, other):
+        return DiscountCurveComposition(self, 1.0, other)
 
 class EquityForwardCurve:
     def __init__(self, 

@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
-from typing import Union as _Union
+from typing import Union as _Union, List
+import numpy as np
 from datetime import datetime, date
-from rivapy.tools.datetools import datetime_to_date, _is_ascending_date_list
-from rivapy.tools._validators import \
-    _day_count_convention_to_string as _day_count_convention_to_string, _check_start_before_end, _check_positivity, \
-    _check_relation,_is_chronological
-from rivapy.tools.enums import \
-    DayCounter, \
-    Rating, \
-    Sector
+import rivapy.tools.interfaces as interfaces
+from rivapy.tools.datetools import _date_to_datetime
+from rivapy.tools._validators import _check_positivity, _check_relation, _is_chronological
+from rivapy.tools.enums import DayCounterType, Rating, Sector, Country, ESGRating
 
 
 class Coupon:
@@ -16,7 +13,7 @@ class Coupon:
                  accrual_start: _Union[date, datetime],
                  accrual_end: _Union[date, datetime],
                  payment_date: _Union[date, datetime],
-                 day_count_convention: _Union[DayCounter, str],
+                 day_count_convention: _Union[DayCounterType, str],
                  annualised_fixed_coupon: float,
                  fixing_date: _Union[date, datetime],
                  floating_period_start: _Union[date, datetime],
@@ -32,11 +29,11 @@ class Coupon:
             self.__accrual_end = accrual_end
             self.__payment_date = payment_date
 
-        self.__day_count_convention = _day_count_convention_to_string(day_count_convention)
+        self.__day_count_convention = DayCounterType.to_string(day_count_convention)
 
         self.__annualised_fixed_coupon = _check_positivity(annualised_fixed_coupon)
 
-        self.__fixing_date = datetime_to_date(fixing_date)
+        self.__fixing_date = _date_to_datetime(fixing_date)
 
         # spread on floating rate
         self.__spread = floating_spread
@@ -53,75 +50,148 @@ class Coupon:
         self.__amortisation_factor = _check_positivity(amortisation_factor)
 
 
-class Issuer:
+class Issuer(interfaces.FactoryObject):
     def __init__(self,
-                 issuer_id: str,
-                 issuer_name: str,
-                 issuer_rating: Rating,
-                 issuer_country: str,
-                 issuer_sector: Sector):
-        self.__issuer_id = issuer_id
-        self.__issuer_name = issuer_name
-        self.issuer_rating = issuer_rating
-        self.__issuer_country = issuer_country
-        self.__issuer_sector = issuer_sector
+                 obj_id: str,
+                 name: str,
+                 rating: _Union[Rating, str],
+                 esg_rating: _Union[ESGRating, str],
+                 country: str,
+                 sector: Sector):
+        self.__obj_id = obj_id
+        self.__name = name
+        self.__rating = Rating.to_string(rating)
+        self.__esg_rating = ESGRating.to_string(esg_rating)
+        self.__country = country
+        self.__sector = Sector.to_string(sector)
+
+    @staticmethod
+    def _create_sample(n_samples: int, seed: int = None, issuer: List[str] = None)->List:
+        """Just sample some test data
+
+        Args:
+            n_samples (int): _description_
+            seed (int, optional): _description_. Defaults to None.
+            issuer (List[str], optional): _description_. Defaults to None.
+
+        Raises:
+            Exception: _description_
+
+        Returns:
+            List: _description_
+        """
+        if seed is not None:
+            np.random.seed(seed)
+        result = []
+        ratings = list(Rating)
+        esg_ratings = list(ESGRating)
+        sectors = list(Sector)
+        country = list(Country)
+        if issuer is None:
+            issuer = ['Issuer_'+str(i) for i in range(n_samples)]
+        elif (n_samples is not None) and (n_samples !=  len(issuer)):
+            raise Exception('Cannot create data since length of issuer list does not equal number of sampled. Set n_namples to None.')
+        for i in range(n_samples):
+            result.append(Issuer('Issuer_'+str(i), issuer[i],
+                        np.random.choice(ratings), 
+                        np.random.choice(esg_ratings), 
+                        np.random.choice(country).value,
+                        np.random.choice(sectors)))
+        return result
+
+    def _to_dict(self) -> dict:
+        return {'obj_id': self.obj_id, 
+                'name': self.name, 'rating': self.rating,
+                'esg_rating': self.esg_rating, 
+                'country': self.country, 'sector': self.sector}
 
     @property
-    def issuer_id(self) -> str:
+    def obj_id(self) -> str:
         """
         Getter for issuer id.
 
         Returns:
             str: Issuer id.
         """
-        return self.__issuer_id
+        return self.__obj_id
 
     @property
-    def issuer_name(self) -> str:
+    def name(self) -> str:
         """
         Getter for issuer name.
 
         Returns:
             str: Issuer name.
         """
-        return self.__issuer_name
+        return self.__name
 
     @property
-    def issuer_rating(self) -> Rating:
+    def rating(self) -> str:
         """
         Getter for issuer's rating.
 
         Returns:
             Rating: Issuer's rating.
         """
-        return self.__issuer_rating
+        return self.__rating
 
-    @issuer_rating.setter
-    def issuer_rating(self, rating: Rating):
+    @rating.setter
+    def rating(self, rating: _Union[Rating, str]):
         """
         Setter for issuer's rating.
 
         Args:
             rating: Rating of issuer.
         """
-        self.__issuer_rating = rating
+        self.__rating =Rating.to_string(rating)
 
     @property
-    def issuer_country(self) -> str:
+    def esg_rating(self) -> str:
+        """
+        Getter for issuer's rating.
+
+        Returns:
+            Rating: Issuer's rating.
+        """
+        return self.__esg_rating
+
+    @esg_rating.setter
+    def esg_rating(self, esg_rating: _Union[ESGRating, str]):
+        """
+        Setter for issuer's rating.
+
+        Args:
+            rating: Rating of issuer.
+        """
+        self.__esg_rating = ESGRating.to_string(esg_rating)
+
+    @property
+    def country(self) -> str:
         """
         Getter for issuer's country.
 
         Returns:
             Country: Issuer's country.
         """
-        return self.__issuer_country
+        return self.__country
 
     @property
-    def issuer_sector(self) -> Sector:
+    def sector(self) -> str:
         """
         Getter for issuer's sector.
 
         Returns:
             Sector: Issuer's sector.
         """
-        return self.__issuer_sector
+        return self.__sector
+
+    @sector.setter
+    def sector(self, sector:_Union[Sector, str]) -> str:
+        """
+        Setter for issuer's sector.
+
+        Returns:
+            Sector: Issuer's sector.
+        """
+        self.__sector = Sector.to_string(sector)
+

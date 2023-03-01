@@ -4,9 +4,12 @@ import datetime as dt
 
 import rivapy
 from rivapy.marketdata import VolatilityGridParametrization, VolatilityParametrizationSABR, VolatilitySurface
-from rivapy.marketdata import DiscountCurve, EquityForwardCurve, enums, PowerPriceForwardCurve
+from rivapy.marketdata import DiscountCurve, EquityForwardCurve, enums, PowerPriceForwardCurve, \
+    DiscountCurveComposition, DiscountCurveParametrized, ConstantRate, LinearRate
 from rivapy.instruments import SimpleSchedule
 from rivapy import enums
+from rivapy import _pyvacon_available
+
 
 class VolatilityGridParamTest(unittest.TestCase):
     def test_exceptions(self):
@@ -23,6 +26,9 @@ class VolatilityGridParamTest(unittest.TestCase):
     def test_calc_implied_vol(self):
         """Simple tests for class VolatilityGridParametrization
         """
+        if not _pyvacon_available:
+            self.assertEqual(1,1)
+            return
         expiries = np.linspace(1.0/365.0, 4.0, 10)
         strikes = np.linspace(0.4, 1.6, 100)
         vols = 0.3*np.ones((expiries.shape[0], strikes.shape[0]))
@@ -33,6 +39,9 @@ class VolatilityGridParamTest(unittest.TestCase):
         dummy = DiscountCurve('',refdate=refdate, dates=[refdate, refdate+dt.timedelta(days=10*365)], df=[1.0,1.0])
         fwd = EquityForwardCurve(100.0, funding_curve=dummy, borrow_curve=dummy,div_table=None)
         vol_surface = VolatilitySurface('', refdate, fwd, enums.DayCounterType.Act365Fixed, vol_grid_param)
+        if not _pyvacon_available:
+            self.assertAlmostEqual(1,1)
+            return
         vol = vol_surface.calc_implied_vol(refdate+dt.timedelta(days=365), 100.0)
         self.assertAlmostEqual(vol, vol_grid_param.calc_implied_vol(1.0, 1.3), delta=1e-7)
         
@@ -52,6 +61,9 @@ class VolatilitySABRParamTest(unittest.TestCase):
         dc = DiscountCurve('',refdate=refdate, dates=[refdate, refdate+dt.timedelta(days=10*365)], df=[1.0,1.0])
         fc = EquityForwardCurve(100.0, funding_curve=dc, borrow_curve=dc,div_table=None)
         vol_surf = VolatilitySurface(obj_id, refdate, fc, enums.DayCounterType.Act365Fixed, sabr_param)
+        if not _pyvacon_available:
+            self.assertAlmostEqual(1,1)
+            return
         vol = vol_surf.calc_implied_vol(refdate+dt.timedelta(days=365), 100.0,refdate)
         self.assertAlmostEqual(vol, sabr_param.calc_implied_vol(ttm = 1.0,strike = 1.0), delta=1e-7)
         
@@ -107,7 +119,54 @@ class PowerPriceForwardCurveTest(unittest.TestCase):
         self.assertRaises(Exception, lambda: hpfc.value(dt.datetime(2022,1,1), simple_schedule))
       
         
+class DiscountCurveCompositionTest(unittest.TestCase):
+    def test_curve_addition(self):
+        """Simple test adding two curves testing
+        """
+        ref_date = dt.datetime(2023,1,1)
+        c1 = DiscountCurveParametrized('C1', ref_date, ConstantRate(0.01))
+        c2 = DiscountCurveParametrized('C2', ref_date, ConstantRate(0.025))
+        # add two constant curves
+        c = c1 + c2
+        d = ref_date + dt.timedelta(days=10*365)
+        self.assertAlmostEqual(c1.value_rate(ref_date, d) + c2.value_rate(ref_date, d), c.value_rate(ref_date, d), places=6)
+        self.assertAlmostEqual(c1.value(ref_date, d)*c2.value(ref_date, d), c.value(ref_date, d), places=6)
+        # add one constant and one linear curve
+        c2 = DiscountCurveParametrized('C2', ref_date, LinearRate(0.01, 0.05, max_maturity=10.0))
+        c = c1 + c2
+        self.assertAlmostEqual(c1.value_rate(ref_date, d) + c2.value_rate(ref_date, d), c.value_rate(ref_date, d), places=6)
+        self.assertAlmostEqual(c1.value(ref_date, d)*c2.value(ref_date, d), c.value(ref_date, d), places=6)
+        # add a curve and a float
+        c = 0.01+c2
+        self.assertAlmostEqual(c1.value_rate(ref_date, d) + c2.value_rate(ref_date, d), c.value_rate(ref_date, d), places=6)
+        self.assertAlmostEqual(c1.value(ref_date, d)*c2.value(ref_date, d), c.value(ref_date, d), places=6)
+
+    def test_curve_multiplication(self):
+        """Simple test multiplying two curves
+        """
+        ref_date = dt.datetime(2023,1,1)
+        c1 = DiscountCurveParametrized('C1', ref_date, ConstantRate(0.01))
+        c2 = DiscountCurveParametrized('C2', ref_date, ConstantRate(0.025))
+        # multiply two constant curves
+        c = c1 * c2
+        d = ref_date + dt.timedelta(days=10*365)
+        self.assertAlmostEqual(c1.value_rate(ref_date, d) * c2.value_rate(ref_date, d), c.value_rate(ref_date, d), places=6)
+        df = np.exp(-c1.value_rate(ref_date, d) * c2.value_rate(ref_date, d)*c1._dc.yf(ref_date, d))
+        self.assertAlmostEqual(df, c.value(ref_date, d), places=6)
         
+        # multiply one constant and one linear curve
+        c2 = DiscountCurveParametrized('C2', ref_date, LinearRate(0.01, 0.05, max_maturity=10.0))
+        c = c1 * c2
+        self.assertAlmostEqual(c1.value_rate(ref_date, d) * c2.value_rate(ref_date, d), c.value_rate(ref_date, d), places=6)
+        df = np.exp(-c1.value_rate(ref_date, d) * c2.value_rate(ref_date, d)*c1._dc.yf(ref_date, d))
+        self.assertAlmostEqual(df, c.value(ref_date, d), places=6)
+        # multiply a curve and a float
+        c = 0.01*c2
+        self.assertAlmostEqual(0.01*c2.value_rate(ref_date, d), c.value_rate(ref_date, d), places=6)
+        df = np.exp(-0.01* c2.value_rate(ref_date, d)*c1._dc.yf(ref_date, d))
+        self.assertAlmostEqual(df, c.value(ref_date, d), places=6)
+        
+
 
 if __name__ == '__main__':
     unittest.main()

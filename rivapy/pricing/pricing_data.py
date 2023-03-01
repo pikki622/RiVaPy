@@ -18,9 +18,9 @@ from rivapy.marketdata import DiscountCurve, SurvivalCurve
 from rivapy.tools.interfaces import BaseDatedCurve
 from typing import Union as _Union
 from datetime import date, datetime
-from rivapy.instruments.specifications import Bond
+from rivapy.instruments.bond_specifications import BondBaseSpecification
 from rivapy.tools._converter import _add_converter
-from rivapy.tools.datetools import _datetime_to_date
+from rivapy.tools.datetools import _date_to_datetime
 from rivapy.pricing.pricing_request import PricingRequest, BondPricingRequest
 
 
@@ -98,7 +98,7 @@ class BasePricingData:
 
 
 class BondPricingData(BasePricingData):
-    def __init__(self, bond: Bond, valuation_date: _Union[date, datetime], discount_curve: DiscountCurve,
+    def __init__(self, bond: BondBaseSpecification, valuation_date: _Union[date, datetime], discount_curve: DiscountCurve,
                  fixing_curve: DiscountCurve, parameters: BondPricingParameter, pricing_request: BondPricingRequest,
                  pricer: str = 'BondPricer', past_fixing: float = None, survival_curve: SurvivalCurve = None,
                  recovery_curve: BaseDatedCurve = None):
@@ -122,7 +122,7 @@ class BondPricingData(BasePricingData):
 
     @valuation_date.setter
     def valuation_date(self, valuation_date: _Union[date, datetime]):
-        self.__valuation_date = _datetime_to_date(valuation_date)
+        self.__valuation_date = _date_to_datetime(valuation_date)
 
     @property
     def discount_curve(self):

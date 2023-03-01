@@ -9,9 +9,10 @@ Instruments
    :maxdepth: 2
    :caption: Contents:
    
-   rivapy.instruments.equity
-   rivapy.instruments.credit
-   rivapy.instruments.power
+   equity
+   credit
+   power
+   components
 
 
 

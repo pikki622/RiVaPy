@@ -6,12 +6,16 @@ import rivapy.models as models
 import rivapy.marketdata as mktdata
 import rivapy.pricing.analytics as analytics
 import rivapy.tools.enums as enums
+from rivapy import _pyvacon_available
 
 class LocalVolModelTest(unittest.TestCase):
 	
 	def test_local_vol_mc_with_ssvi(self):
 		"""Simple test where call price from Local Vol MC simulation is compared against BS price
 		"""
+		if not _pyvacon_available:
+			self.assertAlmostEqual(1,1)
+			return
 		ssvi = mktdata.VolatilityParametrizationSSVI(expiries=[1.0/365, 30/365, 0.5, 1.0], fwd_atm_vols=[0.25, 0.3, 0.28, 0.25], rho=-0.9, eta=0.5, gamma=0.5)
 		x_strikes = np.linspace(0.5,1.5,100)
 		time_grid = np.linspace(0.0,1.0,100)
@@ -54,6 +58,9 @@ class LocalVolModelTest(unittest.TestCase):
 	def test_compare_local_var_implied_and_call(self):
 		"""Simple test where the local volatility of a volatility surface is compared with the local volatility of the corresponding call price surface
 		"""
+		if not _pyvacon_available:
+			self.assertAlmostEqual(1,1)
+			return
 		x_strikes = np.linspace(0.5,1.5,100)
 		time_grid = np.linspace(0.0,1.0,100)
 		

@@ -3,7 +3,7 @@
 
 from datetime import date, datetime
 from typing import  List as _List, Union as _Union
-from rivapy.tools.datetools import _datetime_to_date as datetime_to_date, _datetime_to_date_list as datetime_to_date_list
+from rivapy.tools.datetools import _date_to_datetime as datetime_to_date, _datetime_to_date_list as datetime_to_date_list
 
 
 class PricingRequest:

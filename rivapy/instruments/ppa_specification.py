@@ -3,9 +3,11 @@ import abc
 import numpy as np
 import pandas as pd
 import datetime as dt
+import rivapy.tools.interfaces as interfaces
+from rivapy.instruments.factory import create as _create
 
 
-class SimpleSchedule:
+class SimpleSchedule(interfaces.FactoryObject):
 	def __init__(self, start: dt.datetime, end:dt.datetime, 
 					freq: str='1H', weekdays: Set[int] = None, 
 					hours: Set[int] = None, tz: str=None ):
@@ -50,6 +52,13 @@ class SimpleSchedule:
 		self.tz = tz
 		self._df = None
 
+	def _to_dict(self)->dict:
+		return {
+					'start': self.start, 'end':self.end, 
+					'freq': self.freq, 'weekdays': self.weekdays, 
+					'hours': self.hours, 'tz': self.tz
+		}
+ 
 	def get_schedule(self, refdate: dt.datetime = None)->List[dt.datetime]:
 		"""Return list of datetime values belonging to the schedule.
 
@@ -81,8 +90,22 @@ class SimpleSchedule:
 		"""
 		return {'start': self.start, 'end': self.end, 'freq': self.freq, 'weekdays': self.weekdays, 'hours': self.hours, 'tz': self.tz}
 
-class PPASpecification:
+	@staticmethod
+	def _create_sample(n_samples: int, seed: int = None, ref_date = None):
+		if ref_date is None:
+			ref_date = dt.datetime(1980,1,1)
+		if seed is not None:
+			np.random.seed(seed)
+		result = []
+		for i in range(n_samples):
+			start = ref_date + dt.timedelta(days=np.random.randint(0,100))
+			end = start + + dt.timedelta(days=np.random.randint(5,365))
+			result.append(SimpleSchedule(start=start, end=end))
+		return result
+	
+class PPASpecification(interfaces.FactoryObject):
 	def __init__(self, 
+				udl: str,
 				amount: Union[float, np.ndarray], 
 				schedule: Union[SimpleSchedule, List[dt.datetime]],
 				fixed_price: float,
@@ -90,24 +113,63 @@ class PPASpecification:
 		"""Specification for a simple power purchase agreement (PPA).
 
 		Args:
-			amount (Union[None, float, np.ndarray]): Amount of power delivered at each timepoint/period. Either a single value s.t. all volumes delivered are constant or a load table.
+			udl (str): Name of underlying (power) that is delivered (just use for consistency checking within pricing against simulated model values).
+			amount (Union[None, float, np.ndarray]): Amount of power delivered at each timepoint/period. Either a single value s.t. all volumes delivered are constant or a load table. If None, a non-constant amount (e.g. by production from renewables) is assumed.
 			schedule (Union[SimpleSchedule, List[dt.datetime]): Schedule describing when power is delivered.
 			fixed_price (float): The fixed price paif for the power.
 			id (str): Simple id of the specification. If None, a uuid will be generated. Defaults to None.
 		"""
 		self.id = id
+		self.udl = udl
 		if id is None:
 			self.id = type(self).__name__+'/'+str(dt.datetime.now())
 		self.amount = amount
-		self.schedule = schedule
+		if isinstance(schedule, dict): #if schedule is a dict we try to create it from factory
+			self.schedule = _create(schedule)
+		else:
+			self.schedule = schedule
 		self.fixed_price = fixed_price
-		self._schedule_df = schedule.get_df().set_index(['dates']).sort_index()
+		if isinstance(schedule, list):
+			self._schedule_df = pd.DataFrame({'dates': self.schedule}).reset_index()
+		else:
+			self._schedule_df = self.schedule.get_df().set_index(['dates']).sort_index()
 		self._schedule_df['amount'] = amount
 		self._schedule_df['flow'] = None
+
+	@staticmethod
+	def _create_sample(n_samples: int, seed: int = None, ref_date = None):
+		schedules = SimpleSchedule._create_sample(n_samples, seed, ref_date)
+		result = []
+		for schedule in schedules:
+			amount = np.random.uniform(low=50., high=100.0)
+			fixed_price = np.random.uniform(low=0.5, high=1.5)
+			result.append(PPASpecification(udl='Power', amount=amount, schedule=schedule, fixed_price=fixed_price))
+		return result
+	
+	def get_schedule(self)->List[dt.datetime]:
+		if not isinstance(self.schedule, list):
+			return self.schedule.get_schedule()
+		return self.schedule
+
+	def _to_dict(self)->dict:
+		try: # if isinstance(self.schedule, interfaces.FactoryObject):
+			schedule = self.schedule.to_dict()
+		except  Exception as e:
+			schedule = self.schedule
+		return {
+			'udl': self.udl,
+			'id': self.id,
+			'amount': self.amount,
+			'schedule': schedule,
+			'fixed_price': self.fixed_price
+		}
 
 	def set_amount(self, amount):
 		self.amount = amount
 		self._schedule_df['amount'] = amount
+
+	def n_deliveries(self):
+		return self._schedule_df.shape[0]
 
 	def compute_flows(self, refdate: dt.datetime, pfc, result: pd.DataFrame=None, result_col = None)->pd.DataFrame:
 		df = pfc.get_df()
@@ -117,12 +179,49 @@ class PPASpecification:
 		result[result_col] = self._schedule_df['amount']*(df.loc[self._schedule_df.index]['values']-self.fixed_price)
 
 class GreenPPASpecification(PPASpecification):
-	def __init__(self,schedule: Union[SimpleSchedule, List[dt.datetime]],
+	def __init__(self,
+				udl: str,
+				schedule: Union[SimpleSchedule, List[dt.datetime]],
 				technology: str,
+				location: str,
 				fixed_price: float,
+				max_capacity: float,
 				id:str = None):
-		super().__init__(None, schedule, fixed_price, id)
+		"""Green power purchase agreement.
+
+		In contrast to a normal PPA the quantities of this PPA are related to some kind of 
+		renewable energy such as wind or solar, i.e. the quantity is related to some uncertain production.
+		
+		Args:
+			udl (str): Name of underlying (power) that is delivered (just use for consistency checking within pricing against simulated model values).
+			schedule (Union[SimpleSchedule, List[dt.datetime]]): _description_
+			technology (str): _description_
+			fixed_price (float): _description_
+			max_capacity (float): _description__
+			id (str, optional): _description_. Defaults to None.
+		"""
+		super().__init__(udl, None, schedule, fixed_price, id)
 		self.technology = technology
+		self.max_capacity = max_capacity
+		self.location = location
+
+	@staticmethod
+	def _create_sample(n_samples: int, seed: int = None, ref_date = None):
+		schedules = SimpleSchedule._create_sample(n_samples, seed, ref_date)
+		result = []
+		for schedule in schedules:
+			max_capacity = np.random.uniform(low=50., high=100.0)
+			fixed_price = np.random.uniform(low=0.5, high=1.5)
+			result.append(GreenPPASpecification(udl='Power', technology='Wind',  location='Onshore', fixed_price=fixed_price, max_capacity=max_capacity, schedule = schedule))
+		return result
+	
+	def _to_dict(self)->dict:
+		result = super()._to_dict()
+		del result['amount']
+		result['technology'] = self.technology
+		result['max_capacity'] = self.max_capacity
+		result['location'] = self.location
+		return result
 
 	def compute_flows(self, refdate: dt.datetime, pfc, forecast_amount: np.ndarray, result: pd.DataFrame=None, result_col = None)->pd.DataFrame:
 		self.set_amount(forecast_amount)

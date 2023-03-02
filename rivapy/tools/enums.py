@@ -12,7 +12,26 @@ class _MyEnum(_Enum):
     def has_value(cls, value):
         return value in cls._value2member_map_
 
+    @classmethod
+    def to_string(cls, value)->str:
+        """Checks if given enum class contains the value and raises exception if not. If value is str 
 
+        Args:
+            enum (_type_): _description_
+            value (_type_): _description_
+
+        Returns:
+            str: _description_
+        """
+        def has_value(cls, value):
+            return value in cls._value2member_map_
+        if isinstance(value, str):
+            if not cls.has_value(value):
+                raise Exception('Unknown  ' + cls.__name__ +': ' + value)
+            return value
+        if isinstance(value, cls):
+            return value.value
+        raise Exception('Given value ' + str(value) + ' does not belong to enum ' + cls.__name__)
 
 if _pyvacon_available:
     from pyvacon.finance.definition import DayCounter as _DayCounter
@@ -38,8 +57,6 @@ else:
         LINEAR = 'LINEAR'
         LINEAR_LOG = 'LINEARLOG'
         
-
-
 @_unique
 class SecuritizationLevel(_MyEnum):
     NONE = 'NONE'
@@ -131,9 +148,9 @@ class RollConvention(_MyEnum):
 #     MODIFIED_PRECEDING = 'ModifiedPreceding'
 #     UNADJUSTED = 'Unadjusted'
 @_unique
-class DayCounter(_MyEnum):
+class DayCounterType(_MyEnum):
     ACT_ACT = 'ActAct'
-    ACT365_FIXED = 'ACT365FIXED'
+    Act365Fixed = 'Act365Fixed'
     ACT360 = 'Act360'
     ThirtyU360 = '30U360'
     ThirtyE360 = '30E360'
@@ -170,9 +187,14 @@ class Sector(_MyEnum):
     REAL_ESTATE = 'RealEstate'
     UTILITIES = 'Utilities'
 
+@_unique
+class ESGRating(_MyEnum):
+    A = 'A'
+    B = 'B'
+    C = 'C'
 
 @_unique
-class Rating(_Enum):
+class Rating(_MyEnum):
     # cf. https://www.moneyland.ch/de/vergleich-rating-agenturen
     AAA = 'AAA'
     AA_PLUS = 'AA+'
@@ -196,10 +218,11 @@ class Rating(_Enum):
     CC = 'CC'
     C = 'C'
     D = 'D'
+    NONE = 'NONE' # not rated
 
-class ProductType:
-       BOND = 'BOND'
-       CALLABLE_BOND = 'CALLABLE_BOND'   
+# class ProductType:
+#        BOND = 'BOND'
+#        CALLABLE_BOND = 'CALLABLE_BOND'   
 
 class PricerType:
     ANALYTIC = 'ANALYTIC'
@@ -208,14 +231,15 @@ class PricerType:
     COMBO = 'COMBO'
     
        
-    
-class VolatilityStickyness:
+@_unique
+class VolatilityStickyness(_MyEnum):
     NONE = 'NONE'
     StickyStrike = 'StickyStrike'
     StickyXStrike = 'StickyXStrike'
     StickyFwdMoneyness = 'StickyFwdMoneyness'
 
-class Currency:
+@_unique
+class Currency(_MyEnum):
     AED =  'AED'
     AFN =  'AFN'
     ALL =  'ALL'
@@ -386,10 +410,10 @@ class Currency:
     ZMW =  'ZMW'
     ZWD =  'ZWD'
 
-class ProductType:
-       BOND = 'BOND'
-       CALLABLE_BOND = 'CALLABLE_BOND'
-       
+
+class Country(_MyEnum):
+    DE = 'DE'
+    US = 'US' 
        
 
     

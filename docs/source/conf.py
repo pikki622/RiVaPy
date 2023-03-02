@@ -22,8 +22,8 @@ sys.path.insert(0, os.path.abspath('../../'))
 # -- Project information -----------------------------------------------------
 
 project = 'rivapy'
-copyright = '2020, RIVACON GmbH'
-author = 'RIVACON GmbH'
+#copyright = '2020, RIVACON GmbH'
+#author = 'RIVACON GmbH'
 
 
 # -- General configuration ---------------------------------------------------
@@ -41,7 +41,8 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.napoleon',
     'sphinx_rtd_theme',
-    'sphinxcontrib.bibtex'
+    'sphinxcontrib.bibtex',
+    #'nbsphinx'
 ]
 
 # Add bibtex file

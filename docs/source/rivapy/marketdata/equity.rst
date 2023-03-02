@@ -1,13 +1,16 @@
-Marketdata
-===========================
-
 Equity
 -------------------------------
+.. toctree::
+   :maxdepth: 3
+   :caption: Contents:
+
+   dividends
+
 
 
 Curves
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-.. automodule:: rivapy.marketdata.curves
+.. autoclass:: rivapy.marketdata.EquityForwardCurve
    :members:
    :undoc-members:
    :show-inheritance:

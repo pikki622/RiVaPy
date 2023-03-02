@@ -9,6 +9,12 @@ Power Purchase Agreement
     :members:
     :undoc-members:
    
+Green Power Purchase Agreement
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. autoclass:: rivapy.instruments.GreenPPASpecification
+    :members:
+    :undoc-members:
+   
 
 Schedules
 ^^^^^^^^^^^^^^^^^^

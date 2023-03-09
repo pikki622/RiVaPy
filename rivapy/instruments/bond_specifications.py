@@ -50,15 +50,12 @@ class BondBaseSpecification(interfaces.FactoryObject):
     def _create_sample(n_samples: int, seed: int = None, ref_date = None, 
                     issuers: _List[str]= None,
                     sec_levels: _List[str]=None,
-                    currencies: _List[str]= None)->_List[dict]:
+                    currencies: _List[str]= None) -> _List[dict]:
         if seed is not None:
             np.random.seed(seed)
-        if ref_date is None:
-            ref_date = datetime.now()
-        else: 
-            ref_date = _date_to_datetime(ref_date)
+        ref_date = datetime.now() if ref_date is None else _date_to_datetime(ref_date)
         if issuers is None:
-            issuers = ['Issuer_'+str(i) for i in range(int(n_samples/2))]
+            issuers = [f'Issuer_{str(i)}' for i in range(n_samples // 2)]
         result = []
         if currencies is None:
             currencies = list(Currency)
@@ -81,15 +78,17 @@ class BondBaseSpecification(interfaces.FactoryObject):
     def _validate_derived_issued_instrument(self):
         self.__issue_date, self.__maturity_date = _check_start_before_end(self.__issue_date, self.__maturity_date)
 
-    def _to_dict(self)->dict:        
-        result = {
-            'obj_id': self.obj_id, 'issuer':self.issuer, 
+    def _to_dict(self) -> dict:        
+        return {
+            'obj_id': self.obj_id,
+            'issuer': self.issuer,
             'securitization_level': self.securitization_level,
-            'issue_date': self.issue_date, 'maturity_date':self.maturity_date, 
-            'currency': self.currency, 'notional': self.notional, 
-            'rating': self.rating
+            'issue_date': self.issue_date,
+            'maturity_date': self.maturity_date,
+            'currency': self.currency,
+            'notional': self.notional,
+            'rating': self.rating,
         }
-        return result
 
     #region properties
     
@@ -240,10 +239,10 @@ class ZeroCouponBondSpecification(BondBaseSpecification):
                         issuers: _List[str]= None, sec_levels: _List[str]=None,
                     currencies: _List[str]= None):
         specs = BondBaseSpecification._create_sample(**locals())
-        result = []
-        for i, b in enumerate(specs):
-            result.append(ZeroCouponBondSpecification('ZC_BND_'+str(i), **b))
-        return result
+        return [
+            ZeroCouponBondSpecification(f'ZC_BND_{str(i)}', **b)
+            for i, b in enumerate(specs)
+        ]
     
     def _validate_derived_bond(self):
         pass
@@ -332,7 +331,7 @@ class PlainVanillaCouponBondSpecification(BondBaseSpecification):
             'coupon_freq' : self.coupon_freq,
             'coupon' : self.coupon,
             }
-        result.update(super(PlainVanillaCouponBondSpecification, self)._to_dict())
+        result |= super(PlainVanillaCouponBondSpecification, self)._to_dict()
         return result
     
     @staticmethod
@@ -347,7 +346,7 @@ class PlainVanillaCouponBondSpecification(BondBaseSpecification):
             issue_date = b['issue_date']
             b['accrual_start'] = issue_date + timedelta(days=np.random.randint(low=0, high=10))
             b['coupon'] = np.random.choice(coupons)
-            result.append(PlainVanillaCouponBondSpecification('BND_PV_'+str(i), **b))
+            result.append(PlainVanillaCouponBondSpecification(f'BND_PV_{str(i)}', **b))
         return result
 
 class FixedRateBondSpecification(BondBaseSpecification):
@@ -374,15 +373,16 @@ class FixedRateBondSpecification(BondBaseSpecification):
         self.__coupons = coupons
         # validation of dates' consistency
         if not _is_ascending_date_list(issue_date, coupon_payment_dates, maturity_date):
-            raise Exception("Inconsistent combination of issue date '" + str(issue_date)
-                            + "', payment dates '" + str(coupon_payment_dates)
-                            + "', and maturity date '" + str(maturity_date) + "'.")
-            # TODO: Clarify if inconsistency should be shown explicitly.
+            raise Exception(
+                f"Inconsistent combination of issue date '{str(issue_date)}', payment dates '{str(coupon_payment_dates)}', and maturity date '{str(maturity_date)}'."
+            )
+                # TODO: Clarify if inconsistency should be shown explicitly.
         if len(coupon_payment_dates) == len(coupons):
             self.__coupons = coupons
         else:
-            raise Exception('Number of coupons ' + str(coupons) +
-                            ' is not equal to number of coupon payment dates ' + str(coupon_payment_dates))
+            raise Exception(
+                f'Number of coupons {str(coupons)} is not equal to number of coupon payment dates {str(coupon_payment_dates)}'
+            )
 
     
     @staticmethod
@@ -398,31 +398,32 @@ class FixedRateBondSpecification(BondBaseSpecification):
             coupon = np.random.choice(coupons)
             b['coupons'] = [coupon]*n_coupons
             b['maturity_date'] = b['coupon_payment_dates'][-1]
-            result.append(FixedRateBondSpecification('BND_FR_'+str(i), **b))
+            result.append(FixedRateBondSpecification(f'BND_FR_{str(i)}', **b))
         return result
 
     def _validate_derived_bond(self):
         self.__coupon_payment_dates = _datetime_to_date_list(self.__coupon_payment_dates)
         # validation of dates' consistency
         if not _is_ascending_date_list(self.__issue_date, self.__coupon_payment_dates, self.__maturity_date):
-            raise Exception("Inconsistent combination of issue date '" + str(self.__issue_date)
-                            + "', payment dates '" + str(self.__coupon_payment_dates)
-                            + "', and maturity date '" + str(self.__maturity_date) + "'.")
-            # TODO: Clarify if inconsistency should be shown explicitly.
+            raise Exception(
+                f"Inconsistent combination of issue date '{str(self.__issue_date)}', payment dates '{str(self.__coupon_payment_dates)}', and maturity date '{str(self.__maturity_date)}'."
+            )
+                # TODO: Clarify if inconsistency should be shown explicitly.
         if len(self.__coupon_payment_dates) != len(self.__coupons):
-            raise Exception('Number of coupons ' + str(self.__coupons) +
-                            ' is not equal to number of coupon payment dates ' + str(self.__coupon_payment_dates))
+            raise Exception(
+                f'Number of coupons {str(self.__coupons)} is not equal to number of coupon payment dates {str(self.__coupon_payment_dates)}'
+            )
     
     def _validate_derived_issued_instrument(self):
         pass
 
     
-    def _to_dict(self)->dict:
+    def _to_dict(self) -> dict:
         result = {
             'coupon_payment_dates': self.__coupon_payment_dates,
             'coupons' : self.__coupons 
             }
-        result.update(super(FixedRateBondSpecification, self)._to_dict())
+        result |= super(FixedRateBondSpecification, self)._to_dict()
         return result
 
     @classmethod
@@ -547,23 +548,20 @@ class FloatingRateNoteSpecification(BondBaseSpecification):
         self.__coupon_period_dates = _datetime_to_date_list(coupon_period_dates)
         # validation of dates' consistency
         if not _is_ascending_date_list(issue_date, coupon_period_dates, maturity_date, False):
-            raise Exception("Inconsistent combination of issue date '" + str(issue_date)
-                            + "', payment dates '" + str(coupon_period_dates)
-                            + "', and maturity date '" + str(maturity_date) + "'.")
-            # TODO: Clarify if inconsistency should be shown explicitly.
+            raise Exception(
+                f"Inconsistent combination of issue date '{str(issue_date)}', payment dates '{str(coupon_period_dates)}', and maturity date '{str(maturity_date)}'."
+            )
+                # TODO: Clarify if inconsistency should be shown explicitly.
         self.__day_count_convention = DayCounterType.to_string(day_count_convention)
         if spreads is None:
             self.__spreads = [0.0] * (len(coupon_period_dates) - 1)
         elif len(spreads) == len(coupon_period_dates) - 1:
             self.__spreads = spreads
         else:
-            raise Exception('Number of spreads ' + str(spreads) +
-                            ' does not fit to number of coupon periods ' + str(coupon_period_dates))
-        if reference_index == '':
-            # do not leave reference curve empty as this causes pricer to ignore floating rate coupons!
-            self.__reference_index = 'dummy_curve'
-        else:
-            self.__reference_index = reference_index
+            raise Exception(
+                f'Number of spreads {str(spreads)} does not fit to number of coupon periods {str(coupon_period_dates)}'
+            )
+        self.__reference_index = reference_index or 'dummy_curve'
 
     @classmethod
     def from_master_data(cls, 
@@ -704,12 +702,6 @@ class FixedToFloatingRateNoteSpecification(FixedRateBondSpecification, FloatingR
         """
         # TODO FIX THIS CLASS!!!!!!!!!!!!!!!!
         raise Exception('Not working properly, @Stefan: Please fix me!!!!')
-        FixedRateBondSpecification.__init__(self, obj_id, issue_date, maturity_date, coupon_payment_dates, coupons,
-                               currency, notional, issuer, securitisation_level)
-
-        FloatingRateNoteSpecification.__init__(self, obj_id, issue_date, maturity_date, coupon_period_dates,
-                                  day_count_convention, spreads, reference_index, currency, notional, issuer,
-                                  securitisation_level)
 
     @classmethod
     def from_master_data(cls, obj_id: str,

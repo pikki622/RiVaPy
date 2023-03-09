@@ -21,7 +21,3 @@ _add_to_factory(WindPowerForecastModel)
 _add_to_factory(ResidualDemandForwardModel)
 _add_to_factory(MultiRegionWindForecastModel.Region)
 _add_to_factory(MultiRegionWindForecastModel)
-
-
-if __name__=='__main__':
-    pass

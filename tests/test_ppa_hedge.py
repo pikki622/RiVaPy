@@ -20,13 +20,19 @@ try:
                 model = OrnsteinUhlenbeck(1.0,0.2,1.0)
                 rnd = np.random.normal(size=(timegrid.shape[0], n_sims))
                 s =  model.simulate(timegrid, start_value=1.0, rnd=rnd)
-                spots['Asset'+str(i)] = s
+                spots[f'Asset{str(i)}'] = s
                 if payoff is None:
                     payoff = np.maximum(s[-1,:]-1.0,0.0)
                 else:
                     payoff = np.maximum(np.maximum(s[-1,:]-1.0,0.0), payoff)
-            model = DeepHedgeModel([k for k in spots.keys()], None, timegrid=timegrid,
-                                    regularization=0.0, depth=3, n_neurons=32)
+            model = DeepHedgeModel(
+                list(spots.keys()),
+                None,
+                timegrid=timegrid,
+                regularization=0.0,
+                depth=3,
+                n_neurons=32,
+            )
             lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
                 initial_learning_rate=0.1,#1e-3,
                 decay_steps=100,

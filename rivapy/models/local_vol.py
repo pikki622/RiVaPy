@@ -87,8 +87,10 @@ class LocalVol:
 
         p = log_x_strikes[1:-1] / tiv[:,1:-1]
         q = np.maximum(1 - p*dyw + 0.25*(-0.25 - 1.0 / tiv[:,1:-1] + p*p)*dyw*dyw + 0.5*dyyw, eps)
-        local_var = np.empty(shape=(time_grid.shape[0], x_strikes.shape[0])) 
-        local_var[1:-1,1:-1] = np.minimum(np.maximum(min_lv*min_lv, dtw[:-1,1:-1] / q[1:-1,:]), max_lv*max_lv)
+        local_var = np.empty(shape=(time_grid.shape[0], x_strikes.shape[0]))
+        local_var[1:-1, 1:-1] = np.minimum(
+            np.maximum(min_lv**2, dtw[:-1, 1:-1] / q[1:-1, :]), max_lv**2
+        )
         local_var[:,-1] = local_var[:,-2]
         local_var[:,0] = local_var[:, 1]
         local_var[0,:] = local_var[1,:]
@@ -209,10 +211,7 @@ class LocalVol:
             t1 ([type]): [description]
             rnd ([type]): [description]
         """
-        if not inplace:
-            x_ = x.copy()
-        else:
-            x_ = x
+        x_ = x if inplace else x.copy()
         S = x_[:,0]
         lv = _interpolate_2D(self._time_grid, self._x_strikes, self._local_variance, S, t0) #self._variance(t0, S).reshape((-1,))
         dt = t1-t0

@@ -97,10 +97,7 @@ class HestonModel:
 			rnd (np.ndarray): Two-dimensional array of shape (n_sims,2) containing the normal random numbers. Each row of the array is used to compute the correlated random numbers for the respective simulation.
 			slv (np.ndarray): Stochastic local variance (for each path) to be multiplied with the heston variance. This is used by the StochasticVolatilityModel and can be ignored.
 		"""
-		if not inplace:
-			x_ = x.copy()
-		else:
-			x_ = x
+		x_ = x if inplace else x.copy()
 		rnd_V = np.sqrt(1.0-self._correlation**2)*rnd[:,1] + self._correlation*rnd[:,0]
 		rnd_corr_S = rnd[:,0]
 		S = x_[:,0]

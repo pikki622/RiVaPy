@@ -44,7 +44,7 @@ class DiscountCurve:
             daycounter (enums.DayCounterType, optional): Daycounter used within the interpolation formula to compute a discount factor between two dates from the dates-list above. Defaults to DayCounterType.Act365Fixed.
 
         """
-        if len(dates) < 1:
+        if not dates:
             raise Exception('Please specify at least one date and discount factor')
         if len(dates) != len(df):
             raise Exception('List of dates and discount factors must have equal length.')
@@ -113,11 +113,15 @@ class DiscountCurve:
 
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
-            self._pyvacon_obj = _DiscountCurve(self.id, self.refdate, 
-                                            [x for x in self.get_dates()], [x for x in self.get_df()], 
-                                            self.daycounter, 
-                                            self.interpolation,
-                                            self.extrapolation)
+            self._pyvacon_obj = _DiscountCurve(
+                self.id,
+                self.refdate,
+                list(self.get_dates()),
+                list(self.get_df()),
+                self.daycounter,
+                self.interpolation,
+                self.extrapolation,
+            )
         return self._pyvacon_obj
 
     def plot(self, days:int = 10, discount_factors: bool = False, **kwargs):
@@ -224,7 +228,7 @@ class NelsonSiegel(interfaces.FactoryObject):
         if seed is not None:
             np.random.seed(seed)
         result = []
-        for i in range(n_samples):
+        for _ in range(n_samples):
             beta0 = np.random.uniform(min_long_run_rate, max_long_run_rate)
             beta1 = np.random.uniform(min_short_term_rate-beta0, max_short_term_rate-beta0)
             beta2 = np.random.uniform(min_hump, max_hump)
@@ -297,17 +301,10 @@ class NelsonSiegelSvensson(NelsonSiegel):
     
 class DiscountCurveComposition(interfaces.FactoryObject):
     def __init__(self, a, b, c):
-        # check if all discount curves have the same daycounter, otherwise exception
-        dc = set()
-        for k in [a,b,c]:
-            if hasattr(k, 'daycounter'):
-                dc.add(k.daycounter)
+        dc = {k.daycounter for k in [a,b,c] if hasattr(k, 'daycounter')}
         if len(dc) > 1:
             raise Exception('All curves must have same daycounter.')
-        if len(dc) > 0:
-            self.daycounter = dc.pop()
-        else:
-            self.daycounter = DayCounterType.Act365Fixed.value
+        self.daycounter = dc.pop() if dc else DayCounterType.Act365Fixed.value
         self._dc = DayCounter(self.daycounter)
         self.a = a
         if not hasattr(a, 'value'):
@@ -439,20 +436,21 @@ class EquityForwardCurve:
             div_table (:class:`rivapy.marketdata.DividendTable`): [description]
         """
         self.spot = spot
-        
+
         self.bc = borrow_curve
         self.fc = funding_curve
         self.div = div_table
         self._pyvacon_obj = None
         self.refdate = self.fc.refdate
-        if self.bc is not None:
-            if self.refdate < self.bc.refdate:
-                self.refdate = self.bc.refdate
+        if self.bc is not None and self.refdate < self.bc.refdate:
+            self.refdate = self.bc.refdate
 
-        if self.div is not None:
-            if hasattr(self.div, 'refdate'):
-                if self.refdate < self.div.refdate:
-                    self.refdate = self.div.refdate
+        if (
+            self.div is not None
+            and hasattr(self.div, 'refdate')
+            and self.refdate < self.div.refdate
+        ):
+            self.refdate = self.div.refdate
 
     def _get_pyvacon_obj(self):
         if self._pyvacon_obj is None:
@@ -533,7 +531,7 @@ class BootstrapHazardCurve:
             risk_adj_factor_protection += self.dc.value(self.ref_date, current_date) * default_prob
             prev_date = current_date
             current_date += integration_step
-        
+
         if prev_date < maturity_date and current_date > maturity_date:
             default_prob = dc_survival.value(self.ref_date, prev_date)-dc_survival.value(self.ref_date, maturity_date)
             risk_adj_factor_protection += self.dc.value(self.ref_date, maturity_date)  * default_prob
@@ -551,9 +549,8 @@ class BootstrapHazardCurve:
         PV_accrued=((1/2)*risk_adj_factor_accrued)
         PV_premium=(1)*risk_adj_factor_premium
         PV_protection=(((1-self.RR))*risk_adj_factor_protection)
-        
-        par_spread_i=(PV_protection)/((PV_premium+PV_accrued))
-        return par_spread_i
+
+        return (PV_protection)/((PV_premium+PV_accrued))
 
     def create_survival(self, dates: List[datetime], hazard_rates: List[float]):
         return _SurvivalCurve('survival_curve', self.refdate, dates, hazard_rates)
@@ -630,7 +627,7 @@ class PowerPriceForwardCurve:
         """
         self.id = id
         if id is None:
-            self.id = 'PFC/'+str(datetime.now())
+            self.id = f'PFC/{str(datetime.now())}'
         self.refdate = refdate
         self.start = start
         self.end = end
@@ -642,11 +639,13 @@ class PowerPriceForwardCurve:
         self._df = pd.DataFrame({'dates': pd.date_range(self.start, self.end, freq=self.freq, tz=self.tz, closed='left').to_pydatetime(), 
                                 'values': self.values}).set_index(['dates']).sort_index()
         
-    def value(self, refdate: Union[date, datetime], schedule)->np.ndarray:
+    def value(self, refdate: Union[date, datetime], schedule) -> np.ndarray:
         if self._tg is None:
             self._tg = pd.DataFrame({'dates': pd.date_range(self.start, self.end, freq=self.freq, tz=self.tz, closed='left').to_pydatetime(), 'values': self.values}).reset_index()
             if self._tg.shape[0] != self.values.shape[0]:
-                raise Exception('The number of dates (' + str(self._tg.shape[0])+') does not equal number of values (' + str(self.values.shape[0]) + ') in forward curve.')
+                raise Exception(
+                    f'The number of dates ({str(self._tg.shape[0])}) does not equal number of values ({str(self.values.shape[0])}) in forward curve.'
+                )
         tg = self._tg[(self._tg.dates>=schedule.start)&(self._tg.dates<schedule.end)].set_index('dates')
         _schedule = pd.DataFrame({'dates': schedule.get_schedule(refdate)})
         tg = _schedule.join(tg, on='dates')

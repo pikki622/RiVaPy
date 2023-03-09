@@ -13,7 +13,7 @@ class NotebookTestsMeta(type):
             if '.git' in d:
                 continue
             for file in f:
-                if '.ipynb' in file and not '-checkpoint' in file:
+                if '.ipynb' in file and '-checkpoint' not in file:
                     test_name = str.replace(str.replace(str.replace(str(os.path.join(r, file)),'.ipynb',''),'.',''),'\\','_')
                     result.append( (os.path.join(r, file), test_name,))
         return result
@@ -21,7 +21,7 @@ class NotebookTestsMeta(type):
     def __new__(cls, name, bases, attrs):
         notebooks = NotebookTestsMeta.get_notebooks()
         for x in notebooks:
-            attrs['test_%s' % x[1]] = cls.gen(x[0])
+            attrs[f'test_{x[1]}'] = cls.gen(x[0])
         return super(NotebookTestsMeta, cls).__new__(cls, name, bases, attrs)
     
     @staticmethod
@@ -41,13 +41,12 @@ class NotebookTestsMeta(type):
             subprocess.check_call(args, stdout=FNULL, stderr=subprocess.STDOUT)#,env=my_env)
         except Exception as e:
             os.chdir(curr_dir)
-            return ['An error occured converting notebook with nbconvert'] 
-        f = open('tmp.ipynb', 'r')
-        nb = nbformat.read(f, nbformat.current_nbformat)
-        errors = [output for cell in nb.cells if "outputs" in cell
-                  for output in cell["outputs"]
-                  if output.output_type == "error"]
-        f.close()
+            return ['An error occured converting notebook with nbconvert']
+        with open('tmp.ipynb', 'r') as f:
+            nb = nbformat.read(f, nbformat.current_nbformat)
+            errors = [output for cell in nb.cells if "outputs" in cell
+                      for output in cell["outputs"]
+                      if output.output_type == "error"]
         os.remove('tmp.ipynb')
         os.chdir(curr_dir)
         return errors
@@ -67,6 +66,3 @@ class NotebookTests(unittest.TestCase, metaclass = NotebookTestsMeta):
     def test_depp(self):
         self.assertEqual(0,0)
 
-if __name__ == '__main__':
-    #unittest.main()
-    pass

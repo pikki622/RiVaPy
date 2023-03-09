@@ -97,7 +97,7 @@ class SimpleSchedule(interfaces.FactoryObject):
 		if seed is not None:
 			np.random.seed(seed)
 		result = []
-		for i in range(n_samples):
+		for _ in range(n_samples):
 			start = ref_date + dt.timedelta(days=np.random.randint(0,100))
 			end = start + + dt.timedelta(days=np.random.randint(5,365))
 			result.append(SimpleSchedule(start=start, end=end))
@@ -124,10 +124,7 @@ class PPASpecification(interfaces.FactoryObject):
 		if id is None:
 			self.id = type(self).__name__+'/'+str(dt.datetime.now())
 		self.amount = amount
-		if isinstance(schedule, dict): #if schedule is a dict we try to create it from factory
-			self.schedule = _create(schedule)
-		else:
-			self.schedule = schedule
+		self.schedule = _create(schedule) if isinstance(schedule, dict) else schedule
 		self.fixed_price = fixed_price
 		if isinstance(schedule, list):
 			self._schedule_df = pd.DataFrame({'dates': self.schedule}).reset_index()
@@ -146,10 +143,12 @@ class PPASpecification(interfaces.FactoryObject):
 			result.append(PPASpecification(udl='Power', amount=amount, schedule=schedule, fixed_price=fixed_price))
 		return result
 	
-	def get_schedule(self)->List[dt.datetime]:
-		if not isinstance(self.schedule, list):
-			return self.schedule.get_schedule()
-		return self.schedule
+	def get_schedule(self) -> List[dt.datetime]:
+		return (
+			self.schedule
+			if isinstance(self.schedule, list)
+			else self.schedule.get_schedule()
+		)
 
 	def _to_dict(self)->dict:
 		try: # if isinstance(self.schedule, interfaces.FactoryObject):

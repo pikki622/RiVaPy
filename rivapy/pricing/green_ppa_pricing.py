@@ -41,14 +41,8 @@ class DeepHedgeModel(tf.keras.Model):
                         **kwargs):
         super().__init__(**kwargs)
         self.hedge_instruments = hedge_instruments
-        if additional_states is None:
-            self.additional_states = []
-        else:
-            self.additional_states = additional_states
-        if model is None:
-            self.model = self._build_model(depth,n_neurons)
-        else:
-            self.model = model
+        self.additional_states = [] if additional_states is None else additional_states
+        self.model = self._build_model(depth,n_neurons) if model is None else model
         self.timegrid = timegrid
         self.regularization = regularization
         self._prev_q = None
@@ -60,19 +54,20 @@ class DeepHedgeModel(tf.keras.Model):
     def _build_model(self, depth: int, nb_neurons: int):
         inputs= [tf.keras.Input(shape=(1,),name = ins) for ins in self.hedge_instruments]
         if self.additional_states is not None:
-            for state in self.additional_states:
-                inputs.append(tf.keras.Input(shape=(1,),name = state))
+            inputs.extend(
+                tf.keras.Input(shape=(1,), name=state)
+                for state in self.additional_states
+            )
         inputs.append(tf.keras.Input(shape=(1,),name = "ttm"))
-        fully_connected_Input = tf.keras.layers.concatenate(inputs)         
+        fully_connected_Input = tf.keras.layers.concatenate(inputs)
         values_all = tf.keras.layers.Dense(nb_neurons,activation = "selu", 
-                        kernel_initializer=tf.keras.initializers.GlorotUniform())(fully_connected_Input)       
+                        kernel_initializer=tf.keras.initializers.GlorotUniform())(fully_connected_Input)
         for _ in range(depth):
             values_all = tf.keras.layers.Dense(nb_neurons,activation = "selu", 
-                        kernel_initializer=tf.keras.initializers.GlorotUniform())(values_all)            
+                        kernel_initializer=tf.keras.initializers.GlorotUniform())(values_all)
         value_out = tf.keras.layers.Dense(len(self.hedge_instruments), activation="linear",
                         kernel_initializer=tf.keras.initializers.GlorotUniform())(values_all)
-        model = tf.keras.Model(inputs=inputs, outputs = value_out)
-        return model
+        return tf.keras.Model(inputs=inputs, outputs = value_out)
 
     def _compute_pnl(self, x, training):
         pnl = tf.zeros((tf.shape(x[0])[0],))
@@ -113,7 +108,7 @@ class DeepHedgeModel(tf.keras.Model):
         return - self.regularization*tf.keras.backend.mean(y_pred+y_true) + tf.keras.backend.var(y_pred+y_true)
         #return tf.keras.backend.mean(tf.keras.backend.exp(-self.lamda*y_pred))
 
-    def _create_inputs(self, paths: Dict[str, np.ndarray], check_timegrid: bool=True)->List[np.ndarray]:
+    def _create_inputs(self, paths: Dict[str, np.ndarray], check_timegrid: bool=True) -> List[np.ndarray]:
         inputs = []
         if check_timegrid:
             for k in self.hedge_instruments:
@@ -127,10 +122,8 @@ class DeepHedgeModel(tf.keras.Model):
                 else:
                     inputs.append(paths[k])
         else:
-            for k in self.hedge_instruments:
-                inputs.append(paths[k])
-            for k in self.additional_states:
-                inputs.append(paths[k])
+            inputs.extend(paths[k] for k in self.hedge_instruments)
+            inputs.extend(paths[k] for k in self.additional_states)
         return inputs
 
     def train(self, paths: Dict[str,np.ndarray], 
@@ -151,22 +144,23 @@ class DeepHedgeModel(tf.keras.Model):
                             batch_size=batch_size, callbacks=callbacks, verbose=verbose)
 
     def save(self, folder):
-        self.model.save(folder+'/delta_model')
-        params = {}
-        params['regularization'] = self.regularization
-        params['timegrid'] =[x for x in self.timegrid]
-        params['additional_states'] = self.additional_states
-        params['hedge_instruments'] = self.hedge_instruments
-        with open(folder+'/params.json','w') as f:
+        self.model.save(f'{folder}/delta_model')
+        params = {
+            'regularization': self.regularization,
+            'timegrid': list(self.timegrid),
+            'additional_states': self.additional_states,
+            'hedge_instruments': self.hedge_instruments,
+        }
+        with open(f'{folder}/params.json', 'w') as f:
             json.dump(params, f)
         
         
         
     @staticmethod
     def load(folder: str):
-        with open(folder+'/params.json','r') as f:
+        with open(f'{folder}/params.json', 'r') as f:
             params = json.load(f)
-        base_model = tf.keras.models.load_model(folder+'/delta_model')
+        base_model = tf.keras.models.load_model(f'{folder}/delta_model')
         params['timegrid'] = np.array(params['timegrid'])
         return DeepHedgeModel(depth=None,n_neurons=None, model=base_model, **params)
 
@@ -238,8 +232,7 @@ class PPAHedgeModel(tf.keras.Model):
             self._forecast_ids = list(paths_forecasts.keys())
         inputs = [paths_fwd_price]
         self._forecast_ids = list(paths_forecasts.keys())
-        for k in self._forecast_ids:
-            inputs.append(paths_forecasts[k])
+        inputs.extend(paths_forecasts[k] for k in self._forecast_ids)
         inputs.append(rlzd_qty)
         return inputs
 
@@ -263,19 +256,19 @@ def _build_model(depth, nb_neurons, regions: List[str] = None):
     if regions is None:
         inputs.append(tf.keras.Input(shape=(1,),name = "forecast"))
     else:
-        for r in regions:
-            inputs.append(tf.keras.Input(shape=(1,),name = "forecast_"+r))
+        inputs.extend(
+            tf.keras.Input(shape=(1,), name=f"forecast_{r}") for r in regions
+        )
     inputs.append(tf.keras.Input(shape=(1,),name = "t"))
-    fully_connected_Input = tf.keras.layers.concatenate(inputs)         
+    fully_connected_Input = tf.keras.layers.concatenate(inputs)
     values_all = tf.keras.layers.Dense(nb_neurons,activation = "selu", 
-                    kernel_initializer=tf.keras.initializers.GlorotUniform())(fully_connected_Input)       
+                    kernel_initializer=tf.keras.initializers.GlorotUniform())(fully_connected_Input)
     for _ in range(depth):
         values_all = tf.keras.layers.Dense(nb_neurons,activation = "selu", 
-                    kernel_initializer=tf.keras.initializers.GlorotUniform())(values_all)            
+                    kernel_initializer=tf.keras.initializers.GlorotUniform())(values_all)
     value_out = tf.keras.layers.Dense(1, activation="linear",
                     kernel_initializer=tf.keras.initializers.GlorotUniform())(values_all)
-    model = tf.keras.Model(inputs=inputs, outputs = value_out)
-    return model
+    return tf.keras.Model(inputs=inputs, outputs = value_out)
 
 class PricingResults:
     def __init__(self, hedge_model: PPAHedgeModel, timegrid: DateTimeGrid,
@@ -384,7 +377,7 @@ class GreenPPADeepHedgingPricer:
         payoff = np.zeros((n_sims,))
         for k,v in hedge_ins.items(): #TODO: We assume that each hedge instruments corresponds to the spot price at the last time step. Make this more explicit!
             expiry = k.split('_')[-1]
-            forecast_key = green_ppa.location+'_'+expiry
+            forecast_key = f'{green_ppa.location}_{expiry}'
             payoff += (v[-1,:] -green_ppa.fixed_price)*(additional_states[forecast_key][-1,:])
         return payoff
 
@@ -436,7 +429,9 @@ class GreenPPADeepHedgingPricer:
 
         #_validate(val_date, green_ppa,power_wind_model)
         if green_ppa.udl not in power_wind_model.udls():
-            raise Exception('Underlying ' + green_ppa.udl + ' not in underlyings of the model ' + str(power_wind_model.udls()))
+            raise Exception(
+                f'Underlying {green_ppa.udl} not in underlyings of the model {str(power_wind_model.udls())}'
+            )
         tf.random.set_seed(seed)
         np.random.seed(seed+123)
         timegrid, expiries, forecast_points = GreenPPADeepHedgingPricer._compute_points(val_date, green_ppa, forecast_hours)
@@ -444,7 +439,7 @@ class GreenPPADeepHedgingPricer:
             return None
         rnd = np.random.normal(size=power_wind_model.rnd_shape(n_sims, timegrid.timegrid.shape[0]))
         simulation_results = power_wind_model.simulate(timegrid.timegrid, rnd, expiries=expiries, initial_forecasts=initial_forecasts)
-        
+
         hedge_ins = {}
         for i in range(len(expiries)):
             key = BaseFwdModel.get_key(green_ppa.udl, i)
@@ -458,12 +453,10 @@ class GreenPPADeepHedgingPricer:
                 for i in range(len(expiries)):
                     key = BaseFwdModel.get_key(a, i)
                     additional_states_[key] = simulation_results.get(key, forecast_points)
-        
+
         hedge_model = DeepHedgeModel(list(hedge_ins.keys()), list(additional_states_.keys()), timegrid.timegrid, 
                                         regularization=regularization,depth=depth, n_neurons=nb_neurons)
-        paths = {}
-        paths.update(hedge_ins)
-        paths.update(additional_states_)
+        paths = hedge_ins | additional_states_
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
                 initial_learning_rate=initial_lr,#1e-3,
                 decay_steps=decay_steps,
@@ -471,7 +464,7 @@ class GreenPPADeepHedgingPricer:
                 staircase=True)
 
         payoff = GreenPPADeepHedgingPricer.compute_payoff(n_sims, hedge_ins, additional_states_, green_ppa)  
-        
+
         hedge_model.train(paths, payoff,lr_schedule, epochs=epochs, batch_size=batch_size, tensorboard_log=tensorboard_logdir, verbose=verbose)
         return GreenPPADeepHedgingPricer.PricingResults(hedge_model, paths=paths, sim_results=simulation_results, payoff=payoff)
 

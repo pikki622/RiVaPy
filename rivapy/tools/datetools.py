@@ -24,18 +24,17 @@ class DayCounter:
 
     def yf(self, d1: _Union[date, datetime], d2: _Union[_Union[date, datetime],_List[_Union[date, datetime]]]):
         try:
-            result = [self._yf(d1, d2_) for d2_ in d2]
-            return result
+            return [self._yf(d1, d2_) for d2_ in d2]
         except:
             return self._yf(d1,d2)
 
 
     @staticmethod
-    def get(daycounter: _Union[str, DayCounterType])->Callable[[ _Union[date, datetime],  _Union[date, datetime]], float]:
+    def get(daycounter: _Union[str, DayCounterType]) -> Callable[[ _Union[date, datetime],  _Union[date, datetime]], float]:
         dc = DayCounterType.to_string(daycounter)
         if dc == DayCounterType.Act365Fixed.value:
             return DayCounter.yf_Act365Fixed
-        raise NotImplementedError(dc + ' not yet implemented.')
+        raise NotImplementedError(f'{dc} not yet implemented.')
 
     @staticmethod
     def yf_Act365Fixed(d1: _Union[date, datetime], d2: _Union[date, datetime])->float:
@@ -77,13 +76,15 @@ class Period:
         """
         period_length = int(period[:-1])
         period_type = period[1]
-        if period_type == 'Y':
-            return Period(years=period_length)
+        if period_type == 'D':
+            return Period(days=period_length)
         elif period_type == 'M':
             return Period(months = period_length)
-        elif period_type == 'D':
-            return Period(days=period_length)
-        raise Exception(period + ' is not a valid period string. See documentation of tools.datetools.Period for deocumentation of valid strings.')
+        elif period_type == 'Y':
+            return Period(years=period_length)
+        raise Exception(
+            f'{period} is not a valid period string. See documentation of tools.datetools.Period for deocumentation of valid strings.'
+        )
     @property
     def years(self) -> int:
         """
@@ -330,8 +331,9 @@ class Schedule:
         elif backwards & (from_ > to_):
             direction = -1
         else:
-            raise Exception("From-date '" + str(from_) + "' and to-date '" + str(to_) +
-                            "' are not consistent with roll direction (backwards = '" + str(backwards) + "')!")
+            raise Exception(
+                f"From-date '{str(from_)}' and to-date '{str(to_)}' are not consistent with roll direction (backwards = '{backwards}')!"
+            )
 
         # generates a list of dates ...
         dates = []
@@ -341,10 +343,8 @@ class Schedule:
             from_ += direction * relativedelta(years=term.years, months=term.months, days=term.days)
             # ... and compete list for fractional periods ...
         if dates[-1] != to_:
-            # ... by adding stub or ...
             if allow_stub:
                 dates.append(to_)
-            # ... by extending last period.
             else:
                 dates[-1] = to_
         return dates
@@ -400,7 +400,7 @@ def _date_to_datetime(date_time: _Union[datetime, date]
     elif isinstance(date_time, date):
         return datetime.combine(date_time, datetime.min.time())
     else:
-        raise TypeError("'" + str(date_time) + "' must be of type datetime or date!")
+        raise TypeError(f"'{str(date_time)}' must be of type datetime or date!")
 
 
 def _datetime_to_date_list(date_times: _Union[_List[datetime], _List[date]]
@@ -417,7 +417,9 @@ def _datetime_to_date_list(date_times: _Union[_List[datetime], _List[date]]
     if isinstance(date_times, list):
         return [_date_to_datetime(date_time) for date_time in date_times]
     else:
-        raise TypeError("'" + str(date_times) + "' must be a list of type datetime or date!")
+        raise TypeError(
+            f"'{str(date_times)}' must be a list of type datetime or date!"
+        )
 
 
 def _string_to_period(term: str
@@ -463,7 +465,9 @@ def _term_to_period(term: _Union[Period, str]
     elif isinstance(term, str):
         return _string_to_period(term)
     else:
-        raise TypeError("The term '" + str(term) + "' must be provided as Period or string!")
+        raise TypeError(
+            f"The term '{str(term)}' must be provided as Period or string!"
+        )
 
 
 def calc_end_day(start_day: _Union[date, datetime],
@@ -626,11 +630,7 @@ def nearest_business_day(day: _Union[date, datetime],
         date: Nearest business day to given day according to given calendar.
     """
     distance = 0
-    if following_first:
-        direction = -1
-    else:
-        direction = +1
-
+    direction = -1 if following_first else +1
     day = _date_to_datetime(day)
     while not is_business_day(day, calendar):
         distance += 1
@@ -657,11 +657,7 @@ def nearest_last_business_day_of_month(day: _Union[date, datetime],
         date: Nearest last business day of a month to given day according to given calendar.
     """
     distance = 0
-    if following_first:
-        direction = -1
-    else:
-        direction = +1
-
+    direction = -1 if following_first else +1
     day = _date_to_datetime(day)
     while not is_last_business_day_of_month(day, calendar):
         distance += 1
@@ -687,11 +683,7 @@ def next_or_previous_business_day(day: _Union[date, datetime],
     Returns:
         date: Preceding or following business day, respectively, or day itself if it is a business day.
     """
-    if following_first:
-        direction = +1
-    else:
-        direction = -1
-
+    direction = +1 if following_first else -1
     day = _date_to_datetime(day)
     while not is_business_day(day, calendar):
         day += direction * relativedelta(days=1)
@@ -752,10 +744,7 @@ def modified_following(day: _Union[date, datetime],
               the day is not already a business day. Otherwise the (unadjusted) day is returned.
     """
     next_day = next_or_previous_business_day(day, calendar, True)
-    if next_day.month > day.month:
-        return preceding(day, calendar)
-    else:
-        return next_day
+    return preceding(day, calendar) if next_day.month > day.month else next_day
 
 
 def modified_following_eom(day: _Union[date, datetime],
@@ -782,8 +771,9 @@ def modified_following_eom(day: _Union[date, datetime],
         else:
             return modified_following(day, calendar)
     else:
-        raise Exception('The roll convention ' + str(RollConvention.MODIFIED_FOLLOWING_EOM)
-                        + ' cannot be evaluated without a start_day')
+        raise Exception(
+            f'The roll convention {str(RollConvention.MODIFIED_FOLLOWING_EOM)} cannot be evaluated without a start_day'
+        )
 
 
 def modified_following_bimonthly(day: _Union[date, datetime],
@@ -827,10 +817,7 @@ def modified_preceding(day: _Union[date, datetime],
               the day is not already a business day. Otherwise the (unadjusted) day is returned.
     """
     prev_day = next_or_previous_business_day(day, calendar, False)
-    if prev_day.month < day.month:
-        return following(day, calendar)
-    else:
-        return prev_day
+    return following(day, calendar) if prev_day.month < day.month else prev_day
 
 
 # to be used in the switcher (identical argument list)
@@ -885,8 +872,10 @@ def roll_day(day: _Union[date, datetime],
         'ModifiedPreceding': modified_preceding
     }
     # Get the appropriate roll function from switcher dictionary
-    roll_func = switcher.get(roll_convention, lambda: "Business day convention '" + str(business_day_convention)
-                                                      + "' is not known!")
+    roll_func = switcher.get(
+        roll_convention,
+        lambda: f"Business day convention '{str(business_day_convention)}' is not known!",
+    )
     try:
         result = roll_func(day, calendar)
     except TypeError:

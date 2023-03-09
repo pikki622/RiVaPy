@@ -126,7 +126,7 @@ class HestonLocalVolModelTest(unittest.TestCase):
 																	price=call_prices[i, j], min_vol=0.01)
 				except:
 					pass
-			
+
 		for i in range(expiries.shape[0]):
 			extrapolation = False
 			for j in range(int(strikes.shape[0]/2),strikes.shape[0]):
@@ -138,7 +138,7 @@ class HestonLocalVolModelTest(unittest.TestCase):
 					vols[i,j] = vols[i,j+1]
 					extrapolation = True
 			if extrapolation:
-				print('Extrapolation necessary for expiry ' + str(i))
+				print(f'Extrapolation necessary for expiry {str(i)}')
 		return vols
 
 	@staticmethod
@@ -165,12 +165,12 @@ class HestonLocalVolModelTest(unittest.TestCase):
 		"""Simple test: The given implied volatility surface equals the heston surface->stoch local variance must equal 1
 		"""
 		heston = models.HestonModel(long_run_variance=0.3**2, 
-                            mean_reversion_speed=0.5, 
-                            vol_of_vol=0.2, 
-                            initial_variance=0.3**2, 
-                            correlation = -0.95)
+		mean_reversion_speed=0.5, 
+		vol_of_vol=0.2, 
+		initial_variance=0.3**2, 
+		correlation = -0.95)
 		x_strikes = np.linspace(0.5, 1.5, num=240)
-		time_grid = np.linspace(0.0, 1.0, num=240) 
+		time_grid = np.linspace(0.0, 1.0, num=240)
 		call_prices = heston.call_price(1.0, heston._initial_variance, x_strikes, time_grid)
 		heston_lv = models.StochasticLocalVol(heston)
 		heston_lv.calibrate_MC(None, x_strikes, time_grid, n_sims=10_000, call_prices=call_prices)
@@ -181,25 +181,26 @@ class HestonLocalVolModelTest(unittest.TestCase):
 																			price=call_prices[t, k], min_vol=0.01)
 				vol_sim = analytics.compute_implied_vol_Buehler(x_strikes[k], maturity=time_grid[t], 
 																			price=call_prices_sim[t, k], min_vol=0.01)
-				self.assertTrue(np.abs(vol-vol_sim)< 0.02, 
-					'Vol from calibrated model ('+str(vol_sim)+') is not close enough to reference vol('+str(vol)+') for strike/expiry: '
-					 + str(x_strikes[k])+'/'+str(time_grid[t]))
+				self.assertTrue(
+					np.abs(vol - vol_sim) < 0.02,
+					f'Vol from calibrated model ({str(vol_sim)}) is not close enough to reference vol({str(vol)}) for strike/expiry: {str(x_strikes[k])}/{str(time_grid[t])}',
+				)
 
 	def test_simple_2(self):
 		"""Simple test 2: The given implied volatility surface equals a surface from a heston model. Try to calibrate Heston Local Vol with other heson parameters to fit the surface
 		"""
 		heston = models.HestonModel(long_run_variance=0.3**2, 
-                            mean_reversion_speed=0.5, 
-                            vol_of_vol=0.2, 
-                            initial_variance=0.3**2, 
-                            correlation = -0.95)
+		mean_reversion_speed=0.5, 
+		vol_of_vol=0.2, 
+		initial_variance=0.3**2, 
+		correlation = -0.95)
 		heston_2 = models.HestonModel(long_run_variance=0.2**2, 
-                            mean_reversion_speed=0.5, 
-                            vol_of_vol=0.2, 
-                            initial_variance=0.3**2, 
-                            correlation = -0.95)
+		mean_reversion_speed=0.5, 
+		vol_of_vol=0.2, 
+		initial_variance=0.3**2, 
+		correlation = -0.95)
 		x_strikes = np.linspace(0.5,1.5, num=240)
-		time_grid = np.linspace(0.0, 1.0, num=240) 
+		time_grid = np.linspace(0.0, 1.0, num=240)
 		call_prices = heston.call_price(1.0, heston._initial_variance, x_strikes, time_grid)
 		heston_lv = models.StochasticLocalVol(heston_2)
 		heston_lv.calibrate_MC(None, x_strikes, time_grid, n_sims=10_000, call_prices=call_prices)
@@ -210,9 +211,10 @@ class HestonLocalVolModelTest(unittest.TestCase):
 																			price=call_prices[t, k], min_vol=0.01)
 				vol_sim = analytics.compute_implied_vol_Buehler(x_strikes[k], maturity=time_grid[t], 
 																			price=call_prices_sim[t, k], min_vol=0.01)
-				self.assertTrue(np.abs(vol-vol_sim)< 0.02, 
-					'Vol from calibrated model ('+str(vol_sim)+') is not close enough to reference vol('+str(vol)+') for strike/expiry: '
-					 + str(x_strikes[k])+'/'+str(time_grid[t]))
+				self.assertTrue(
+					np.abs(vol - vol_sim) < 0.02,
+					f'Vol from calibrated model ({str(vol_sim)}) is not close enough to reference vol({str(vol)}) for strike/expiry: {str(x_strikes[k])}/{str(time_grid[t])}',
+				)
 
 
 class OrnsteinUhlenbeckTest(unittest.TestCase):

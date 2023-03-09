@@ -129,10 +129,7 @@ class WindPowerForecastModel(BaseFwdModel):
         
     def get_forward(self, paths, ttm, ou_additive_forward_correction: float):
         expected_ou = self.ou.compute_expected_value(paths, ttm)#+correction
-        result = _inv_logit(expected_ou + ou_additive_forward_correction)
-        #expected_ou = self.ou.compute_expected_value(paths[1], ttm)#+correction
-        #result += (1.0-ttm)*_inv_logit(expected_ou + ou_additive_forward_correction)
-        return result
+        return _inv_logit(expected_ou + ou_additive_forward_correction)
             
     def rnd_shape(self, n_sims: int, n_timesteps: int)->tuple:
         return (n_timesteps-1, n_sims)
@@ -147,8 +144,8 @@ class WindPowerForecastModel(BaseFwdModel):
         #paths[1,:,:] = self.ou.simulate(timegrid, startvalue, rnd[1])
         return WindPowerForecastModel.ForwardSimulationResult(paths, self, timegrid, expiries, initial_forecasts)
 
-    def udls(self)->Set[str]:
-        return set([self.region])
+    def udls(self) -> Set[str]:
+        return {self.region}
 
 class MultiRegionWindForecastModel(BaseFwdModel):
     class ForwardSimulationResult(ForwardSimulationResult):
@@ -163,7 +160,7 @@ class MultiRegionWindForecastModel(BaseFwdModel):
         def udls(self)->Set[str]:
             return self._model.udls()
 
-        def get(self, key: str, forecast_timepoints: List[int]=None)->np.ndarray:
+        def get(self, key: str, forecast_timepoints: List[int]=None) -> np.ndarray:
             udl = BaseFwdModel.get_udl_from_key(key)
             if udl == self._model.name:
                 expiry = BaseFwdModel.get_expiry_from_key(key)
@@ -171,7 +168,7 @@ class MultiRegionWindForecastModel(BaseFwdModel):
             for v in self._results.values():
                 if udl in v.udls():
                     return v.get(key, forecast_timepoints)
-            raise Exception('Cannot find key '+ key)
+            raise Exception(f'Cannot find key {key}')
 
         def _get(self, expiry: int, forecast_timepoints: List[int])->np.ndarray:
             result = None
@@ -241,7 +238,7 @@ class MultiRegionWindForecastModel(BaseFwdModel):
                                )
         """
         self.name = name
-        if len(region_forecast_models)==0:
+        if not region_forecast_models:
             raise Exception('Empty list of models is not allowed')
         self._region_forecast_models = [ _create(r) for r in region_forecast_models]
         n_rnd_ref_model = self._region_forecast_models[0].n_random()
@@ -269,7 +266,7 @@ class MultiRegionWindForecastModel(BaseFwdModel):
         for r in self._region_forecast_models:
             if r.name() == region:
                 return r.capacity/self.total_capacity()
-        raise Exception('Model does not contain a region with name ' + region)
+        raise Exception(f'Model does not contain a region with name {region}')
 
     def region_names(self)->List[str]:
         return [r.name() for r in self._region_forecast_models]
@@ -287,8 +284,8 @@ class MultiRegionWindForecastModel(BaseFwdModel):
     def rnd_shape(self, n_sims: int, n_timesteps: int)->tuple:
         return (len(self._region_forecast_models), n_timesteps-1, n_sims)
 
-    def udls(self)->Set[str]:
-        result = set([self.name])
+    def udls(self) -> Set[str]:
+        result = {self.name}
         for v in self._region_forecast_models:
             result.update(v.udls())
         return result
@@ -306,13 +303,12 @@ class ResidualDemandForwardModel(BaseFwdModel):
         def udls(self)->Set[str]:
             return self._model.udls()
 
-        def get(self, key: str, forecast_timepoints: List[int])->np.ndarray:
+        def get(self, key: str, forecast_timepoints: List[int]) -> np.ndarray:
             udl = BaseFwdModel.get_udl_from_key(key)
-            if udl == self._model.power_name:
-                expiry = BaseFwdModel.get_expiry_from_key(key)
-                return self._get(expiry, forecast_timepoints)
-            else:
+            if udl != self._model.power_name:
                 return self._wind.get(key, forecast_timepoints)
+            expiry = BaseFwdModel.get_expiry_from_key(key)
+            return self._get(expiry, forecast_timepoints)
 
         def _get(self, expiry: int, forecast_timepoints: List[int])->np.ndarray:
             total_produced = self._wind.get(BaseFwdModel.get_key(self._wind._model.name, expiry), forecast_timepoints)
@@ -333,10 +329,7 @@ class ResidualDemandForwardModel(BaseFwdModel):
         self.supply_curve = _create(supply_curve)
         self.forecast_hours = forecast_hours
         self.max_price = max_price
-        if power_name is not None:
-            self.power_name = power_name
-        else:
-            self.power_name = 'POWER'    
+        self.power_name = power_name if power_name is not None else 'POWER'    
         #self.region_to_capacity = region_to_capacity
         
     def _to_dict(self)->dict:

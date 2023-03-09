@@ -13,7 +13,7 @@ class _MyEnum(_Enum):
         return value in cls._value2member_map_
 
     @classmethod
-    def to_string(cls, value)->str:
+    def to_string(cls, value) -> str:
         """Checks if given enum class contains the value and raises exception if not. If value is str 
 
         Args:
@@ -25,13 +25,16 @@ class _MyEnum(_Enum):
         """
         def has_value(cls, value):
             return value in cls._value2member_map_
+
         if isinstance(value, str):
             if not cls.has_value(value):
-                raise Exception('Unknown  ' + cls.__name__ +': ' + value)
+                raise Exception(f'Unknown  {cls.__name__}: {value}')
             return value
         if isinstance(value, cls):
             return value.value
-        raise Exception('Given value ' + str(value) + ' does not belong to enum ' + cls.__name__)
+        raise Exception(
+            f'Given value {str(value)} does not belong to enum {cls.__name__}'
+        )
 
 if _pyvacon_available:
     from pyvacon.finance.definition import DayCounter as _DayCounter

@@ -330,12 +330,12 @@ class CDSPricingData:
                 premium_period_start = premium_payment
         return risk_adj_factor_premium, accrued
 
-    def par_spread(self, valuation_date: datetime, integration_stepsize: relativedelta)->float:
+    def par_spread(self, valuation_date: datetime, integration_stepsize: relativedelta) -> float:
         prev_date = max(self.val_date, self.spec.protection_start)
         current_date = min(prev_date + self.integration_step, self.spec.expiry)
         pv_protection = 0.0
         premium_period_start = self.spec.protection_start
-        risk_adj_factor_premium=0  
+        risk_adj_factor_premium=0
         accrued = 0 
 
         while current_date <= self.spec.expiry:
@@ -346,7 +346,7 @@ class CDSPricingData:
             pv_protection += self.discount_curve.value(valuation_date, current_date) * (1.0-recovery) * default_prob
             prev_date = current_date
             current_date += self.integration_step
-            
+
         if prev_date < self.spec.expiry and current_date > self.spec.expiry:
             default_prob = self.survival_curve.value(valuation_date, prev_date)-self.survival_curve.value(valuation_date, self.spec.expiry)
             recovery = self.spec.recovery
@@ -368,9 +368,8 @@ class CDSPricingData:
         PV_accrued=((1/2)*accrued)
         PV_premium=(1)*risk_adj_factor_premium
         PV_protection=(((1-recovery))*pv_protection)
-        
-        par_spread_i=(PV_protection)/((PV_premium+PV_accrued))
-        return par_spread_i
+
+        return (PV_protection)/((PV_premium+PV_accrued))
 
     def price(self):
         pv_protection = self._pv_protection_leg(self.val_date, self.integration_step)

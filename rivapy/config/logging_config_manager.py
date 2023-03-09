@@ -30,10 +30,7 @@ def setup_logging(config_path: str = 'config/logging_config.yaml',  # TODO: corr
     Returns:
         n/a
     """
-    path = config_path
-    value = os_getenv(env_key, None)
-    if value:
-        path = value
+    path = value if (value := os_getenv(env_key, None)) else config_path
     if os_path.exists(path):
         with open(path, 'rt') as file:
             try:

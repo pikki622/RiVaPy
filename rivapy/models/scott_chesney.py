@@ -42,10 +42,7 @@ class ScottChesneyModel:
 			rnd ([type]): [description]
 			slv (np.ndarray): Stochastic local variance (for each path) to be multiplied with the heston variance. This is used by the StochasticVolatilityModel.
 		"""
-		if not inplace:
-			x_ = x.copy()
-		else:
-			x_ = x
+		x_ = x if inplace else x.copy()
 		rnd_corr_S = np.sqrt(1.0-self._correlation**2)*rnd[:,0] + self._correlation*rnd[:,1]
 		rnd_V = rnd[:,1]
 		S = x_[:,0]

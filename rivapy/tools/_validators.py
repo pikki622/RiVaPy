@@ -26,7 +26,7 @@ def _date_to_datetime(date_time: _Union[datetime, date]
     elif isinstance(date_time, date):
         return datetime.combine(date_time, datetime.min.time())
     else:
-        raise TypeError("'" + str(date_time) + "' must be of type datetime or date!")
+        raise TypeError(f"'{str(date_time)}' must be of type datetime or date!")
 
 def _check_positivity(value: float
                       ) -> float:
@@ -42,7 +42,7 @@ def _check_positivity(value: float
     if value > 0.0:
         return value
     else:
-        raise Exception(str(value) + ' must be positive!')
+        raise Exception(f'{value} must be positive!')
 
 
 # def check_non_negativity(value: float
@@ -78,7 +78,7 @@ def _check_relation(less: float,
     if less < more:
         return less, more
     else:
-        raise Exception("'" + str(less) + "' must be smaller than '" + str(more) + "'.")
+        raise Exception(f"'{less}' must be smaller than '{more}'.")
 
 
 def _is_start_before_end(start: date,
@@ -97,16 +97,13 @@ def _is_start_before_end(start: date,
     Returns:
         bool: True if start date <(=) end date. False otherwise.
     """
-    if start < end:
+    if start >= end and start == end and strictly:
+        print(f"WARNING: '{str(start)}' must not be after '{str(end)}'!")
+        return False
+    elif start >= end and start == end or start < end:
         return True
-    elif start == end:
-        if strictly:
-            print("WARNING: '" + str(start) + "' must not be after '" + str(end) + "'!")
-            return False
-        else:
-            return True
     else:
-        print("WARNING: '" + str(start) + "' must be earlier than '" + str(end) + "'!")
+        print(f"WARNING: '{str(start)}' must be earlier than '{str(end)}'!")
         return False
 
 def _check_start_before_end(start: _Union[date, datetime],
@@ -128,7 +125,7 @@ def _check_start_before_end(start: _Union[date, datetime],
     if start_date < end_date:
         return start_date, end_date
     else:
-        raise Exception("'" + str(start) + "' must be earlier than '" + str(end) + "'!")
+        raise Exception(f"'{str(start)}' must be earlier than '{str(end)}'!")
 
 def _is_chronological(start_date: date,
                       end_date: date,
@@ -160,18 +157,14 @@ def _is_chronological(start_date: date,
     """
     if dates is None:
         return _is_start_before_end(start_date, end_date, (strictly_start & strictly_end))
-    else:
-        if ~_is_start_before_end(start_date, dates[0], strictly_start):
+    if ~_is_start_before_end(start_date, dates[0], strictly_start):
+        return False
+
+    for i in range(1, len(dates)):
+        if ~_is_start_before_end(dates[i], dates[i - 1], strictly_between):
             return False
 
-        for i in range(1, len(dates)):
-            if ~_is_start_before_end(dates[i], dates[i - 1], strictly_between):
-                return False
-
-        if ~_is_start_before_end(dates[-1], end_date, strictly_end):
-            return False
-
-        return True
+    return not ~_is_start_before_end(dates[-1], end_date, strictly_end)
 
 def check_start_before_end(start: _Union[date, datetime],
                            end: _Union[date, datetime]
@@ -192,7 +185,7 @@ def check_start_before_end(start: _Union[date, datetime],
     if start_date < end_date:
         return start_date, end_date
     else:
-        raise Exception("'" + str(start) + "' must be earlier than '" + str(end) + "'!")
+        raise Exception(f"'{str(start)}' must be earlier than '{str(end)}'!")
 
 def _is_ascending_date_list(start_date: date,
                            dates: _List[date],
@@ -216,21 +209,12 @@ def _is_ascending_date_list(start_date: date,
     Returns:
         bool: True, if dates are ascending and fall between the interval given by start and end date. False, otherwise.
     """
-    if dates[0] < start_date:
+    if dates[0] < start_date or exclude_start & (dates[0] == start_date):
         return False
-    elif exclude_start & (dates[0] == start_date):
-        return False
-
-    for i in range(1, len(dates)):
-        if dates[i] <= dates[i-1]:
-            return False
-
-    if dates[-1] > end_date:
-        return False
-    elif exclude_end & (dates[-1] == end_date):
-        return False
-
-    return True
+    return next(
+        (False for i in range(1, len(dates)) if dates[i] <= dates[i - 1]),
+        dates[-1] <= end_date and not exclude_end & (dates[-1] == end_date),
+    )
 
 
 
@@ -252,10 +236,11 @@ def _string_to_calendar(calendar: _Union[_HolidayBase, str]
         if calendar in _list_supported_countries():
             return _CountryHoliday(calendar)
         else:
-            raise Exception('Unknown calendar ' + calendar + "'!")
+            raise Exception(f"Unknown calendar {calendar}'!")
     else:
-        raise TypeError("The holiday calendar '" + str(calendar)
-                        + "' must be provided as HolidayBase or string!")
+        raise TypeError(
+            f"The holiday calendar '{str(calendar)}' must be provided as HolidayBase or string!"
+        )
 
 def _validate_schedule(self):
         if ~_is_start_before_end(self.__start_day, self.__end_day, True):

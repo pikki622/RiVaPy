@@ -5,7 +5,7 @@ import pandas as pd
 class CreditDefaultData:
     @staticmethod
     def sample(n_data: int, seed: int=None, constant=-1.0, 
-                cov:np.ndarray=None)->pd.DataFrame: 
+                cov:np.ndarray=None) -> pd.DataFrame:
         """Sample credit default data. 
 
         Return a pandas DataFrame that contains some credit features together with the default probability
@@ -62,7 +62,7 @@ class CreditDefaultData:
         #result['income'] = np.random.beta(a=2.0, b=2.0, size=n_data)
         #result['savings'] = np.random.uniform(low=0.0, high=1.0)
         #result['credit_amount_perc'] = np.random.uniform(low=0.5,high=5.0, size=n_data)
-        
+
         region = [None]*3
         for i in range(len(region)):
             region[i] = np.zeros((n_data,))
@@ -70,11 +70,11 @@ class CreditDefaultData:
         for i in range(_tmp.shape[0]):
             region[_tmp[i]][i] = 1
         for i in range(len(region)):
-            result['region_'+str(i)]=region[i]
+            result[f'region_{str(i)}'] = region[i]
         result['regime'] = constant
         df = pd.DataFrame(result)
-        
-        
+
+
         default_prob = CreditDefaultData._predict(df)
         df['default_prob'] = default_prob
         tmp = np.random.uniform(low=0.0,high=1.0, size=n_data)

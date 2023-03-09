@@ -17,13 +17,12 @@ class _JSONDecoder(json.JSONDecoder):
         json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)
 
     def object_hook(self, obj):
-        ret = {}
-        for key, value in obj.items():
-            if key in {'timestamp', 'whatever'}:
-                ret[key] = dt.fromisoformat(value) 
-            else:
-                ret[key] = value
-        return ret
+        return {
+            key: dt.fromisoformat(value)
+            if key in {'timestamp', 'whatever'}
+            else value
+            for key, value in obj.items()
+        }
 
 class _JSONEncoder(json.JSONEncoder):
     def default(self, obj):

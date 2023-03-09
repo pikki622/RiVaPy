@@ -159,9 +159,8 @@ class PeriodicFunction(_TimeGridFunction):
         self.frequency = frequency
         self.granularity = granularity
 
-    def _compute(self, d: dt.datetime)->float:
+    def _compute(self, d: dt.datetime) -> float:
         raise NotImplemented()
-        return self.f(d.dayofyear)
 
     def compute(self, tg: DateTimeGrid, x=None)->np.ndarray:
         if self.frequency == 'Y':

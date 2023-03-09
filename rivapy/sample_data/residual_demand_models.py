@@ -45,7 +45,13 @@ class WagnerModel:
 
 	@staticmethod
 	def supply():
-		return SupplyFunction(floor=(10,-3000), cap=(85,3000), peak=(39.425, 528.343), offpeak=(43.0,-713.804, 0.491), peak_hours=set([8,9,10,11,12,13,14,15,16,17,18]))
+		return SupplyFunction(
+			floor=(10, -3000),
+			cap=(85, 3000),
+			peak=(39.425, 528.343),
+			offpeak=(43.0, -713.804, 0.491),
+			peak_hours={8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18},
+		)
 
 	@staticmethod
 	def load():
@@ -82,8 +88,7 @@ class WagnerModel:
 		wind = WagnerModel.wind()
 		supply = WagnerModel.supply()
 		load = WagnerModel.load()
-		model = ResidualDemandModel(wind, 25, solar, 20, load, supply)
-		return model
+		return ResidualDemandModel(wind, 25, solar, 20, load, supply)
 
 if __name__=='__main__':
 	import datetime as dt

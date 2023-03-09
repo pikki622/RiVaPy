@@ -4,12 +4,11 @@ from rivapy.tools.interfaces import FactoryObject
 
 class OrnsteinUhlenbeck(FactoryObject):
 
-    def _eval_grid(f, timegrid):
+    def _eval_grid(self, timegrid):
         try:
-            return f(timegrid)
+            return self(timegrid)
         except:
-            result = np.full(timegrid.shape, f)
-            return result
+            return np.full(timegrid.shape, self)
 
     def __init__(self, speed_of_mean_reversion: Union[float, Callable], 
                     volatility: Union[float, Callable], 
@@ -83,10 +82,7 @@ class OrnsteinUhlenbeck(FactoryObject):
                         rnd: np.ndarray, 
                         inplace: bool = True, 
                         slv: np.ndarray= None):
-        if not inplace:
-            x_ = x.copy()
-        else:
-            x_ = x
+        x_ = x if inplace else x.copy()
         dt = t1-t0
         sqrt_dt = np.sqrt(dt)
         try:
@@ -97,7 +93,7 @@ class OrnsteinUhlenbeck(FactoryObject):
             sigma = self.volatility(t0)
         except:
             sigma = self.volatility
-        x_ = (1.0  - mu*dt)*x + sigma*sqrt_dt*rnd   
+        x_ = (1.0  - mu*dt)*x + sigma*sqrt_dt*rnd
         return x_
         
     def conditional_probability_density(self, X_delta_t, delta_t, X0, 
@@ -111,11 +107,19 @@ class OrnsteinUhlenbeck(FactoryObject):
         if mean_reversion_level is None:
             mean_reversion_level = self.mean_reversion_level
         volatility_2_ = volatility**2*(1.0-np.exp(-2.0*speed_of_mean_reversion*delta_t))/(2.0*speed_of_mean_reversion)
-        result = 1.0/(2.0*np.pi*volatility_2_)*np.exp(
-                        -(X_delta_t-X0*np.exp(-speed_of_mean_reversion*delta_t)
-                        -mean_reversion_level*(1.0-np.exp(-speed_of_mean_reversion*delta_t)))
-                    /(2.0*volatility_2_))
-        return result
+        return (
+            1.0
+            / (2.0 * np.pi * volatility_2_)
+            * np.exp(
+                -(
+                    X_delta_t
+                    - X0 * np.exp(-speed_of_mean_reversion * delta_t)
+                    - mean_reversion_level
+                    * (1.0 - np.exp(-speed_of_mean_reversion * delta_t))
+                )
+                / (2.0 * volatility_2_)
+            )
+        )
 
     def calibrate(self, data: np.ndarray, dt: float, method: str='maximum_likelihood'):
         """Calibrate the Ornstein Uhlenbeck model with constant parameters to the given data.
@@ -131,14 +135,14 @@ class OrnsteinUhlenbeck(FactoryObject):
         Syy = (data[1:]**2).sum()
         Sxy = (data[:-1] * data[1:]).sum()
         n = data[:-1].shape[0]
-        if method == 'maximum_likelihood':        
+        if method == 'maximum_likelihood':
             mu = (Sy*Sxx - Sx*Sxy) / (n*(Sxx-Sxy) - (Sx**2-Sx*Sy))
             if ((Sxy-mu*(Sx+Sy-n*mu))/(Sxx-2*mu*Sx+n*mu**2)) <= 0:
                 raise Exception('Calibration failed.')
-            speed_mr = -1/dt * np.log((Sxy-mu*(Sx+Sy-n*mu))/(Sxx-2*mu*Sx+n*mu**2)) 
+            speed_mr = -1/dt * np.log((Sxy-mu*(Sx+Sy-n*mu))/(Sxx-2*mu*Sx+n*mu**2))
             alpha = np.exp(-speed_mr*dt)
             sigma_2 = 1/n * (Syy-2*alpha*Sxy+alpha**2*Sxx-2*mu*(1-alpha)*(Sy-alpha*Sx)+n*mu**2*(1-alpha)**2)
-            sigma = np.sqrt(sigma_2 * (2*speed_mr) / (1-alpha**2))          
+            sigma = np.sqrt(sigma_2 * (2*speed_mr) / (1-alpha**2))
         elif method == 'minimum_least_square':
             a = (n*Sxy - Sx*Sy) / (n*Sxx - Sx**2)
             b = (Sy - a*Sx) / n
@@ -147,7 +151,7 @@ class OrnsteinUhlenbeck(FactoryObject):
             mu = b / (1-a)
             sigma = sd * np.sqrt((-2*np.log(a)) / (dt*(1-a**2)))
         else:
-            raise ValueError('Fitting method not defined ('+method+')')        
+            raise ValueError(f'Fitting method not defined ({method})')
         self.speed_of_mean_reversion = speed_mr
         self.volatility = sigma
         self.mean_reversion_level = mu

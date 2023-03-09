@@ -98,7 +98,7 @@ def _get_dict_repr(obj):
                 return v
         new_dict = {}
         for item, value in dictionary.items():
-            if item != 'cereal_class_version' and item != 'polymorphic_id' and item != 'UID_':
+            if item not in ['cereal_class_version', 'polymorphic_id', 'UID_']:
                 if isinstance(value, dict):
                     if len(value) == 1:
                         for v in value.values():
@@ -110,7 +110,7 @@ def _get_dict_repr(obj):
                 else:
                     new_dict[item] = value
         return new_dict
-        
+
     represent = str(_BaseObject.getString(obj)) + '}'
     d = json.loads(represent)
     return cleanup_dict(d['value0'])

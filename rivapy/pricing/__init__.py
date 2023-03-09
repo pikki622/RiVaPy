@@ -22,7 +22,9 @@ if _pyvacon_available:
 else:
 	def price(pr_data):
 		if hasattr(pr_data, 'price'):
-			return pr_data.price()	
-		raise Exception('Pricing of ' + type(pr_data).__name__+ ' not possible without pyvacon.')
+			return pr_data.price()
+		raise Exception(
+			f'Pricing of {type(pr_data).__name__} not possible without pyvacon.'
+		)
 
 

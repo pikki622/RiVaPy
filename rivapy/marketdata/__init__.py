@@ -92,7 +92,7 @@ class _VolatilityParametrizationExpiry:
             [float]: Implied volatility.
         """
         i = np.searchsorted(self.expiries, ttm)
-        if i == 0 or i == self.expiries.shape[0]:
+        if i in [0, self.expiries.shape[0]]:
             if i == self.expiries.shape[0]:
                 i -= 1
             return np.sqrt(self._calc_implied_vol_at_expiry(self.get_params_at_expiry(i),ttm,strike))

@@ -37,22 +37,16 @@ class MonthlySolarProfile(SolarProfile):
     def __init__(self, monthly_profiles: np.ndarray):
         self._monthly_profiles = monthly_profiles
         super().__init__(self.__monthly_solar_profile)
-        if monthly_profiles is not None:
-            if monthly_profiles.shape != (12,24):
-                raise ValueError('Monthly profiles must have shape (12,24)')
+        if monthly_profiles is not None and monthly_profiles.shape != (12, 24):
+            raise ValueError('Monthly profiles must have shape (12,24)')
 
     def __monthly_solar_profile(self, d):
         return self._monthly_profiles[d.month-1, d.hour]
         
 
 class SolarPowerModel:
-    def _eval_grid(f, timegrid):
-        return f(timegrid)
-        try:
-            return f(timegrid)
-        except:
-            result = np.full(timegrid.shape, f)
-            return result
+    def _eval_grid(self, timegrid):
+        return self(timegrid)
 
     def __init__(self, daily_maximum_process,
                     profile,
@@ -83,12 +77,11 @@ class SolarPowerModel:
 
 class WindPowerModel:
     
-    def _eval_grid(f, timegrid):
+    def _eval_grid(self, timegrid):
         try:
-            return f(timegrid)
+            return self(timegrid)
         except:
-            result = np.full(timegrid.shape, f)
-            return result
+            return np.full(timegrid.shape, self)
 
     def __init__(self, deviation_process: object, 
                     seasonal_function: object,
@@ -140,9 +133,10 @@ class SmoothstepSupplyCurve(FactoryObject):
     @staticmethod
     def smoothstep(x, x_min=0, x_max=1, N=1):
         x = np.clip((x - x_min) / (x_max - x_min), 0, 1)
-        result = 0
-        for n in range(0, N + 1):
-            result += comb(N + n, n) * comb(2 * N + 1, N - n) * (-x) ** n
+        result = sum(
+            comb(N + n, n) * comb(2 * N + 1, N - n) * (-x) ** n
+            for n in range(N + 1)
+        )
         result *= x ** (N + 1)
         return result
 
@@ -177,10 +171,10 @@ class WindPowerForecastModel(FactoryObject):
             return result
 
         def path_dict(self):
-            result = {}
-            for i in range(self._wind_forecast_model.n_forwards()):
-                result[self._wind_forecast_model.region+str(i)] = self.get_path(i)
-            return result
+            return {
+                self._wind_forecast_model.region + str(i): self.get_path(i)
+                for i in range(self._wind_forecast_model.n_forwards())
+            }
 
 
     def __init__(self, speed_of_mean_reversion: float, 
@@ -242,7 +236,7 @@ class MultiRegionWindForecastModel:
         def path_dict(self):
             result = {}
             for r in self._results:
-                result.update(r.path_dict())
+                result |= r.path_dict()
             return result
 
         
@@ -259,7 +253,7 @@ class MultiRegionWindForecastModel:
             return len(self.rnd_weights)
 
     def __init__(self, region_forecast_models: List[Region]):
-        if len(region_forecast_models)==0:
+        if not region_forecast_models:
             raise Exception('Empty list of models is not allowed')
         n_rnd_ref_model = region_forecast_models[0].n_random()
         n_fwd_ref_model = region_forecast_models[0].model.n_forwards()
@@ -286,7 +280,7 @@ class MultiRegionWindForecastModel:
         for r in self._region_forecast_models:
             if r.name() == region:
                 return r.capacity/self.total_capacity()
-        raise Exception('Model does not contain a region with name ' + region)
+        raise Exception(f'Model does not contain a region with name {region}')
 
     def region_names(self)->List[str]:
         return [r.name() for r in self._region_forecast_models]
@@ -377,10 +371,7 @@ class ResidualDemandForwardModel(FactoryObject):
         self.supply_curve = supply_curve
         self.forecast_hours = forecast_hours
         self.max_price = max_price
-        if power_name is not None:
-            self.power_name = power_name
-        else:
-            self.power_name = 'POWER'    
+        self.power_name = power_name if power_name is not None else 'POWER'    
         #self.region_to_capacity = region_to_capacity
         
     def _to_dict(self)->dict:
@@ -602,12 +593,7 @@ class ResidualDemandModel:
         for i in range(timegrid.shape[0]):
             for j in range(n_sims):
                 power_price[i,j] =  self.supply_curve.compute(residual_demand[i,j],timegrid.dates[i] )
-        result = {}
-        result['load'] = lm
-        result['solar'] = sm
-        result['wind'] = wm
-        result['price'] = power_price
-        return result
+        return {'load': lm, 'solar': sm, 'wind': wm, 'price': power_price}
 
 
 if __name__=='__main__':

@@ -25,8 +25,8 @@ class BaseFwdModel(BaseFwdModel):
         pass
 
     @staticmethod
-    def get_key(udl:str, fwd_expiry: int)->str:
-        return udl+'_FWD'+str(fwd_expiry)
+    def get_key(udl:str, fwd_expiry: int) -> str:
+        return f'{udl}_FWD{fwd_expiry}'
 
     @staticmethod
     def get_expiry_from_key(key: str)->int:

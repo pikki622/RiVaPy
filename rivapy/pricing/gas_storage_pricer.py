@@ -22,21 +22,14 @@ class PricingParameter:
         self.regression = regression
 
 def _payoff_func(S, delta_v, a1=0, a2=0, b1=0, b2=0, action=1):
-    #payoff function h (with bid-ask spread & transaction cost)
-    # -c*delta_v     inject         c=(1+a1)S +b1
-    # 0              do nothing
-    # -p*delta_v     withdraw       p=(1-a2)S -b2
-    
-    #if a1=a2=b1=b2=0 -> c=p=S
     if a1==0 and a2==0 and b1==0 and b2==0:
         return -S*delta_v
+    if action == -1:
+        return -((1-a2)*S - b2) * delta_v
+    elif action == 1:
+        return -((1+a1)*S + b1) * delta_v
     else:
-        if action == 1: #inject
-            return -((1+a1)*S + b1) * delta_v
-        elif action == -1: #withdraw
-            return -((1-a2)*S - b2) * delta_v
-        else: #do nothing
-            return 0
+        return 0
 
 def _penalty_func(S, v): #final condition
     def indicator_function(v, y):
@@ -64,14 +57,14 @@ def pricing_lsmc(storage: GasStorageSpecification,
     
     #discretization of possible volume levels
     v = np.linspace(storage.min_level, storage.storage_capacity, pricing_parameters.n_vol_levels) 
-    
+
     # Assign a value to the contract at maturity according to the final condition
     acc_cashflows = np.empty((len(storage.timegrid), len(v), nb_sims)) # acc_cashflows[t, i,j]: expected accumulated cashflow (of optimal policy) for j-th path at t arriving at t at vollevel i 
 
     # For t=T+1: final condition
     for i in range(nb_sims):    
         acc_cashflows[-1,:,i] = penalty_func(prices[-1,i], v) #size v
-    
+
     # Apply backward induction for t=T...1 
     # For each t, step over N allowed volume levels v(t,n) 
     regression = pricing_parameters.regression(deg=1)
@@ -81,18 +74,17 @@ def pricing_lsmc(storage: GasStorageSpecification,
         for vol_t in range(len(v)):
             dec_func = np.empty((len(v), nb_sims))
             for vol_tplus1 in range(len(v)): #for all volumes by themselves
+                cont_val = acc_cashflows[t+1,vol_tplus1,:] # assumed cont. value for t+1, no disc. factor
                 # - Run an OLS regression to find an approx. of the continuation value
                 if t > 0:
-                    cont_val = acc_cashflows[t+1,vol_tplus1,:] # assumed cont. value for t+1, no disc. factor
                     cv_fit = regression.fit(prices[t,:], cont_val)
                     cv_pred = regression.predict(cv_fit, prices[t,:])
                 else:
-                    cont_val = acc_cashflows[t+1,vol_tplus1,:] # assumed cont. value for t+1, no disc. factor
                     cv_pred = np.full((nb_sims,), cont_val.mean())
                 # - Combine the cont. values C into a decision rule for each volume level
                 max_withdraw = max(storage.withdrawal_rate, -(v[vol_t]-storage.min_level))
                 max_inject = min(storage.injection_rate, storage.storage_capacity - v[vol_t])
-                
+
                 dv = v[vol_tplus1] - v[vol_t]
 
                 # check against constraints to find achievable actions:
@@ -108,13 +100,13 @@ def pricing_lsmc(storage: GasStorageSpecification,
 
             # - Calculate the accumulated future cash flows Y^b
             acc_cashflows[t,vol_t,:] = np.max(dec_func, axis=0) #no disc. factor
-    
+
     #forward sweep for optimal path
     ind_level = np.empty((len(storage.timegrid), nb_sims), dtype=int)
     total_volume = np.empty((len(storage.timegrid), nb_sims))
     ind_level[0,:] = 0 #on the grid, index of startLevel = 0 TODO: Use index of volume level that is closest to the start level
     total_volume[0,:] = v[ind_level[0,:]]
-    for t in range(0,len(storage.timegrid)-1):
+    for t in range(len(storage.timegrid)-1):
         for m in range(nb_sims):
             ind_level[t+1,m] = total_vol_levels[t,ind_level[t,m],m]
             total_volume[t+1,m] = v[ind_level[t+1,m]]

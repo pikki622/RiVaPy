@@ -42,7 +42,7 @@ class Coupon:
         self.__floating_rate_floor, self.__floating_rate_cap = _check_relation(floating_rate_floor, floating_rate_cap)
 
         # reference index for fixing floating rates
-        if floating_reference_index == '':
+        if not floating_reference_index:
             # do not leave reference index empty as this causes pricer to ignore floating rate coupons!
             self.floating_reference_index = 'dummy_reference_index'
         else:
@@ -66,7 +66,7 @@ class Issuer(interfaces.FactoryObject):
         self.__sector = Sector.to_string(sector)
 
     @staticmethod
-    def _create_sample(n_samples: int, seed: int = None, issuer: List[str] = None)->List:
+    def _create_sample(n_samples: int, seed: int = None, issuer: List[str] = None) -> List:
         """Just sample some test data
 
         Args:
@@ -82,22 +82,25 @@ class Issuer(interfaces.FactoryObject):
         """
         if seed is not None:
             np.random.seed(seed)
-        result = []
         ratings = list(Rating)
         esg_ratings = list(ESGRating)
         sectors = list(Sector)
         country = list(Country)
         if issuer is None:
-            issuer = ['Issuer_'+str(i) for i in range(n_samples)]
+            issuer = [f'Issuer_{str(i)}' for i in range(n_samples)]
         elif (n_samples is not None) and (n_samples !=  len(issuer)):
             raise Exception('Cannot create data since length of issuer list does not equal number of sampled. Set n_namples to None.')
-        for i in range(n_samples):
-            result.append(Issuer('Issuer_'+str(i), issuer[i],
-                        np.random.choice(ratings), 
-                        np.random.choice(esg_ratings), 
-                        np.random.choice(country).value,
-                        np.random.choice(sectors)))
-        return result
+        return [
+            Issuer(
+                f'Issuer_{str(i)}',
+                issuer[i],
+                np.random.choice(ratings),
+                np.random.choice(esg_ratings),
+                np.random.choice(country).value,
+                np.random.choice(sectors),
+            )
+            for i in range(n_samples)
+        ]
 
     def _to_dict(self) -> dict:
         return {'obj_id': self.obj_id, 

@@ -187,7 +187,7 @@ class PricingRequest:
             if isinstance(calc_delta_gamma, bool):
                 self.__calc_delta_gamma = calc_delta_gamma
             else:
-                raise TypeError("'" + str(calc_delta_gamma) + "' must be of type bool!")
+                raise TypeError(f"'{calc_delta_gamma}' must be of type bool!")
 
     @property
     def _calc_cross_gamma(self):
@@ -196,12 +196,11 @@ class PricingRequest:
     @_calc_cross_gamma.setter
     def _calc_cross_gamma(self, calc_cross_gamma: bool):
         if calc_cross_gamma is not None:
-            if isinstance(calc_cross_gamma, bool):
-                self.__calc_cross_gamma = calc_cross_gamma
-                if self._calc_cross_gamma:
-                    self.calc_delta_gamma = True
-            else:
-                raise TypeError("'" + str(calc_cross_gamma) + "' must be of type bool!")
+            if not isinstance(calc_cross_gamma, bool):
+                raise TypeError(f"'{calc_cross_gamma}' must be of type bool!")
+            self.__calc_cross_gamma = calc_cross_gamma
+            if self._calc_cross_gamma:
+                self.calc_delta_gamma = True
 
     @property
     def _calc_clean_price(self):
@@ -213,7 +212,7 @@ class PricingRequest:
             if isinstance(calc_clean_price, bool):
                 self.__calc_clean_price = calc_clean_price
             else:
-                raise TypeError("'" + str(calc_clean_price) + "' must be of type bool!")
+                raise TypeError(f"'{calc_clean_price}' must be of type bool!")
 
     @property
     def _calc_rho(self):
@@ -222,12 +221,11 @@ class PricingRequest:
     @_calc_rho.setter
     def _calc_rho(self, calc_rho: bool):
         if calc_rho is not None:
-            if isinstance(calc_rho, bool):
-                self.__calc_rho = calc_rho
-                if self._calc_rho & ~hasattr(self, 'rho_scale'):
-                    self.rho_scale = 0.0001
-            else:
-                raise TypeError("'" + str(calc_rho) + "' must be of type bool!")
+            if not isinstance(calc_rho, bool):
+                raise TypeError(f"'{calc_rho}' must be of type bool!")
+            self.__calc_rho = calc_rho
+            if self._calc_rho & ~hasattr(self, 'rho_scale'):
+                self.rho_scale = 0.0001
 
     @property
     def _rho_scale(self):
@@ -236,11 +234,10 @@ class PricingRequest:
     @_rho_scale.setter
     def _rho_scale(self, rho_scale: float):
         if rho_scale is not None:
-            if isinstance(rho_scale, float):
-                self.__rho_scale = rho_scale
-                self.calc_rho = True
-            else:
-                raise TypeError("'" + str(rho_scale) + "' must be of type float!")
+            if not isinstance(rho_scale, float):
+                raise TypeError(f"'{rho_scale}' must be of type float!")
+            self.__rho_scale = rho_scale
+            self.calc_rho = True
 
     @property
     def _calc_vega(self):
@@ -249,12 +246,11 @@ class PricingRequest:
     @_calc_vega.setter
     def _calc_vega(self, calc_vega: bool):
         if calc_vega is not None:
-            if isinstance(calc_vega, bool):
-                self.__calc_vega = calc_vega
-                if self._calc_vega & ~hasattr(self, 'vega_scale'):
-                    self.vega_scale = 0.01
-            else:
-                raise TypeError("'" + str(calc_vega) + "' must be of type bool!")
+            if not isinstance(calc_vega, bool):
+                raise TypeError(f"'{calc_vega}' must be of type bool!")
+            self.__calc_vega = calc_vega
+            if self._calc_vega & ~hasattr(self, 'vega_scale'):
+                self.vega_scale = 0.01
 
     @property
     def _vega_scale(self):
@@ -263,11 +259,10 @@ class PricingRequest:
     @_vega_scale.setter
     def _vega_scale(self, vega_scale: float):
         if vega_scale is not None:
-            if isinstance(vega_scale, float):
-                self.__vega_scale = vega_scale
-                self.calc_vega = True
-            else:
-                raise TypeError("'" + str(vega_scale) + "' must be of type float!")
+            if not isinstance(vega_scale, float):
+                raise TypeError(f"'{vega_scale}' must be of type float!")
+            self.__vega_scale = vega_scale
+            self.calc_vega = True
 
     @property
     def _calc_cross_volga(self):
@@ -276,14 +271,13 @@ class PricingRequest:
     @_calc_cross_volga.setter
     def _calc_cross_volga(self, calc_cross_volga: bool):
         if calc_cross_volga is not None:
-            if isinstance(calc_cross_volga, bool):
-                self.__calc_cross_volga = calc_cross_volga
-                if self._calc_cross_volga:
-                    self.calc_vega = True
-                    if not hasattr(self, 'vega_scale'):
-                        self.vega_scale = 0.01
-            else:
-                raise TypeError("'" + str(calc_cross_volga) + "' must be of type bool!")
+            if not isinstance(calc_cross_volga, bool):
+                raise TypeError(f"'{calc_cross_volga}' must be of type bool!")
+            self.__calc_cross_volga = calc_cross_volga
+            if self._calc_cross_volga:
+                self.calc_vega = True
+                if not hasattr(self, 'vega_scale'):
+                    self.vega_scale = 0.01
 
     @property
     def _calc_vanna(self):
@@ -292,14 +286,13 @@ class PricingRequest:
     @_calc_vanna.setter
     def _calc_vanna(self, calc_vanna: bool):
         if calc_vanna is not None:
-            if isinstance(calc_vanna, bool):
-                self.__calc_vanna = calc_vanna
-                if self._calc_vanna:
-                    self.calc_vega = True
-                    if not hasattr(self, 'vega_scale'):
-                        self.vega_scale = 0.01
-            else:
-                raise TypeError("'" + str(calc_vanna) + "' must be of type bool!")
+            if not isinstance(calc_vanna, bool):
+                raise TypeError(f"'{calc_vanna}' must be of type bool!")
+            self.__calc_vanna = calc_vanna
+            if self._calc_vanna:
+                self.calc_vega = True
+                if not hasattr(self, 'vega_scale'):
+                    self.vega_scale = 0.01
 
     @property
     def _calc_theta(self):
@@ -308,12 +301,11 @@ class PricingRequest:
     @_calc_theta.setter
     def _calc_theta(self, calc_theta: bool):
         if calc_theta is not None:
-            if isinstance(calc_theta, bool):
-                self.__calc_theta = calc_theta
-                if self._calc_theta & ~hasattr(self, 'theta_scale'):
-                    self.theta_scale = 1.0
-            else:
-                raise TypeError("'" + str(calc_theta) + "' must be of type bool!")
+            if not isinstance(calc_theta, bool):
+                raise TypeError(f"'{calc_theta}' must be of type bool!")
+            self.__calc_theta = calc_theta
+            if self._calc_theta & ~hasattr(self, 'theta_scale'):
+                self.theta_scale = 1.0
 
     @property
     def _theta_scale(self):
@@ -322,11 +314,10 @@ class PricingRequest:
     @_theta_scale.setter
     def _theta_scale(self, theta_scale: float):
         if theta_scale is not None:
-            if isinstance(theta_scale, float):
-                self.__theta_scale = theta_scale
-                self.calc_theta = True
-            else:
-                raise TypeError("'" + str(theta_scale) + "' must be of type float!")
+            if not isinstance(theta_scale, float):
+                raise TypeError(f"'{theta_scale}' must be of type float!")
+            self.__theta_scale = theta_scale
+            self.calc_theta = True
 
     @property
     def _calc_spline(self):
@@ -338,7 +329,7 @@ class PricingRequest:
             if isinstance(calc_spline, bool):
                 self.__calc_spline = calc_spline
             else:
-                raise TypeError("'" + str(calc_spline) + "' must be of type bool!")
+                raise TypeError(f"'{calc_spline}' must be of type bool!")
 
     @property
     def _calc_grid_sizes(self):
@@ -350,7 +341,7 @@ class PricingRequest:
             if isinstance(calc_grid_sizes, bool):
                 self.__calc_grid_sizes = calc_grid_sizes
             else:
-                raise TypeError("'" + str(calc_grid_sizes) + "' must be of type bool!")
+                raise TypeError(f"'{calc_grid_sizes}' must be of type bool!")
 
     @property
     def _calc_implied_volatility(self):
@@ -362,7 +353,7 @@ class PricingRequest:
             if isinstance(calc_implied_volatility, bool):
                 self.__calc_implied_volatility = calc_implied_volatility
             else:
-                raise TypeError("'" + str(calc_implied_volatility) + "' must be of type bool!")
+                raise TypeError(f"'{calc_implied_volatility}' must be of type bool!")
 
     @property
     def _management_delta_limit(self):
@@ -382,7 +373,7 @@ class PricingRequest:
             if isinstance(calc_pricing_data, float):
                 self.__calc_pricing_data = calc_pricing_data
             else:
-                raise TypeError("'" + str(calc_pricing_data) + "' must be of type float!")
+                raise TypeError(f"'{calc_pricing_data}' must be of type float!")
 
     @property
     def _calc_expected_cashflows(self):
@@ -394,7 +385,7 @@ class PricingRequest:
             if isinstance(calc_expected_cashflows, bool):
                 self.__calc_expected_cashflows = calc_expected_cashflows
             else:
-                raise TypeError("'" + str(calc_expected_cashflows) + "' must be of type bool!")
+                raise TypeError(f"'{calc_expected_cashflows}' must be of type bool!")
 
     @property
     def _calc_simulation_data(self):
@@ -406,7 +397,7 @@ class PricingRequest:
             if isinstance(calc_simulation_data, bool):
                 self.__calc_simulation_data = calc_simulation_data
             else:
-                raise TypeError("'" + str(calc_simulation_data) + "' must be of type bool!")
+                raise TypeError(f"'{calc_simulation_data}' must be of type bool!")
 
     @property
     def _calc_additional_information(self):
@@ -418,7 +409,7 @@ class PricingRequest:
             if isinstance(calc_additional_information, bool):
                 self.__calc_additional_information = calc_additional_information
             else:
-                raise TypeError("'" + str(calc_additional_information) + "' must be of type bool!")
+                raise TypeError(f"'{calc_additional_information}' must be of type bool!")
 
     @property
     def _calc_z_spread(self):
@@ -430,7 +421,7 @@ class PricingRequest:
             if isinstance(calc_z_spread, bool):
                 self.__calc_z_spread = calc_z_spread
             else:
-                raise TypeError("'" + str(calc_z_spread) + "' must be of type bool!")
+                raise TypeError(f"'{calc_z_spread}' must be of type bool!")
 
     @property
     def _calc_yield_to_maturity(self):
@@ -442,7 +433,7 @@ class PricingRequest:
             if isinstance(calc_yield_to_maturity, bool):
                 self.__calc_yield_to_maturity = calc_yield_to_maturity
             else:
-                raise TypeError("'" + str(calc_yield_to_maturity) + "' must be of type bool!")
+                raise TypeError(f"'{calc_yield_to_maturity}' must be of type bool!")
 
     @property
     def _calc_convexity(self):
@@ -451,14 +442,13 @@ class PricingRequest:
     @_calc_convexity.setter
     def _calc_convexity(self, calc_convexity: bool):
         if calc_convexity is not None:
-            if isinstance(calc_convexity, bool):
-                self.__calc_convexity = calc_convexity
-                if self._calc_convexity:
-                    self.calc_rho = True
-                    if not hasattr(self, 'rho_scale'):
-                        self.rho_scale = 0.0001
-            else:
-                raise TypeError("'" + str(calc_convexity) + "' must be of type bool!")
+            if not isinstance(calc_convexity, bool):
+                raise TypeError(f"'{calc_convexity}' must be of type bool!")
+            self.__calc_convexity = calc_convexity
+            if self._calc_convexity:
+                self.calc_rho = True
+                if not hasattr(self, 'rho_scale'):
+                    self.rho_scale = 0.0001
 
     @property
     def _max_expected_cashflow_date(self):
@@ -470,7 +460,9 @@ class PricingRequest:
             if isinstance(max_expected_cashflow_date, datetime) | isinstance(max_expected_cashflow_date, date):
                 self.__max_expected_cashflow_date = datetime_to_date(max_expected_cashflow_date)
             else:
-                raise TypeError("'" + str(max_expected_cashflow_date) + "' must be of type datetime or date!")
+                raise TypeError(
+                    f"'{str(max_expected_cashflow_date)}' must be of type datetime or date!"
+                )
 
     @property
     def _cashflow_times(self):
@@ -484,7 +476,9 @@ class PricingRequest:
             ):
                 self.__cashflow_times = datetime_to_date_list(cashflow_times)
             else:
-                raise TypeError("'" + str(cashflow_times) + "' must be of type list of datetime or date!")
+                raise TypeError(
+                    f"'{str(cashflow_times)}' must be of type list of datetime or date!"
+                )
 
     @property
     def _calc_macaulay_duration(self):
@@ -496,7 +490,7 @@ class PricingRequest:
             if isinstance(calc_macaulay_duration, bool):
                 self.__calc_macaulay_duration = calc_macaulay_duration
             else:
-                raise TypeError("'" + str(calc_macaulay_duration) + "' must be of type bool!")
+                raise TypeError(f"'{calc_macaulay_duration}' must be of type bool!")
 
 
 class BondPricingRequest(PricingRequest):

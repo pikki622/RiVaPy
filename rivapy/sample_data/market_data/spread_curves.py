@@ -67,7 +67,7 @@ class SpreadCurveSampler:
     def _sample_esg_rating_spreads(self):
         self.esg_rating_spread = {}
         low = 0.0
-        for i,s in enumerate(ESGRating):
+        for s in ESGRating:
             high = low + np.random.uniform(low=0.001, high=0.0025)
             self.esg_rating_spread[s.value] = (low, high)
             low = high
@@ -100,9 +100,8 @@ class SpreadCurveSampler:
                                   )
     
     def _sample_sec_level_spreads(self):
-        result = {}
         spread = 0.0
-        result[SecuritizationLevel.SENIOR_SECURED.value]=(0.0,0.001)
+        result = {SecuritizationLevel.SENIOR_SECURED.value: (0.0, 0.001)}
         low = np.random.uniform(0.001, 0.005)
         result[SecuritizationLevel.SENIOR_UNSECURED.value] = (low, low + 0.01)
         low = np.random.uniform(0.01, 0.025) + result[SecuritizationLevel.SENIOR_UNSECURED.value][1]
@@ -110,7 +109,7 @@ class SpreadCurveSampler:
         self.securitization_spreads = result
         
     def get_curve(self, issuer: Issuer, bond: PlainVanillaCouponBondSpecification):
-        logger.info('computing curve for issuer ' + issuer.name + ' and bond ' + bond.obj_id)
+        logger.info(f'computing curve for issuer {issuer.name} and bond {bond.obj_id}')
         rating_weight = self.rating_weights[issuer.rating]
         w1 = 1.0-rating_weight
         w2 = rating_weight
@@ -120,6 +119,10 @@ class SpreadCurveSampler:
         sector_spread = w1*self.sector_spreads[issuer.sector][0] + w2*self.sector_spreads[issuer.sector][1]
         currency_spread = w1*self.currency_spread[bond.currency][0] + w2*self.currency_spread[bond.currency][1]
         securitization_spread = w1*self.securitization_spreads[bond.securitization_level][0] + w2* self.securitization_spreads[bond.securitization_level][1]
-        curve = 0.5*rating_curve + 0.5*(0.3*country_spread + 0.3*securitization_spread 
-                        + 0.2*esg_spread + 0.1*sector_spread+0.1*currency_spread)
-        return curve
+        return 0.5 * rating_curve + 0.5 * (
+            0.3 * country_spread
+            + 0.3 * securitization_spread
+            + 0.2 * esg_spread
+            + 0.1 * sector_spread
+            + 0.1 * currency_spread
+        )
